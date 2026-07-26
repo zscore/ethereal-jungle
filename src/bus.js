@@ -80,11 +80,15 @@ const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax
   [0, 0.1], [0.2, 0.4], [0.35, 0.3], [0.618, 1.0], [0.75, 0.55], [1, 0.2],
 ];
 
+// `ambience` lists each biome's synthesized layers (tools/gen_samples.py,
+// D16) — the first per-track palette field (D12's direction: orchestration as
+// data). ambience[0] is the always-on bed; the rest are accent layers that
+// drift in and out on slow presence walks (generators.js layerPresenceAt).
 export const TRACKS = [
-  { name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30] },
-  { name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55] },
-  { name: 'canopy',      bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80] }, // set climax (~0.62 of set)
-  { name: 'zenith',      bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00] },
+  { name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30], ambience: ['ambinsects', 'ambfrogs', 'ambrustle'] },
+  { name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55], ambience: ['ambrain', 'ambthunder', 'ambdrips'] },
+  { name: 'canopy',      bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80], ambience: ['ambbirds', 'ambcalls', 'ambleaves'] }, // set climax (~0.62 of set)
+  { name: 'zenith',      bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00], ambience: ['ambwind', 'ambshimmer', 'ambsparkle'] },
 ];
 for (const tr of TRACKS) tr.seconds = tr.bars * BAR_SECONDS; // ≈97 s per track
 

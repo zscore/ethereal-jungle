@@ -1,7 +1,51 @@
 {
   "_base": "/samples/",
-  "bd": ["bd/bd.wav"],
-  "sd": ["sd/sd.wav"],
-  "hh": ["hh/hh.wav"],
-  "jbreak": ["breaks/break168.wav"]
+  "bd": [
+    "bd/bd.wav"
+  ],
+  "sd": [
+    "sd/sd.wav"
+  ],
+  "hh": [
+    "hh/hh.wav"
+  ],
+  "jbreak": [
+    "breaks/break168.wav"
+  ],
+  "ambinsects": [
+    "amb/insects.wav"
+  ],
+  "ambrain": [
+    "amb/rain.wav"
+  ],
+  "ambbirds": [
+    "amb/birds.wav"
+  ],
+  "ambwind": [
+    "amb/wind.wav"
+  ],
+  "ambfrogs": [
+    "amb/frogs.wav"
+  ],
+  "ambrustle": [
+    "amb/rustle.wav"
+  ],
+  "ambthunder": [
+    "amb/thunder.wav"
+  ],
+  "ambdrips": [
+    "amb/drips.wav"
+  ],
+  "ambcalls": [
+    "amb/calls.wav"
+  ],
+  "ambleaves": [
+    "amb/leaves.wav"
+  ],
+  "ambshimmer": [
+    "amb/shimmer.wav"
+  ],
+  "ambsparkle": [
+    "amb/sparkle.wav"
+  ]
 }

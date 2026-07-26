@@ -366,6 +366,45 @@ the threshold of caring for a monitoring control. The camera teleports on
 seek; if that ever matters, the `seek` event is the hook for a visual cut
 (change blindness at drops, D5, would even endorse it).
 
+## D16 — Hat breathing + Barlow accents; per-biome ambience beds (2026-07-26)
+
+**Decision.** Two listening-feedback fixes, one entry. (1) **Hats**: presence
+is now drawn per phrase from a section-weighted table (full / sparse / off —
+groove rests ~15% of phrases, release ~40%, peak never), velocities follow
+*inverse* indispensability (the same Barlow table the permuter prices
+positions with — accents push against the grid the skeleton holds down),
+base level dropped ~35% and density capped at E(6,16); seam/build2 keep
+their per-bar risers at the lower base. (2) **Ambience**: each track owns a
+*layer stack* of synthesized 4-bar loops (`TRACKS[i].ambience = [bed,
+...accents]`, generated in tools/gen_samples.py). The bed is always on —
+cricket chorus / leaf-patter / chirps-over-air / wandering wind — and two
+accent layers per biome (frogs + rustle, thunder + drips, warble-calls +
+foliage gusts, shimmer drone + crystalline sparkle) drift in and out on slow
+seeded presence walks (`layerPresenceAt`: smoothstep value noise over the
+absolute phrase index, one cell ≈ 3 phrases → episodes of ~30–50 s, resting
+below a 0.35 threshold; long attack/release envelopes turn the per-phrase
+gain steps into fades). All layers retrigger phrase-aligned (`slow(4)` at
+absolute cycles, loop point crossfaded in the sample itself), ride the ether
+orbit (3, so the kick ducks them — the biome breathes with the music), sit
+at 0.35/0.3 where the ether is figure (intro/breakdown/late seam), 0.15/0.12
+under the full stack; during seams the *incoming* biome's bed crossfades in
+early — §6.1's infiltrating ether made literal, and the audio twin of the
+camera's biome traversal (D5). Walks key to the *unmixed* base seed and the
+absolute phrase index, so they are deterministic across recompiles but never
+loop with the set.
+
+**Why.** Hats-always-on at one velocity was the fatigue complaint — and §7's
+coprime-presence principle already said layers should rest. The beds are the
+first slice of D12 (orchestration as timeline data) and give each track a
+place-identity even before the palette lands. Names carry the `amb` prefix
+(remote dirt-samples can't shadow them) and no underscores (mini-notation
+syntax). See docs/section_ideas.md for the wider backlog these came from.
+
+**Rejected.** Field recordings (licensing discipline — same rule as the
+breaks; synthesized beds are CC0-by-construction and swappable later). A
+dedicated ambience orbit (D8: it joins the far stream's character; a fifth
+orbit would need its own duck wiring for no audible gain).
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

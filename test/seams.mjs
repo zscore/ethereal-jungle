@@ -113,6 +113,29 @@ console.log('in-track sections (D11) — track 0 form');
   check(soundsIn(40, 44).has('jbreak') && orbitsIn(40, 44).has(2), 'drop: break and bass slam back');
 }
 
+console.log('biome ambience beds + hat dynamics (D16)');
+{
+  check(soundsIn(0, 4).has('ambinsects'), 'undergrowth bed present at the top');
+  check(soundsIn(earlyStart, T0).has('ambrain'), "incoming biome's bed infiltrates the seam");
+  const next = soundsIn(T0, T0 + 8);
+  check(next.has('ambrain') && !next.has('ambinsects'), 'crossfade completes at the boundary');
+  const hh = onsets(40, 52).filter((h) => h.value?.s === 'hh'); // peak: hats never fully off
+  check(hh.length > 0, 'hats present in peak');
+  check(new Set(hh.map((h) => h.value?.gain)).size > 1, 'hat velocities vary (Barlow accents)');
+  // accent layers: episodic presence — on the bed's grid but not always on
+  const phrasesWith = (name) => {
+    let c = 0;
+    for (let i = 0; i < T0 / PHRASE_BARS; i++)
+      if (onsets(i * PHRASE_BARS, (i + 1) * PHRASE_BARS).some((h) => h.value?.s === name)) c++;
+    return c;
+  };
+  const nPhrases = T0 / PHRASE_BARS;
+  check(phrasesWith('ambinsects') === nPhrases, 'bed plays every phrase of its track');
+  const frogs = phrasesWith('ambfrogs'), rustle = phrasesWith('ambrustle');
+  check(frogs + rustle > 0, 'accent layers surface during the track');
+  check(frogs < nPhrases || rustle < nPhrases, 'accent layers also rest (episodic walks)');
+}
+
 console.log('the set loop seam (zenith → undergrowth)');
 {
   check(!soundsIn(SET_BARS - SEAM_LATE_BARS, SET_BARS).has('bd'), 'drums die before the loop point');

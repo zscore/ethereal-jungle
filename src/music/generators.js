@@ -73,6 +73,26 @@ function dissonance(sigma) {
   return d / sigma.length;
 }
 
+// ---------- ambience presence walks (D16) ----------
+function strHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return h >>> 0;
+}
+
+/**
+ * Slow 0..1 walk per (layer, seed), sampled at phrase scale: smoothstep value
+ * noise with one cell ≈ 3 phrases, so accent layers surface in episodes of
+ * ~30–50 s and fade over phrases rather than switching. Keyed to the absolute
+ * phrase index — deterministic across recompiles, never looping with the set.
+ */
+export function layerPresenceAt(name, phraseIndex, seed) {
+  const cell = (i) => makeRng(((seed ^ strHash(name)) + i * 131) >>> 0)();
+  const x = phraseIndex / 3;
+  const i = Math.floor(x), f = x - i, sm = f * f * (3 - 2 * f);
+  return cell(i) * (1 - sm) + cell(i + 1) * sm;
+}
+
 // ---------- the lead: contour-then-quantize + the 80/20 motif bag (§3, §5) ----------
 // ONE melodic cell for the whole set (§6.4): recalled under transformation
 // across tracks, it converts a sequence of tracks into an argument.
@@ -154,7 +174,10 @@ export function makeSetPattern(ctx, p, signals) {
       // seed varies per phrase AND per track: each track is a different telling,
       // and the break re-permutes every phrase (§1.1 theme-and-variations)
       const seed = p.seed + idx * 101 + ps.trackIndex * 7919;
-      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, ps.seam, ps.section);
+      // ambience.seed is the UN-mixed base seed: the presence walks must be
+      // continuous across phrases, not re-rolled per phrase like the rng
+      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, ps.seam, ps.section,
+        { current: ps.track.ambience, incoming: ps.seam.to?.ambience, phraseIndex: idx, seed: p.seed });
       cache.set(idx, pat);
       if (cache.size > 32) cache.delete(cache.keys().next().value); // bounded over long runs
     }
@@ -178,9 +201,10 @@ export function makeSetPattern(ctx, p, signals) {
  * `brightness` comes from the bus's authored walk; `seam` and `section` come
  * from phraseStateAt — the seam makes the arrangement the seam operator
  * (§6.3), the section (D11) gates which layers exist at all: form is what
- * plays, tension only shades how it plays.
+ * plays, tension only shades how it plays. `ambience` = { current, incoming }
+ * biome bed names (D16) — incoming is used for the seam crossfade.
  */
-export function buildArrangement(ctx, p, tension, brightness, seam, section) {
+export function buildArrangement(ctx, p, tension, brightness, seam, section, ambience) {
   const { s, note, stack } = ctx;
   const rng = makeRng(p.seed);
   const mode = modeAt(brightness);
@@ -256,25 +280,46 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section) {
     if (snareIn) layers.push(gate(s('~ ~ sd ~').gain(anchorStrength).orbit(1)));
   }
 
-  // ---- hats: E(k, 16), k breathing with tension; riser during seam & build2 ----
+  // ---- hats: breathing presence + Barlow accents (D16) ----
+  // A flat 16-grid at one gain was fatiguing. Presence now draws per phrase
+  // (full / sparse / off, section-weighted — the hats *rest*), velocities
+  // follow inverse indispensability (accents push against the grid the
+  // skeleton holds down), and levels sit lower with density capped at 6.
   if (!ambient) {
-    const k = seam?.active ? 7 : 3 + Math.round(tension * 4);
-    const hatMask = euclid(k, 16, Math.floor(rng() * 16));
-    let hats = s(hatMask.map((v) => (v ? 'hh' : '~')).join(' ')).pan(0.4 + rng() * 0.2);
-    if (seam?.active) {
-      // per-bar gain ramp across the phrase: the riser climbs bar by bar
-      const gains = Array.from({ length: 4 }, (_, j) =>
-        (0.35 + 0.25 * tension + 0.25 * (seam.progress + j / SEAM_BARS)).toFixed(3));
-      hats = hats.gain(`[${gains.join(' ')}]/4`); // /4: one gain step per bar, phrase-aligned
-    } else if (sec === 'build2' && section) {
-      // the pre-drop riser (§5): same per-bar ramp, keyed to section progress
-      const gains = Array.from({ length: 4 }, (_, j) =>
-        (0.3 + 0.25 * tension + 0.3 * (secProgress + j / (4 * section.sectionPhrases))).toFixed(3));
-      hats = hats.gain(`[${gains.join(' ')}]/4`);
-    } else {
-      hats = hats.gain(0.35 + 0.25 * tension);
+    let hatMode;
+    if (seam?.active || sec === 'build2') hatMode = 'riser';
+    else {
+      const table = {
+        build: [['sparse', 1]],
+        groove: [['full', 0.45], ['sparse', 0.4], ['off', 0.15]],
+        peak: [['full', 0.7], ['sparse', 0.3]],
+        release: [['sparse', 0.6], ['off', 0.4]],
+      }[sec] ?? [['full', 1]];
+      let r = rng();
+      for (const [m, wgt] of table) { if ((r -= wgt) <= 0) { hatMode = m; break; } }
+      hatMode ??= table[table.length - 1][0];
     }
-    layers.push(gate(hats.orbit(1)));
+    if (hatMode !== 'off') {
+      const sparse = hatMode === 'sparse';
+      const k = hatMode === 'riser' ? 6 : sparse ? 2 + Math.round(tension * 2) : 3 + Math.round(tension * 3);
+      const hatMask = euclid(k, 16, Math.floor(rng() * 16));
+      let hats = s(hatMask.map((v) => (v ? 'hh' : '~')).join(' ')).pan(0.4 + rng() * 0.2);
+      if (hatMode === 'riser') {
+        // per-bar gain ramp: the riser climbs bar by bar, phrase-aligned (/4)
+        const base = 0.26 + 0.2 * tension;
+        const prog = seam?.active
+          ? (j) => seam.progress + j / SEAM_BARS
+          : (j) => secProgress + j / (4 * section.sectionPhrases);
+        const gains = Array.from({ length: 4 }, (_, j) => (base + 0.28 * prog(j)).toFixed(3));
+        hats = hats.gain(`[${gains.join(' ')}]/4`);
+      } else {
+        const base = (sparse ? 0.15 : 0.22) + 0.16 * tension;
+        const gains = hatMask.map((v, i) =>
+          v ? (base * (0.55 + 0.5 * (1 - INDISPENSABILITY[i]))).toFixed(3) : '0');
+        hats = hats.gain(`[${gains.join(' ')}]`); // 16 per-step velocities
+      }
+      layers.push(gate(hats.orbit(1)));
+    }
   }
 
   // ---- bass: isorhythm — talea E(5,16) × pentatonic color walk (lcm cycling) ----
@@ -314,6 +359,32 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section) {
       .slow(4)
       .orbit(3),
   );
+
+  // ---- ambience: the biome's noise floor, layered (D16, first slice of D12) ----
+  // ambience.current = [bed, ...accents]: 4-bar synthesized loops retriggered
+  // phrase-aligned (slow(4) at absolute cycles). The bed is always on — loud
+  // where the ether is figure (intro/breakdown/seam), tucked under the full
+  // arrangement elsewhere. Accent layers ride their own slow presence walks:
+  // below threshold they rest; above it their gain follows the walk, and long
+  // envelopes smooth the per-phrase steps into fades. During the seam the
+  // INCOMING biome's bed crossfades in early — §6.1's infiltrating ether.
+  if (ambience?.current?.length) {
+    const bed = (name, g, atk = 0.5, rel = 2, panPos = 0.5) =>
+      s(name).gain(g).attack(atk).release(rel).pan(panPos).slow(4).orbit(3);
+    const [baseBed, ...accents] = ambience.current;
+    const baseG = ambient || seamLate ? 0.35 : sec === 'build' || sec === 'release' ? 0.25 : 0.15;
+    const inBed = ambience.incoming?.[0];
+    const x = seam?.active && inBed && inBed !== baseBed ? Math.min(1, seam.progress + 0.25) : 0;
+    layers.push(bed(baseBed, baseG * (1 - x)));
+    if (x > 0) layers.push(bed(inBed, 0.35 * x));
+    accents.forEach((name, li) => {
+      const v = layerPresenceAt(name, ambience.phraseIndex ?? 0, ambience.seed ?? p.seed);
+      const lvl = Math.max(0, (v - 0.35) / 0.65); // rest below the threshold
+      if (lvl <= 0.02) return;
+      const g = (ambient || seamLate ? 0.3 : 0.12) * lvl * (1 - x);
+      layers.push(bed(name, g, 1.5, 3, 0.35 + 0.3 * li)); // slower fades, spread in the field
+    });
+  }
 
   // ---- lead: the set's one melodic cell, transformed (80/20) ----
   if (leadPresent) layers.push(buildLead(ctx, rng, mode, tension, w, sec === 'breakdown'));
