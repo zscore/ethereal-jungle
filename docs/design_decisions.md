@@ -425,6 +425,75 @@ respected, `filter` never touching event values, the MIDI center value
 (64/127) landing inside the bypass band, and `PERFORM_DEFAULTS` ⊆
 `bus.params`. `test/osc.mjs` grew the four keys and a writable check.
 
+## D19 — The master insert: EQ kills, gater, drive, and a roll (2026-07-26)
+
+*(Numbering: this branch's log jumps D17 → D19 because D16 and D18 live on
+the main line and arrive at merge. D18 is the seam-variants entry, not a gap.)*
+
+**Decision.** Six more perform sliders, completing the mixer: `eqLow`/`eqMid`/
+`eqHigh` (isolator-style band kills, unity at the top), `gate` (bar-locked
+square gater at eighths), `drive` (master saturation), and `roll` (drum
+stutter, ×2/×3/×4). D17 established two mechanisms; these need two more.
+
+*The master insert* (`music/masterchain.js`) splices a chain between
+superdough's `destinationGain` and the speakers —
+`low ▸ mid ▸ high ▸ saturate ▸ makeup ▸ gate` — driven by the same 30 Hz
+follower that already slews the djf filter. This is the "master bus as an
+addressable target" the README has carried as an open item since D10. The EQ
+is a shelf/peak/shelf *series*, not a crossover split: three parallel bands
+summed would need Linkwitz-Riley alignment to stay flat, whereas a series of
+shelves is flat by construction when every knob sits at unity — which is the
+state the rail is in for all but a few seconds of a set. The gater's LFO is a
+square wave through an 80 Hz lowpass (rounding its edges to ~4 ms so the gate
+thuds instead of clicking), summed into the gain node's AudioParam over a
+base of 1, and *started on the next bar line* from the bus clock — the gate
+inherits D9's bar-exactness rather than landing wherever the hand fell.
+
+*Roll* is the exception that proves D17's rule: it is the one perform knob
+that is launch-quantized, because a stutter that doesn't land on the grid
+isn't a stutter. It is pattern surgery at rebuild — `ply(n)` over the drum
+orbit only (D8's frozen map), stacked back with the untouched streams, with
+a `1/√n` gain trim so quadrupling the hits doesn't quadruple the energy. The
+generators never learn it happened. `PERFORM_LIVE_KEYS` now names the subset
+that skips the rebuild; anything outside it (today just `roll`) must ride one
+or it is silently inaudible, which is the kind of trap worth a named set.
+
+**Why lazy.** Every stage builds on the knob's first departure from rest, as
+the djf worklets do. An ordinary listen never gets an extra filter, shaper,
+or oscillator in its path — the graph superdough built stays the graph
+superdough built. `masterNeutral()` is the predicate, and it is tested.
+
+**Rejected.**
+- *Boost.* Real isolators go to +6 dB. On a generative master with no limiter
+  that is a clipping trap, so the EQ range is unity-to-kill only.
+- *Per-event tremolo/phaser* (superdough ships both). They are per-voice, so
+  a gate would chop sustained pads and barely touch a hi-hat one-shot — the
+  opposite of a master gater. The insert is the honest home for time-domain
+  FX.
+- *A gate-rate slider.* Eighths at 168 BPM (5.6 Hz) is the usable chop; a
+  second knob per effect is how a performance rail becomes a synth.
+- *`ply(8)`.* Measured at 824 drum haps per 4 bars — a buzz, not a roll, and
+  a voice-allocation risk. Divisions cap at 4.
+
+**Measured, not assumed.** The first cut of `drive` normalized its tanh curve
+to full scale, which meant everything below full scale got *louder*: a 0.25
+sine came back at 0.50 on the meter, +6 dB, on the master bus. The trim is
+now derived — it cancels the gain the curve actually applies at a nominal mix
+level — and `driveNetGain` is asserted within 2% of unity across the knob.
+Drive changes timbre and deliberately not loudness.
+
+**Verification.** `test/perform.mjs` covers the pure mappings (EQ dB curve and
+its true-kill floor, gate rate as a whole bar division, shaper curve
+monotonic and normalized, drive level-neutrality, roll quartiles and √n trim,
+rest detection, and the live/launch-quantized split). `test/roll.mjs` compiles
+the real set pattern and asserts the stutter multiplies drum onsets *exactly*
+×2/×3/×4, leaves bass/pads/lead identical hap-for-hap, preserves total energy,
+and keeps the downbeat. The Web Audio surgery itself was verified in a
+headless browser by stopping the transport and injecting known 90 Hz and
+9 kHz tones: each band kill measurably removes its own tone, unity restores
+the signal, the gater chops a steady tone to 8% and reopens on release, and
+drive returns the same RMS it was given.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

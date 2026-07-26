@@ -10,7 +10,7 @@ function check(cond, label) {
   else { failures++; console.error(`  FAIL  ${label}`); }
 }
 
-const fresh = () => ({ tensionMix: 0, tensionManual: 0.4, brightnessMix: 0, brightnessManual: 0.7, wildness: 0.35, coupling: 0.6, seed: 1, filter: 0.5, echo: 0, crush: 0, space: 0 });
+const fresh = () => ({ tensionMix: 0, tensionManual: 0.4, brightnessMix: 0, brightnessManual: 0.7, wildness: 0.35, coupling: 0.6, seed: 1, filter: 0.5, echo: 0, crush: 0, space: 0, eqLow: 1, eqMid: 1, eqHigh: 1, gate: 0, drive: 0, roll: 0 });
 
 console.log('address form');
 {
@@ -20,6 +20,9 @@ console.log('address form');
   check(applyOscMessage(p, { address: '/anything/nested/tension', args: [0.9] }) === 'tensionManual' && p.tensionManual === 0.9, 'last path segment + tension alias');
   check(applyOscMessage(p, { address: '/brightness', args: [0.1] }) === 'brightnessManual' && p.brightnessManual === 0.1, 'brightness alias');
   check(applyOscMessage(p, { address: '/jungle/filter', args: [0.2] }) === 'filter' && p.filter === 0.2, 'perform rail is writable (D17)');
+  check(applyOscMessage(p, { address: '/jungle/low', args: [0] }) === 'eqLow' && p.eqLow === 0, 'eq band alias kills the lows (D19)');
+  check(applyOscMessage(p, { address: '/high', args: [0.5] }) === 'eqHigh' && p.eqHigh === 0.5, 'high alias');
+  check(applyOscMessage(p, { param: 'roll', value: 1 }) === 'roll' && p.roll === 1, 'roll is writable');
 }
 
 console.log('param form');

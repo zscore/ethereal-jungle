@@ -12,7 +12,7 @@
  * once so you can discover what your controller sends.
  */
 import { bus } from './bus.js';
-import { PERFORM_KEYS } from './perform.js';
+import { PERFORM_LIVE_KEYS } from './perform.js';
 
 const DEFAULT_CC_MAP = {
   1:  'wildness',         // mod wheel — violence of the surface
@@ -25,6 +25,12 @@ const DEFAULT_CC_MAP = {
   17: 'echo',
   18: 'crush',
   19: 'space',
+  20: 'eqLow',            // master insert + roll (D19) — CCs 20–25
+  21: 'eqMid',
+  22: 'eqHigh',
+  23: 'gate',
+  24: 'drive',
+  25: 'roll',
 };
 
 const STORE_KEY = 'jungle.midi.ccmap';
@@ -87,9 +93,10 @@ export async function initMidi({ onChange } = {}) {
       return;
     }
     bus.params[key] = value / 127;
-    // Perform-rail keys (D17) need no rebuild: the engine reads them live at
-    // the output tap / filter follower. Everything else is launch-quantized.
-    if (!PERFORM_KEYS.has(key)) scheduleChange();
+    // Live perform keys (D17/D19) need no rebuild: the engine reads them at
+    // the output tap, the filter follower and the master chain. Everything
+    // else — including `roll`, which is pattern surgery — is launch-quantized.
+    if (!PERFORM_LIVE_KEYS.has(key)) scheduleChange();
   };
 
   const attach = () => {

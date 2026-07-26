@@ -1,30 +1,165 @@
 /**
  * perform.js — the perform rail: classic DJ color FX (music doc §9.1's
- * performance rack, the mixer half). Modeled on the DJ-mixer canon
- * (Pioneer's Sound Color FX): filter (bipolar LP/HP), echo (dub echo),
- * crush, space (reverb wash).
+ * performance rack, the mixer half). Modeled on the DJ-mixer canon —
+ * Pioneer's Sound Color FX (filter, dub echo, crush, space), the channel
+ * EQ kills every DJ actually transitions with, a gater, drive, and a roll.
  *
  * These are NOT composition inputs. The latent knobs (tension, wildness…)
  * change what the generators write and take effect at the next rebuild —
- * launch-quantized intent (D7). The perform rail is the opposite: hands on
- * the mixer, effective now. Two mechanisms, neither touching the generators:
+ * launch-quantized intent (D7). The perform rail is mostly the opposite:
+ * hands on the mixer, effective now. Four mechanisms, none of which reaches
+ * into the generators (this file is pure — the plumbing lives in engine.js
+ * and music/masterchain.js, which is what keeps all of it testable):
  *
- *   filter           — superdough's per-orbit `djf` worklet AudioParam,
- *                      slewed toward the knob continuously by engine.js.
- *   echo/crush/space — an overlay applied to each hap's value at the output
- *                      tap as it is scheduled (~latency window, no rebuild).
+ *   filter               — superdough's per-orbit `djf` worklet AudioParam,
+ *                          slewed toward the knob by engine.js (D17).
+ *   echo/crush/space     — overlay on each hap's value at the output tap as
+ *                          it is scheduled (~latency window, no rebuild; D17).
+ *   eq bands/gate/drive  — a master insert spliced between superdough's
+ *                          destination gain and the speakers (D19).
+ *   roll                 — pattern surgery at rebuild: the ONE perform knob
+ *                          that is launch-quantized, because a stutter has to
+ *                          land on the grid to be a stutter at all (D19).
  */
 
 export const PERFORM_DEFAULTS = {
+  // live rail — read continuously, never rebuilt (D17)
   filter: 0.5, // bipolar DJ filter: 0 = LP kill, 0.5 = bypass, 1 = HP kill
   echo: 0,     // dub echo send, dotted-eighth, feedback rises with the knob
   crush: 0,    // bit crush: 12 bits (subtle) down to 2 (destroyed)
   space: 0,    // reverb wash: pushes every stream's room send toward 0.9
+  // master insert — 1 = unity for the EQ, 0 = off for the rest (D19)
+  eqLow: 1,    // isolator-style band kills: unity at the top, −40 dB at the
+  eqMid: 1,    // bottom. Defaults sit at unity so an untouched rail is
+  eqHigh: 1,   // literally not in the signal path.
+  gate: 0,     // bar-locked square gater, depth 0..1 at eighths
+  drive: 0,    // master saturation (tanh) with makeup trim
+  // launch-quantized (D19)
+  roll: 0,     // drum stutter: off / ×2 / ×3 / ×4 by quartile
 };
 
 export const PERFORM_KEYS = new Set(Object.keys(PERFORM_DEFAULTS));
 
+/**
+ * The subset that takes effect without a rebuild. midi.js/osc.js skip their
+ * rebuild coalesce for these; anything here that is NOT in this set (today:
+ * `roll`) must go through rebuild() or it will never be heard.
+ */
+export const PERFORM_LIVE_KEYS = new Set([...PERFORM_KEYS].filter((k) => k !== 'roll'));
+
 const EPS = 0.01; // below this a knob is at rest — the rail costs nothing
+
+// ---------- master insert (D19) ----------
+
+// Crossover-free 3-band EQ: a shelf/peak/shelf series, flat by construction
+// when all three sit at unity. Frequencies are the DJ-mixer convention.
+export const EQ_LOW_HZ = 250;
+export const EQ_MID_HZ = 1200;
+export const EQ_MID_Q = 0.7;   // wide enough to actually own the midrange
+export const EQ_HIGH_HZ = 4000;
+export const EQ_RANGE_DB = -40; // knob at 0 → −40 dB (inaudible under a mix)
+export const EQ_KILL_DB = -60;  // …and the last 2% is a true kill
+
+export const GATE_PER_BAR = 8;  // eighth notes — the classic chop at 168 BPM
+export const GATE_SMOOTH_HZ = 80; // lowpass on the LFO: rounds the square's
+                                  // edges (~4 ms) so the gate thuds, not clicks
+
+/** Band gain in dB for a 0..1 knob: 1 → 0 dB (unity), 0 → a kill. */
+export function bandGainDb(x) {
+  const v = Math.min(1, Math.max(0, x ?? 1));
+  if (v <= 0.02) return EQ_KILL_DB;
+  return EQ_RANGE_DB * (1 - v);
+}
+
+/** Gate LFO frequency for a given cycles-per-second (one cycle = one bar). */
+export function gateRateHz(cps) {
+  return cps * GATE_PER_BAR;
+}
+
+/**
+ * Saturation transfer curve for a 0..1 drive knob, or null for "no curve"
+ * (a WaveShaperNode with a null curve passes audio through untouched, which
+ * is how the drive stage costs nothing at rest). tanh normalized so full
+ * scale still maps to full scale.
+ */
+export function driveCurve(drive, samples = 1024) {
+  const d = Math.min(1, Math.max(0, drive ?? 0));
+  if (d <= EPS) return null;
+  const k = driveK(d);
+  const norm = Math.tanh(k);
+  const curve = new Float32Array(samples);
+  for (let i = 0; i < samples; i++) {
+    const x = (i / (samples - 1)) * 2 - 1;
+    curve[i] = Math.tanh(k * x) / norm;
+  }
+  return curve;
+}
+
+const driveK = (d) => 1 + d * 11;
+export const DRIVE_NOMINAL = 0.3; // assumed operating level of the finished mix
+
+/**
+ * Makeup trim for the drive stage. The curve is normalized so full scale still
+ * maps to full scale, which means everything BELOW full scale gets loud — at
+ * drive 0.9 a 0.25 sine came back at 0.5 on the meter, a +6 dB jump nobody
+ * wants on a master bus. So the trim is not a guess: it cancels the gain the
+ * curve actually applies at a nominal mix level, leaving drive to change the
+ * timbre and (deliberately) not the loudness.
+ */
+export function driveMakeup(drive) {
+  const d = Math.min(1, Math.max(0, drive ?? 0));
+  if (d <= EPS) return 1; // curve is null here — the stage is a true bypass
+  const k = driveK(d);
+  const shaped = Math.tanh(k * DRIVE_NOMINAL) / Math.tanh(k);
+  return DRIVE_NOMINAL / shaped;
+}
+
+/** Net gain the drive stage applies to a nominal-level signal — should stay ~1. */
+export function driveNetGain(drive) {
+  const d = Math.min(1, Math.max(0, drive ?? 0));
+  if (d <= EPS) return 1;
+  const k = driveK(d);
+  return (Math.tanh(k * DRIVE_NOMINAL) / Math.tanh(k)) * driveMakeup(d) / DRIVE_NOMINAL;
+}
+
+/** True when every master-insert knob is at rest (so the splice can be skipped). */
+export function masterNeutral(p) {
+  return (p.eqLow ?? 1) >= 1 - EPS && (p.eqMid ?? 1) >= 1 - EPS && (p.eqHigh ?? 1) >= 1 - EPS
+    && (p.gate ?? 0) <= EPS && (p.drive ?? 0) <= EPS;
+}
+
+// ---------- roll (D19) ----------
+
+export const DRUM_ORBIT = 1;             // D8's frozen orbit map
+export const ROLL_DIVISIONS = [1, 2, 3, 4]; // 1 = off; 3 gives the triplet stutter
+
+/** Roll division for a 0..1 knob — quartiles, so a slider snaps sensibly. */
+export function rollDivision(x) {
+  const v = Math.min(1, Math.max(0, x ?? 0));
+  const i = Math.min(ROLL_DIVISIONS.length - 1, Math.floor(v * ROLL_DIVISIONS.length));
+  return ROLL_DIVISIONS[i];
+}
+
+/** Energy compensation: n× the hits is n× the energy, so back off by √n. */
+export function rollGain(n) {
+  return 1 / Math.sqrt(n);
+}
+
+/**
+ * Stutter the drum orbit n-fold, leaving every other stream alone. Pure
+ * pattern surgery — `stack` is injected so this file never imports strudel
+ * (and so the test can drive it). Returns the pattern unchanged when off.
+ */
+export function applyRoll(pattern, roll, stack) {
+  const n = rollDivision(roll);
+  if (n <= 1) return pattern;
+  const g = rollGain(n);
+  const isDrum = (v) => (v?.orbit ?? 0) === DRUM_ORBIT;
+  return stack(
+    pattern.filterValues(isDrum).ply(n).withValue((v) => ({ ...v, gain: (v.gain ?? 1) * g })),
+    pattern.filterValues((v) => !isDrum(v)),
+  );
+}
 
 /** True when the knob sits in the djf worklet's own bypass band (0.49–0.51). */
 export function filterNeutral(x) {

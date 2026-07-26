@@ -48,6 +48,12 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   roots, growth-vine floor, particle-ether canopy, self-similar sky, stacked in
   altitude; track transitions are camera traversals (brightness sampled 4 s
   ahead). Figure flashes spent only on kicks/snares; the kick ducks the ether.
+- `perform.js` + `music/masterchain.js` — the perform rail (D17/D19): the DJ
+  half of the panel. Filter, echo, crush, space, three EQ kills, a bar-locked
+  gater, drive, and a drum roll. `perform.js` is pure mappings (so the whole
+  rail is testable); `masterchain.js` owns the master insert spliced between
+  superdough's destination gain and the speakers. Everything but `roll` acts
+  live, without a rebuild — a mixer gesture's timing is the hand's.
 - `midi.js` — WebMIDI → `bus.params`, same single writable surface as the UI.
 
 Design rationale for all of the above: `docs/design_decisions.md`. How scenes
@@ -87,5 +93,6 @@ OSC-over-WebSocket (D10, `?osc=ws://host:port`); see
 1. Per-point shaders / TSL compute for roots + canopy; bloom with per-stream
    post-processing (`docs/scene_plan.md` roadmap 1–2).
 2. The corpus shrine + artifact operators wired to `w` (roadmap 4–5).
-3. The mischief layer (theory §8): master-bus jokes — needs the master bus as
-   an addressable target.
+3. The mischief layer (theory §8): master-bus jokes. The master bus itself is
+   now an addressable target (D19's insert chain) — what's left is authoring
+   the jokes and deciding what fires them.
