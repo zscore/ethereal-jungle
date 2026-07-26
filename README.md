@@ -48,8 +48,9 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   roots, growth-vine floor, particle-ether canopy, self-similar sky, stacked in
   altitude; track transitions are camera traversals (brightness sampled 4 s
   ahead). Figure flashes spent only on kicks/snares; the kick ducks the ether.
-- `perform.js` + `music/masterchain.js` — the perform rail (D17/D19/D20): the
-  DJ half of the panel. Independent lpf/hpf dials, echo, crush, space, three
+- `perform.js` + `music/masterchain.js` + `knob.js` — the perform rail
+  (D17/D19/D20/D21): the DJ half of the panel. Independent lpf/hpf rotary
+  dials (the two controls a hand rides), echo, crush, space, three
   EQ kills, a bar-locked gater, drive, and a drum roll. `perform.js` is pure
   mappings (so the whole rail is testable); `masterchain.js` owns the master
   insert spliced between superdough's destination gain and the speakers.

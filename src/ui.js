@@ -4,6 +4,8 @@
  * nothing else. The bus is the single writable surface.)
  */
 import { bus, TRACKS, BAR_SECONDS, sectionSpans, sectionAt, trackStartBar } from './bus.js';
+import { lpfCutoff, hpfCutoff } from './perform.js';
+import { makeKnob } from './knob.js';
 
 export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   const $ = (id) => document.getElementById(id);
@@ -35,13 +37,21 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   bind('roll', 'roll');
 
   // double-click a perform slider to snap it home, DJ-mixer style
-  for (const [id, home] of [['lpf', 1], ['hpf', 0], ['echo', 0], ['crush', 0], ['space', 0],
+  for (const [id, home] of [['echo', 0], ['crush', 0], ['space', 0],
     ['eqLow', 1], ['eqMid', 1], ['eqHigh', 1], ['gate', 0], ['drive', 0]]) {
     $(id).addEventListener('dblclick', (e) => {
       e.target.value = home;
       bus.params[id] = home;
     });
   }
+
+  // The two filters are rotary dials (D21): they are the controls a hand rides
+  // continuously, and a knob reads its position at a glance. The <input> under
+  // each one stays the source of truth, so the bindings above are unaffected.
+  // The Hz readout makes the sweep legible — the whole point of D21's remap.
+  const showHz = (hz) => (hz >= 1000 ? `${(hz / 1000).toFixed(1)}k` : `${Math.round(hz)}`);
+  makeKnob($('lpf'), { onDraw: (v) => { $('lpfHz').textContent = v >= 1 ? 'open' : `${showHz(lpfCutoff(v))} Hz`; } });
+  makeKnob($('hpf'), { onDraw: (v) => { $('hpfHz').textContent = v <= 0 ? 'open' : `${showHz(hpfCutoff(v))} Hz`; } });
 
   $('reroll').addEventListener('click', () => {
     bus.params.seed = Math.floor(Math.random() * 1e6);

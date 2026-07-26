@@ -64,10 +64,6 @@ console.log('the two filter dials (D20)');
   check(lpfCutoff(0) === LPF_MIN_HZ && hpfCutoff(1) === HPF_MAX_HZ, 'each dial closes fully at its far end');
   check(lpfCutoff(undefined) === LPF_MAX_HZ && hpfCutoff(undefined) === HPF_MIN_HZ,
     'a missing dial reads as open — never as a filter nobody asked for');
-  // exponential, so the midpoint is the geometric mean, not the arithmetic one
-  check(Math.abs(lpfCutoff(0.5) - Math.sqrt(LPF_MIN_HZ * LPF_MAX_HZ)) < 1e-6, 'lpf sweeps in octaves, not hertz');
-  check(Math.abs(hpfCutoff(0.5) - Math.sqrt(HPF_MIN_HZ * HPF_MAX_HZ)) < 1e-6, 'hpf sweeps in octaves, not hertz');
-  check(lpfCutoff(0.5) > 700 && lpfCutoff(0.5) < 800, 'the lpf midpoint lands musically (~775 Hz)');
   let mono = true;
   for (let x = 0; x < 1; x += 0.05) {
     if (lpfCutoff(x) > lpfCutoff(x + 0.05)) mono = false;
@@ -75,8 +71,28 @@ console.log('the two filter dials (D20)');
   }
   check(mono, 'both dials are monotonic');
   check(lpfCutoff(5) === LPF_MAX_HZ && hpfCutoff(-3) === HPF_MIN_HZ, 'out-of-range dials clamp');
-  // the two are independent: closing both leaves a band, not silence
-  check(hpfCutoff(0.5) < lpfCutoff(0.5), 'at half-travel the pair forms a passband, not a closed door');
+
+  // The regression that made these dials feel broken (D21): a pure exponential
+  // spent the first fifth of the throw between 20 kHz and 5 kHz, where there is
+  // nothing to hear. Pin the corner into the audible band early in the travel.
+  check(lpfCutoff(0.9) < 6000, 'a tenth of a turn puts the lpf corner where the ear lives');
+  check(lpfCutoff(0.8) < 3000, 'a fifth of a turn is unmistakably filtered');
+  check(hpfCutoff(0.2) > 120, 'a fifth of a turn on the hpf is already thinning the low end');
+  check(hpfCutoff(0.3) > 240, 'and a third of a turn has taken the body out');
+  // no segment of the throw should be a dead zone — half an octave minimum
+  let deadZone = null;
+  for (let i = 0; i < 10; i++) { // integer steps: 0.1 accumulation overshoots 1.0
+    const x = i / 10;
+    const lo = Math.log2(lpfCutoff(x + 0.1) / lpfCutoff(x));
+    const hi = Math.log2(hpfCutoff(x + 0.1) / hpfCutoff(x));
+    if (lo < 0.5 || hi < 0.5) deadZone = x.toFixed(1);
+  }
+  check(deadZone === null, `every tenth of the throw moves the corner at least half an octave${deadZone ? ` (dead at ${deadZone})` : ''}`);
+
+  // Independent dials overlap: like real dual-filter hardware, closing both
+  // mutes rather than leaving a token band. A usable band lives off-centre.
+  check(hpfCutoff(0.5) > lpfCutoff(0.5), 'both dials at noon overlap into silence, as the hardware does');
+  check(hpfCutoff(0.3) < lpfCutoff(0.6), 'moderate settings still leave a passband to sweep');
 }
 
 console.log('master insert: eq (D19)');
