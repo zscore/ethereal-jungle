@@ -58,8 +58,9 @@ audibility-per-effort within each group.
   override); lead recalls the motif *literally* (transform bag pinned to
   identity — §6.4's "argument" resolving on recall).
 - **seam**: as designed (D9) — plus the ambience crossfade **[done]**; the
-  seam→intro landing (the countdown currently resolves onto the emptiest
-  section) has its own proposal: `seam_landing_proposal.md`.
+  seam→intro landing problem (the countdown resolved onto the emptiest
+  section) **[done as D18]** — seeded landing/dissolve variants per boundary,
+  see `seam_landing_proposal.md` and design_decisions D18.
 
 ## Per-biome ambience (D16) **[done — first slice of D12]**
 

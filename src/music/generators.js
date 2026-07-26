@@ -11,7 +11,7 @@
  * 3 = pads (far/wet), 4 = lead (far/wet). The kick ducks orbits 3 & 4 — the
  * sidechain is the coupling constant of the whole system (§3.3).
  */
-import { makeRng, phraseStateAt, PHRASE_BARS, SEAM_BARS } from '../bus.js';
+import { makeRng, phraseStateAt, seamVariant, PHRASE_BARS, SEAM_BARS } from '../bus.js';
 import { modeAt, padVoicing, bassNotes, leadNotes } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
@@ -176,7 +176,14 @@ export function makeSetPattern(ctx, p, signals) {
       const seed = p.seed + idx * 101 + ps.trackIndex * 7919;
       // ambience.seed is the UN-mixed base seed: the presence walks must be
       // continuous across phrases, not re-rolled per phrase like the rng
-      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, ps.seam, ps.section,
+      // D18: seam flavors key to the UN-mixed seed + boundary — `variant` is
+      // how this track's seam will exit, `entryVariant` how it was arrived at
+      const seamInfo = {
+        ...ps.seam,
+        variant: seamVariant(ps.seam.toIndex, p.seed),
+        entryVariant: seamVariant(ps.trackIndex, p.seed),
+      };
+      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, seamInfo, ps.section,
         { current: ps.track.ambience, incoming: ps.seam.to?.ambience, phraseIndex: idx, seed: p.seed });
       cache.set(idx, pat);
       if (cache.size > 32) cache.delete(cache.keys().next().value); // bounded over long runs
@@ -222,6 +229,12 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // ether is already here via brightnessAt's forward leak.
   const seamEarly = seam?.active && !seam.late;
   const seamLate = seam?.active && seam.late;
+  const dissolveExit = seamLate && seam?.variant === 'dissolve';
+  // D18: a 'landing' entry makes intro phrase 0 an arrival — boundary slam,
+  // root pedal, impact tail — decaying into the pure intro at phrase 1.
+  // The intro reads as aftermath, not absence.
+  const landingArrival = sec === 'intro' && section?.phraseInSection === 0 &&
+    seam?.entryVariant === 'landing';
   const wEff = Math.min(1, w + (seamEarly ? 0.25 : 0) + (sec === 'build2' ? 0.15 : 0));
 
   // Which layers exist. intro = kick heartbeat + ether; breakdown = ether only
@@ -268,12 +281,27 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // late phrase — §5's accelerating fill, bar-exact into the new downbeat.
     // slow(4) keys the roll to absolute cycle mod 4, which IS the bar-in-phrase
     // because track lengths are whole phrases (D9).
-    layers.push(s('[sd sd*2 sd*4 sd*8]').gain('[0.55 0.65 0.75 0.88]').slow(4).orbit(1));
+    if (dissolveExit) {
+      // dissolve (D18): the same accelerating figure with its energy
+      // inverted — fading, closing, drowning as it speeds up. The drums
+      // recede into weather (§3.4); the ambient arrival is what this prepares.
+      layers.push(s('[sd sd*2 sd*4 sd*8]')
+        .gain('[0.7 0.55 0.4 0.28]')
+        .lpf('[2600 1500 850 480]')
+        .room('[0.3 0.5 0.7 0.9]').roomsize(6)
+        .slow(4).orbit(1));
+    } else {
+      layers.push(s('[sd sd*2 sd*4 sd*8]').gain('[0.55 0.65 0.75 0.88]').slow(4).orbit(1));
+    }
   } else {
     if (kickIn) {
       layers.push(gate(
-        s('bd ~ ~ ~').gain(anchorStrength)
-          .duckorbit('3:4').duckattack(0.12).duckdepth(duckDepth) // engine pre-creates orbits
+        s('bd ~ ~ ~')
+          // landing arrival: bar 0 slams at full weight, the heartbeat decays
+          // from it (per-bar gains, phrase-aligned like the drop slam)
+          .gain(landingArrival ? '[1 0.72 0.6 0.52]/4' : anchorStrength)
+          .duckorbit('3:4').duckattack(0.12) // engine pre-creates orbits
+          .duckdepth(landingArrival ? Math.max(duckDepth, 0.8 * p.coupling) : duckDepth)
           .orbit(1),
       ));
     }
@@ -285,7 +313,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // (full / sparse / off, section-weighted — the hats *rest*), velocities
   // follow inverse indispensability (accents push against the grid the
   // skeleton holds down), and levels sit lower with density capped at 6.
-  if (!ambient) {
+  if (!ambient && !dissolveExit) { // D18: on a dissolve the hats leave with the promise
     let hatMode;
     if (seam?.active || sec === 'build2') hatMode = 'riser';
     else {
@@ -342,6 +370,26 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     ));
   }
 
+  // ---- landing arrival (D18): the boundary hit and its afterglow ----
+  // One impact tail exactly on the new track's downbeat (the sample rings past
+  // the bar on its own), and the floor as *promise*: a one-note root pedal in
+  // whole notes, fading with the heartbeat. Both exist only in intro phrase 0.
+  if (landingArrival) {
+    layers.push(
+      s('ambimpact').gain(0.8).room(0.5).roomsize(8).pan(0.5)
+        .mask('[1 0 0 0]/4') // bar 0 of the phrase = the boundary downbeat
+        .orbit(3),
+    );
+    layers.push(
+      note(bassNotes(mode)[0])
+        .s('sawtooth')
+        .attack(0.02).release(1.2)
+        .lpf(150)
+        .gain('[0.5 0.42 0.35 0.3]/4')
+        .orbit(2),
+    );
+  }
+
   // ---- pads: the ether (ground) — slow, wide, drowned, half-time and slower ----
   // Survives the seam AND the dropout untouched: the continuity layer, the
   // common tone (§6.1). In the breakdown it swells — the ether becomes figure.
@@ -372,7 +420,8 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     const bed = (name, g, atk = 0.5, rel = 2, panPos = 0.5) =>
       s(name).gain(g).attack(atk).release(rel).pan(panPos).slow(4).orbit(3);
     const [baseBed, ...accents] = ambience.current;
-    const baseG = ambient || seamLate ? 0.35 : sec === 'build' || sec === 'release' ? 0.25 : 0.15;
+    const baseG = landingArrival ? 0.45 // the biome answers the hit at full voice
+      : ambient || seamLate ? 0.35 : sec === 'build' || sec === 'release' ? 0.25 : 0.15;
     const inBed = ambience.incoming?.[0];
     const x = seam?.active && inBed && inBed !== baseBed ? Math.min(1, seam.progress + 0.25) : 0;
     layers.push(bed(baseBed, baseG * (1 - x)));

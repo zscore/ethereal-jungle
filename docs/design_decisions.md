@@ -405,6 +405,54 @@ breaks; synthesized beds are CC0-by-construction and swappable later). A
 dedicated ambience orbit (D8: it joins the far stream's character; a fifth
 orbit would need its own duck wiring for no audible gain).
 
+## D18 — Seeded seam variants: the landing and the dissolve (2026-07-26)
+
+**Decision.** The seam→intro arrival was the awkward moment of the set: §6.3
+promises `clean_downbeat(B)` as "the payoff," §5 says "every seam is a small
+drop," but every track opened with `intro` — the emptiest section — while
+`tensionAt` fell off a cliff (≈0.95 → the incoming floor). The countdown
+promised a drop and delivered a void. Fix (docs/seam_landing_proposal.md,
+Option D): every boundary now draws one of two flavors, seeded per (set seed,
+incoming track index) via `seamVariant` in bus.js — §5's "predictable time,
+withheld content" applied to the seams themselves.
+
+- **Landing** (deliver the payoff): the countdown stays as designed; bar 0 of
+  the new track is an *arrival* — the heartbeat kick slams at gain 1 with a
+  deepened duck and decays per-bar across the phrase, a one-note root pedal
+  (whole notes, fading) makes the floor a promise, the biome bed answers at
+  full voice, and a synthesized impact one-shot (`ambimpact`: boom falling to
+  D1 + noise splash + D/A partial afterglow, ~3.5 s tail) lands exactly on
+  the downbeat. Intro phrase 0 is aftermath; phrase 1 is the pure intro. The
+  tension cliff remains but is *covered* by the event.
+- **Dissolve** (withdraw the promise): the same accelerating roll with its
+  energy inverted — gains fall, lpf closes, wet rises (the drums recede into
+  weather, §3.4) — the hats leave with the promise, and `tensionAt`'s late
+  phase smoothsteps down into the incoming track's opening tension instead of
+  spiking. The ambient arrival is what the gesture prepared.
+
+Variant choice keys to the UN-mixed seed (like the presence walks) so it is
+stable across recompiles; `bus.seamAt` returns it so the visuals can stage
+the boundary the same way the music resolves it. Because the set loops,
+*every* intro follows a seam (zenith wraps into undergrowth) — the cold-open
+pure intro exists only on a fresh start or a seek, which is where it belongs.
+Default seed 1 happens to draw landing into the climax track (canopy) and
+dissolve into the comedown (zenith).
+
+**Why.** The two flavors are duals — deliver the payoff or withdraw the
+promise — and either alone would be heard four times per set loop; seeding
+the choice per boundary is the same move as the planned peak drop variants.
+Keeping the selection in one exported function preserves the bus contract:
+both media read the flavor from S, never from each other.
+
+**Rejected.** Reordering `SECTION_LAYOUT` so tracks open at `build`/`groove`
+(makes every boundary a drop, competing with the per-track peak, and breaks
+§6.1's drums-don't-cross asymmetry). A non-deterministic or time-dependent
+choice (breaks D9's recompile-swap identity). Guaranteeing both flavors per
+set (a ~12% chance a seed draws all-same; accepted — the seed knob exists).
+
+**Revisit when** the peak drop variants land (share the variant-drawing
+idiom), or if listening says a third flavor (e.g. tape-stop, §8) earns a slot.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

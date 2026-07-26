@@ -137,14 +137,26 @@ export function trackAt(t) {
 export function seamAt(t) {
   const { track, index, tLocal } = trackAt(t);
   const remaining = track.seconds - tLocal;
-  if (remaining > SEAM_SECONDS) return { active: false, progress: 0, from: track, to: track };
+  if (remaining > SEAM_SECONDS) return { active: false, progress: 0, from: track, to: track, toIndex: index };
   return {
     active: true,
     progress: 1 - remaining / SEAM_SECONDS,
     from: track,
     to: TRACKS[(index + 1) % TRACKS.length],
+    toIndex: (index + 1) % TRACKS.length,
     boundaryIn: remaining, // seconds until the downbeat of the next track
   };
+}
+
+/**
+ * D18 — seam flavor for the boundary INTO TRACKS[intoIndex], seeded per set:
+ * 'landing' (countdown → arrival hit → intro as decaying aftermath) or
+ * 'dissolve' (the roll unwinds, tension exhales — the ambient arrival is what
+ * the gesture prepared). §5's "predictable time, withheld content" applied to
+ * the seams themselves; both media read the choice from this one function.
+ */
+export function seamVariant(intoIndex, seed) {
+  return makeRng(((seed ^ 0xd17) + intoIndex * 7919) >>> 0)() < 0.5 ? 'landing' : 'dissolve';
 }
 
 // ---------- in-track sections (D11) ----------
@@ -235,6 +247,7 @@ export function phraseStateAt(phraseIndex) {
           // progress at the phrase's first bar; per-bar ramps add j/SEAM_BARS
           progress: active ? 1 - barsRemaining / SEAM_BARS : 0,
           to: TRACKS[(i + 1) % TRACKS.length],
+          toIndex: (i + 1) % TRACKS.length,
         },
       };
     }
@@ -273,7 +286,23 @@ export const bus = {
     const { track, phase } = trackAt(t);
     let T = lerp(track.floor, track.peak, sampleBreakpoints(SHAPE, phase));
     const seam = seamAt(t);
-    if (seam.active) T = Math.max(T, lerp(T, 0.95, seam.progress)); // tension_spike: the countdown
+    if (seam.active) {
+      if (seamVariant(seam.toIndex, this.params.seed) === 'landing') {
+        T = Math.max(T, lerp(T, 0.95, seam.progress)); // tension_spike: the countdown
+      } else {
+        // dissolve (D18): a softer spike through the early phase, then the
+        // late phase exhales into the incoming track's opening tension — no
+        // cliff at the boundary for either medium.
+        const lateStart = 1 - SEAM_LATE_BARS / SEAM_BARS;
+        const tOpen = lerp(seam.to.floor, seam.to.peak, sampleBreakpoints(SHAPE, 0));
+        if (seam.progress < lateStart) {
+          T = Math.max(T, lerp(T, 0.8, seam.progress / lateStart));
+        } else {
+          const x = (seam.progress - lateStart) / (1 - lateStart);
+          T = lerp(Math.max(T, 0.8), tOpen, x * x * (3 - 2 * x));
+        }
+      }
+    }
     const p = this.params;
     return T * (1 - p.tensionMix) + p.tensionManual * p.tensionMix;
   },
@@ -305,7 +334,12 @@ export const bus = {
   },
 
   trackAt(t) { return trackAt(t); },
-  seamAt(t) { return seamAt(t); },
+  // decorated with the D18 flavor so visual subscribers can stage the
+  // boundary the same way the music will resolve it
+  seamAt(t) {
+    const s = seamAt(t);
+    return { ...s, variant: seamVariant(s.toIndex, this.params.seed) };
+  },
 
   // ---------- event stream (published by the music scheduler, ahead of time) ----------
   _subs: new Set(),

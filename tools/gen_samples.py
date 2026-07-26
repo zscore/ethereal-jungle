@@ -398,3 +398,41 @@ write_wav(os.path.join(base, "amb", "calls.wav"), ambience_calls())
 write_wav(os.path.join(base, "amb", "leaves.wav"), ambience_leaves())
 write_wav(os.path.join(base, "amb", "shimmer.wav"), ambience_shimmer())
 write_wav(os.path.join(base, "amb", "sparkle.wav"), ambience_sparkle())
+
+
+# ---------------------------------------------------------------------------
+# Seam landing impact (D18): the one-shot that resolves a 'landing' seam's
+# countdown — a pitched boom dropping to D1 (the set's root, scales.js ROOT),
+# a band-limited noise splash, and D/A partials swelling into a slow tail so
+# the hit hands off to the ether. Triggered once, on the boundary downbeat;
+# the ~3.5 s tail rings ~2.5 bars into the intro at 168 BPM.
+# (Kept BELOW the ambience writes so their random-call sequence — and thus
+# their rendered bytes — stay identical across regenerations.)
+# ---------------------------------------------------------------------------
+
+
+def impact(dur=3.5):
+    n = int(SR * dur)
+    out = [0.0] * n
+    phase = 0.0
+    for i in range(n):  # boom: 110 Hz falling to D1 (36.7 Hz), slow decay
+        f = 36.7 + 73.3 * math.exp(-i / SR * 9)
+        phase += 2 * math.pi * f / SR
+        out[i] += math.sin(phase) * math.exp(-i / SR * 2.2) * 0.8
+    lp = 0.0
+    for i in range(n):  # splash: band-limited noise, faster decay
+        noise = random.random() * 2 - 1
+        lp += 0.2 * (noise - lp)
+        out[i] += lp * math.exp(-i / SR * 6) * 0.6
+    for k, f0 in enumerate([146.83, 220.0, 293.66]):  # D3, A3, D4 afterglow
+        ph = 0.0
+        for i in range(n):
+            t = i / SR
+            ph += 2 * math.pi * f0 * (1 + 0.003 * math.sin(2 * math.pi * t / (3 + k))) / SR
+            e = min(1.0, t * 2.5) * math.exp(-t * 1.4)
+            out[i] += math.sin(ph) * e * 0.06
+    peak = max(abs(s) for s in out) or 1.0
+    return [s / peak * 0.85 for s in out]
+
+
+write_wav(os.path.join(base, "amb", "impact.wav"), impact())

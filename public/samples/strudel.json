@@ -47,5 +47,8 @@
   ],
   "ambsparkle": [
     "amb/sparkle.wav"
+  ],
+  "ambimpact": [
+    "amb/impact.wav"
   ]
 }

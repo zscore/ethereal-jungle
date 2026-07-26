@@ -7,7 +7,10 @@
  */
 import { controls, stack, Pattern, Fraction } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
-import { bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS, sectionSpans } from '../src/bus.js';
+import {
+  bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS, BAR_SECONDS,
+  sectionSpans, seamVariant, trackStartBar,
+} from '../src/bus.js';
 import { makeSetPattern } from '../src/music/generators.js';
 
 miniAllStrings();
@@ -99,7 +102,8 @@ console.log('in-track sections (D11) — track 0 form');
   // breakdown 24-32, build2 32-40 (dropout bar 39), peak 40-52, release 52-60
   const intro = soundsIn(0, 4);
   check(intro.has('bd') && !intro.has('jbreak') && !intro.has('sd'), 'intro: kick heartbeat, no break/snare');
-  check(!orbitsIn(0, 4).has(2) && orbitsIn(0, 8).has(3), 'intro: no bass, pads present');
+  // phrase 0 may carry the D18 landing pedal — phrase 1 is always the pure intro
+  check(!orbitsIn(4, 8).has(2) && orbitsIn(0, 8).has(3), 'intro phrase 1: no bass, pads present');
   const groove = soundsIn(16, 20);
   check(groove.has('jbreak') && groove.has('sd') && orbitsIn(16, 20).has(2), 'groove: full arrangement');
   const bd = soundsIn(24, 28);
@@ -141,6 +145,45 @@ console.log('the set loop seam (zenith → undergrowth)');
   check(!soundsIn(SET_BARS - SEAM_LATE_BARS, SET_BARS).has('bd'), 'drums die before the loop point');
   const loopKick = onsets(SET_BARS, SET_BARS + 1).find((h) => h.value?.s === 'bd');
   check(loopKick && loopKick.whole.begin.equals(Fraction(SET_BARS)), 'set loops with a clean downbeat');
+}
+
+console.log('seam variants (D18) — every boundary is a landing or a dissolve');
+{
+  const seed = bus.params.seed;
+  const variants = TRACKS.map((_, i) => seamVariant(i, seed));
+  console.log(`        (seed ${seed}: ${variants.map((v, i) => `→${TRACKS[i].name}: ${v}`).join(', ')})`);
+  check(variants.includes('landing') && variants.includes('dissolve'),
+    'default seed exercises both flavors');
+  check(TRACKS.every((_, i) => seamVariant(i, seed) === variants[i]), 'variant choice is deterministic');
+  for (let i = 0; i < TRACKS.length; i++) {
+    const into = TRACKS[i].name;
+    const boundary = i === 0 ? SET_BARS : trackStartBar(i); // into track 0 = the loop point
+    const late0 = boundary - SEAM_LATE_BARS;
+    const tB = boundary * BAR_SECONDS;
+    // loudest snare per countdown bar: rising = promise kept, falling = withdrawn
+    const sdGains = Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
+      Math.max(...onsets(late0 + j, late0 + j + 1)
+        .filter((h) => h.value?.s === 'sd').map((h) => h.value?.gain ?? 0)));
+    const impacts = onsets(boundary, boundary + 1).filter((h) => h.value?.s === 'ambimpact');
+    if (variants[i] === 'landing') {
+      check(sdGains.every((g, j) => j === 0 || g > sdGains[j - 1]), `→${into}: countdown gains rise`);
+      check(soundsIn(late0, boundary).has('hh'), `→${into}: hat riser runs to the boundary`);
+      check(impacts.length === 1 && impacts[0].whole.begin.equals(Fraction(boundary)),
+        `→${into}: impact lands exactly on the downbeat`);
+      check(orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: root pedal in the arrival phrase`);
+      check(!onsets(boundary + PHRASE_BARS, boundary + 2 * PHRASE_BARS)
+        .some((h) => h.value?.s === 'ambimpact' || (h.value?.orbit ?? 0) === 2),
+        `→${into}: impact and pedal are arrival-phrase only`);
+      check(bus.tensionAt(tB - 0.05) > 0.85, `→${into}: tension spikes into the boundary`);
+    } else {
+      check(sdGains.every((g, j) => j === 0 || g < sdGains[j - 1]), `→${into}: roll dissolves (gains fall)`);
+      check(!soundsIn(late0, boundary).has('hh'), `→${into}: hats leave with the promise`);
+      check(impacts.length === 0, `→${into}: no impact on a dissolve arrival`);
+      check(!orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: intro stays bass-free`);
+      check(Math.abs(bus.tensionAt(tB - 0.05) - bus.tensionAt(tB + 0.05)) < 0.15,
+        `→${into}: no tension cliff at the boundary`);
+    }
+  }
 }
 
 console.log('determinism across recompiles (swap-safe setPattern)');
