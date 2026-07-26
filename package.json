@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --import ./test/register.mjs test/seams.mjs",
+    "smoke": "node smoke.mjs"
   },
   "dependencies": {
     "@strudel/core": "^1.2.2",

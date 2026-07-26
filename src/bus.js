@@ -55,6 +55,16 @@ export function makeDrift(seed, octaves = 5) {
   };
 }
 
+// ---------- musical time: ONE clock constant, shared by timeline and engine ----------
+// One cycle = one 4/4 bar. Everything structural is expressed in whole bars so
+// that track boundaries and seam phases land exactly on the pattern engine's
+// bar lines (design_decisions D9 — bar-exact seams).
+export const BPM = 168;
+export const CPS = BPM / 60 / 4;               // cycles (bars) per second
+export const BAR_SECONDS = 1 / CPS;
+export const PHRASE_BARS = 4;                  // the rebuild/variation granule
+export const PHRASE_SECONDS = PHRASE_BARS * BAR_SECONDS;
+
 // ---------- the authored set timeline ----------
 // A set is a sequence of tracks; each track has authored tension breakpoints
 // (music doc §5) and a brightness walk (§2.2). The SAME breakpoint shape is
@@ -62,8 +72,7 @@ export function makeDrift(seed, octaves = 5) {
 // self-similarity (§5): one curve, sampled at several scales. The set's own
 // climax is the track whose peak is 1.0, placed near the set's golden ratio.
 //
-// Each track: { name, seconds, shape: [[phase, v]...] normalized 0..1,
-//               floor, peak, brightness: [start, end] }
+// Each track: { name, bars (whole phrases), floor, peak, brightness: [start, end] }
 // The brightness walk doubles as the visual altitude (visual doc §4.4):
 // phrygian roots → lydian sky. One axis, two media.
 
@@ -72,13 +81,20 @@ const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax
 ];
 
 export const TRACKS = [
-  { name: 'undergrowth', seconds: 96, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30] },
-  { name: 'forest floor', seconds: 96, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55] },
-  { name: 'canopy',      seconds: 96, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80] }, // set climax (~0.62 of set)
-  { name: 'zenith',      seconds: 96, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00] },
+  { name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30] },
+  { name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55] },
+  { name: 'canopy',      bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80] }, // set climax (~0.62 of set)
+  { name: 'zenith',      bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00] },
 ];
+for (const tr of TRACKS) tr.seconds = tr.bars * BAR_SECONDS; // ≈97 s per track
 
-export const SEAM_SECONDS = 12; // seam window at the end of every track (§6.3)
+// Seam window at the end of every track (§6.3), in whole phrases: two phrases
+// of window, of which the LAST phrase is the late phase (drums die, countdown).
+export const SEAM_BARS = 2 * PHRASE_BARS;
+export const SEAM_LATE_BARS = PHRASE_BARS;
+export const SEAM_SECONDS = SEAM_BARS * BAR_SECONDS;
+
+export const SET_BARS = TRACKS.reduce((s, tr) => s + tr.bars, 0);
 export const SET_SECONDS = TRACKS.reduce((s, tr) => s + tr.seconds, 0);
 
 function lerp(a, b, x) { return a + (b - a) * x; }
@@ -125,6 +141,41 @@ export function seamAt(t) {
     to: TRACKS[(index + 1) % TRACKS.length],
     boundaryIn: remaining, // seconds until the downbeat of the next track
   };
+}
+
+/**
+ * Bar-exact phrase state for the phrase starting at bar phraseIndex*PHRASE_BARS.
+ * Integer bar arithmetic only — no float drift at boundaries. This is what the
+ * engine compiles patterns from: because SEAM_BARS and SEAM_LATE_BARS are whole
+ * phrases and track lengths are whole phrases, every seam phase edge lands
+ * exactly on a phrase line (D9). `tStart` is the phrase's set-time (unwrapped,
+ * matching the scheduler's absolute cycle clock).
+ */
+export function phraseStateAt(phraseIndex) {
+  const setBar = ((phraseIndex * PHRASE_BARS) % SET_BARS + SET_BARS) % SET_BARS;
+  let acc = 0;
+  for (let i = 0; i < TRACKS.length; i++) {
+    const tr = TRACKS[i];
+    if (setBar < acc + tr.bars) {
+      const barInTrack = setBar - acc;
+      const barsRemaining = tr.bars - barInTrack;
+      const active = barsRemaining <= SEAM_BARS;
+      return {
+        track: tr,
+        trackIndex: i,
+        barInTrack,
+        tStart: phraseIndex * PHRASE_BARS * BAR_SECONDS,
+        seam: {
+          active,
+          late: barsRemaining <= SEAM_LATE_BARS,
+          // progress at the phrase's first bar; per-bar ramps add j/SEAM_BARS
+          progress: active ? 1 - barsRemaining / SEAM_BARS : 0,
+          to: TRACKS[(i + 1) % TRACKS.length],
+        },
+      };
+    }
+    acc += tr.bars;
+  }
 }
 
 // ---------- the bus ----------

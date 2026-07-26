@@ -172,6 +172,48 @@ checklist item 4); orbits are superdough's render layers. Keeping the map
 stable is what lets the duck target "the far stream" as a set of orbit
 numbers.
 
+## D9 — Bar-exact seams: cycle-keyed set compiler, bar-quantized timeline (2026-07-26)
+
+**Decision.** D3's accepted coarseness is resolved. The timeline is now
+expressed in whole bars (`TRACKS[i].bars`, multiples of `PHRASE_BARS`; the
+seam window is 2 phrases, its late phase the final phrase), with `BPM`/`CPS`
+moved into bus.js as the one shared clock constant. The engine no longer
+rebuilds on a drifting `setInterval`; `makeSetPattern` (generators.js)
+returns ONE pattern covering the looping set, keyed to the scheduler's
+absolute cycle count: a dispatcher `Pattern` splits each query at exact bar
+lines (`spanCycles`, Fraction math), maps bar → phrase index, and lazily
+compiles that phrase's arrangement with a deterministic per-phrase seed.
+`phraseStateAt(i)` (bus.js) computes seam phase per phrase in integer bar
+arithmetic. The snare countdown is now a 4-bar accelerating roll
+(`[sd sd*2 sd*4 sd*8].slow(4)`, gain ramp per bar) landing exactly on the
+incoming downbeat; the hat riser ramps per bar the same way.
+
+**Why.** Cycle-keying makes seam edges sample-exact *by construction*: the
+scheduler's cycle grid IS the music's bar grid, so no swap timing, timer
+drift, or lookahead race can displace a phase edge. Determinism per phrase
+index means `setPattern` swaps (knob changes) are seamless — old and new
+patterns agree about any overlapping span. Re-permutation per phrase now
+falls out of the phrase-indexed seed instead of a timer; the rebuild timer
+is deleted entirely.
+
+**Consequences.** Tracks are 68 bars (≈97 s). Stop/start restarts the set
+from the top (the Cyclist resets its cycle counter on stop; toggle re-pins
+bus t=0 so both clocks agree — pause-and-resume would silently desync them).
+Knob changes still take effect immediately (fresh compile, cache dropped),
+which remains the performance gesture, not a bug.
+
+**Verification.** `npm test` (test/seams.mjs) queries the compiled pattern at
+the hap level and asserts: drums/bass/lead vanish exactly at the die-line
+bar, countdown doubles 1/2/4/8, kick returns exactly on the boundary
+Fraction, the set loop gets the same treatment, and two independent compiles
+agree hap-for-hap. (Node needs a resolve hook for @kabelsalat/web's broken
+`main`; see test/hooks.mjs.)
+
+**Rejected.** Strudel `arrange()`/`slowcat` over pre-built seam sections —
+those rebase inner cycle time per section, which would break the half-time
+layers' absolute cycle parity; the dispatcher queries phrases at absolute
+time instead.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

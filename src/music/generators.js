@@ -11,7 +11,7 @@
  * 3 = pads (far/wet), 4 = lead (far/wet). The kick ducks orbits 3 & 4 — the
  * sidechain is the coupling constant of the whole system (§3.3).
  */
-import { makeRng } from '../bus.js';
+import { makeRng, phraseStateAt, PHRASE_BARS, SEAM_BARS } from '../bus.js';
 import { modeAt, padVoicing, bassNotes, leadNotes } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
@@ -132,11 +132,50 @@ function buildLead(ctx, rng, mode, tension, w) {
 }
 
 /**
- * Build the full arrangement as one stacked pattern.
+ * The set compiler (D9 — bar-exact seams). Returns ONE pattern that covers the
+ * whole looping set, keyed to the scheduler's absolute cycle count: cycle c is
+ * bar c of the set (mod SET_BARS), phrase floor(c/4). Each phrase's arrangement
+ * is compiled lazily and deterministically (seeded by phrase index), so seam
+ * phase edges land sample-exactly on phrase lines regardless of when
+ * setPattern is called — swapping in a freshly built pattern with the same
+ * params yields identical events. `signals` = { tensionAt, brightnessAt }.
+ */
+export function makeSetPattern(ctx, p, signals) {
+  const { Pattern } = ctx;
+  const cache = new Map(); // phraseIndex → compiled 1-cycle pattern
+  const phrasePattern = (idx) => {
+    let pat = cache.get(idx);
+    if (!pat) {
+      const ps = phraseStateAt(idx);
+      const tSample = ps.tStart + 0.01; // just inside the phrase
+      const tension = signals.tensionAt(tSample);
+      const brightness = signals.brightnessAt(tSample);
+      // seed varies per phrase AND per track: each track is a different telling,
+      // and the break re-permutes every phrase (§1.1 theme-and-variations)
+      const seed = p.seed + idx * 101 + ps.trackIndex * 7919;
+      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, ps.seam);
+      cache.set(idx, pat);
+      if (cache.size > 32) cache.delete(cache.keys().next().value); // bounded over long runs
+    }
+    return pat;
+  };
+  return new Pattern((state) => {
+    const haps = [];
+    for (const span of state.span.spanCycles) { // split at exact bar lines (Fraction math)
+      const idx = Math.floor(span.begin.valueOf() / PHRASE_BARS);
+      // query at ABSOLUTE time — half-time layers keep their cycle parity
+      haps.push(...phrasePattern(idx).query(state.setSpan(span)));
+    }
+    return haps;
+  });
+}
+
+/**
+ * Build one phrase's arrangement as a stacked 1-cycle pattern.
  * `ctx` provides the pattern-building functions (from @strudel/core controls)
  * so this module stays import-order agnostic. `p` is a bus params snapshot.
- * `brightness` comes from the bus's authored walk; `seam` is bus.seamAt(now)
- * — when active the arrangement becomes the seam operator (§6.3).
+ * `brightness` comes from the bus's authored walk; `seam` comes from
+ * phraseStateAt — when active the arrangement becomes the seam operator (§6.3).
  */
 export function buildArrangement(ctx, p, tension, brightness, seam) {
   const { s, note, stack } = ctx;
@@ -144,12 +183,12 @@ export function buildArrangement(ctx, p, tension, brightness, seam) {
   const mode = modeAt(brightness);
   const w = Math.min(1, p.wildness * (0.5 + 0.5 * tension));
 
-  // Seam phases (§6.3), at phrase granularity: early seam = intensified exit
-  // (A's drums peak), late seam = the drums die BEFORE the boundary (§6.1's
-  // asymmetry — drums are the strongest stream and must not cross), while the
-  // incoming ether is already here via brightnessAt's forward leak.
-  const seamEarly = seam?.active && seam.progress < 0.6;
-  const seamLate = seam?.active && seam.progress >= 0.6;
+  // Seam phases (§6.3), bar-exact: early seam = intensified exit (A's drums
+  // peak), late seam = the drums die BEFORE the boundary (§6.1's asymmetry —
+  // drums are the strongest stream and must not cross), while the incoming
+  // ether is already here via brightnessAt's forward leak.
+  const seamEarly = seam?.active && !seam.late;
+  const seamLate = seam?.active && seam.late;
   const wEff = seamEarly ? Math.min(1, w + 0.25) : w;
   const leadPresent = tension > 0.3 && !seamLate;
 
@@ -181,20 +220,26 @@ export function buildArrangement(ctx, p, tension, brightness, seam) {
       s('~ ~ sd ~').gain(anchorStrength).orbit(1),
     );
   } else {
-    // clean_downbeat countdown: a bare snare roll, doubling — §5's accelerating
-    // fill; the last thing to sound before the new world's downbeat.
-    layers.push(s('[sd*2 sd*2 sd*4 sd*8]').slow(2).gain(0.5 + 0.4 * seam.progress).orbit(1));
+    // clean_downbeat countdown: a bare snare roll doubling every bar across the
+    // late phrase — §5's accelerating fill, bar-exact into the new downbeat.
+    // slow(4) keys the roll to absolute cycle mod 4, which IS the bar-in-phrase
+    // because track lengths are whole phrases (D9).
+    layers.push(s('[sd sd*2 sd*4 sd*8]').gain('[0.55 0.65 0.75 0.88]').slow(4).orbit(1));
   }
 
   // ---- hats: E(k, 16), k breathing with tension; riser during the seam ----
   const k = seam?.active ? 7 : 3 + Math.round(tension * 4);
   const hatMask = euclid(k, 16, Math.floor(rng() * 16));
-  layers.push(
-    s(hatMask.map((v) => (v ? 'hh' : '~')).join(' '))
-      .gain(0.35 + 0.25 * tension + (seam?.active ? 0.2 * seam.progress : 0))
-      .pan(0.4 + rng() * 0.2)
-      .orbit(1),
-  );
+  let hats = s(hatMask.map((v) => (v ? 'hh' : '~')).join(' ')).pan(0.4 + rng() * 0.2);
+  if (seam?.active) {
+    // per-bar gain ramp across the phrase: the riser climbs bar by bar
+    const gains = Array.from({ length: 4 }, (_, j) =>
+      (0.35 + 0.25 * tension + 0.25 * (seam.progress + j / SEAM_BARS)).toFixed(3));
+    hats = hats.gain(`[${gains.join(' ')}]/4`); // /4: one gain step per bar, phrase-aligned
+  } else {
+    hats = hats.gain(0.35 + 0.25 * tension);
+  }
+  layers.push(hats.orbit(1));
 
   // ---- bass: isorhythm — talea E(5,16) × pentatonic color walk (lcm cycling) ----
   if (!seamLate) { // the floor leaves with the drums; the drop restores it whole

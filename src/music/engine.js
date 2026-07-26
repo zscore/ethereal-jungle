@@ -4,7 +4,7 @@
  * the output wrapper publishes each hap with its audio-clock deadline BEFORE
  * it sounds, so subscribers (the visualizer) get their clairvoyance.
  */
-import { controls, stack, repl } from '@strudel/core';
+import { controls, stack, repl, Pattern } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
 import {
   getAudioContext,
@@ -14,14 +14,10 @@ import {
   samples,
   getSuperdoughAudioController,
 } from '@strudel/webaudio';
-import { bus } from '../bus.js';
-import { buildArrangement } from './generators.js';
-
-const BPM = 168;
-const CPS = BPM / 60 / 4; // one cycle = one 4/4 bar
+import { bus, CPS } from '../bus.js';
+import { makeSetPattern } from './generators.js';
 
 let scheduler = null;
-let rebuildTimer = null;
 
 export async function initEngine() {
   miniAllStrings(); // let plain strings act as mini-notation inside s()/note()
@@ -69,41 +65,50 @@ export async function initEngine() {
   const controller = getSuperdoughAudioController();
   for (const orbit of [1, 2, 3, 4]) controller.getOrbit(orbit, [0, 1]); // stereo channel pair
 
+  // bus t=0 and scheduler cycle 0 are pinned to the same instant: the set
+  // compiler keys content to absolute cycles, the bus keys curves to seconds,
+  // and CPS is the shared conversion — bar-exact by construction (D9).
   bus.start(() => ctx.currentTime);
   rebuild();
-
-  // The permutation is seeded & static per build; re-permute each phrase so the
-  // break keeps developing (§1.1: theme and variations). 4 bars keeps seam
-  // phases responsive (the 12 s seam window spans ~2 rebuilds at 168 BPM).
-  const phraseSeconds = 4 / CPS;
-  rebuildTimer = setInterval(rebuild, phraseSeconds * 1000);
-
   scheduler.start();
   return scheduler;
 }
 
-/** Rebuild the arrangement from the current bus state. Called on knob changes. */
+/**
+ * Compile the whole set as one cycle-keyed pattern (D9). Phrase content —
+ * including per-phrase break re-permutation and seam phases — is a function of
+ * the scheduler's cycle count, so no rebuild timer exists; this is called only
+ * when knobs change (the fresh compile snapshots the new params).
+ */
 export function rebuild() {
   if (!scheduler) return;
-  const t = bus.now();
-  const tension = bus.tensionAt(t);
-  const brightness = bus.brightnessAt(t);
-  const seam = bus.seamAt(t);
-  const { index } = bus.trackAt(t);
-  // seed varies per phrase AND per track, so each track is a different telling
-  const p = { ...bus.params, seed: bus.params.seed + Math.floor(t / 16) + index * 7919 };
-  const pattern = buildArrangement({ ...controls, stack }, p, tension, brightness, seam);
+  const pattern = makeSetPattern(
+    { ...controls, stack, Pattern },
+    { ...bus.params },
+    { tensionAt: (t) => bus.tensionAt(t), brightnessAt: (t) => bus.brightnessAt(t) },
+  );
   scheduler.setPattern(pattern, false);
-  bus.publish({ type: 'rebuild', tension, brightness, seam: seam.active, when: getAudioContext().currentTime });
+  const t = bus.now();
+  bus.publish({
+    type: 'rebuild',
+    tension: bus.tensionAt(t),
+    brightness: bus.brightnessAt(t),
+    seam: bus.seamAt(t).active,
+    when: getAudioContext().currentTime,
+  });
 }
 
 export function toggle() {
   if (!scheduler) return false;
   if (scheduler.started) { scheduler.stop(); return false; }
-  scheduler.start(); return true;
+  // stop() reset the scheduler's cycle counter, so restart the set from the
+  // top: re-pin bus t=0 to now and recompile so both clocks agree again.
+  bus.start(() => getAudioContext().currentTime);
+  rebuild();
+  scheduler.start();
+  return true;
 }
 
 export function stopEngine() {
-  if (rebuildTimer) clearInterval(rebuildTimer);
   scheduler?.stop();
 }

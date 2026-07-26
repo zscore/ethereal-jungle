@@ -70,16 +70,22 @@ composition code. Keep renderer-specific tricks inside `engine.js` only.
   map. The original Amen recording is copyrighted until 2067 — ship re-performed
   breaks only.
 
+## Tests
+
+```sh
+npm test           # pattern-level seam verification (no browser, no audio)
+npm run smoke      # headless browser boot: audio + visuals + bus events
+```
+
 ## Next steps
 
 (1–4 of the original list — audio sidechain, tension timeline + seams, the
-lead, WebMIDI — are done; see `docs/design_decisions.md`.)
+lead, WebMIDI — are done, and so are bar-exact seams (D9); see
+`docs/design_decisions.md`.)
 
-1. Bar-exact seams: align track lengths to whole phrases and compile the seam
-   as an arrangement instead of phrase-granular rebuild modes (D3's revisit).
-2. Per-point shaders / TSL compute for roots + canopy; bloom with per-stream
+1. Per-point shaders / TSL compute for roots + canopy; bloom with per-stream
    post-processing (`docs/scene_plan.md` roadmap 1–2).
-3. The corpus shrine + artifact operators wired to `w` (roadmap 4–5).
-4. The mischief layer (theory §8): master-bus jokes — needs the master bus as
+2. The corpus shrine + artifact operators wired to `w` (roadmap 4–5).
+3. The mischief layer (theory §8): master-bus jokes — needs the master bus as
    an addressable target.
-5. open-stage-control via WebSocket alongside WebMIDI; MIDI learn.
+4. open-stage-control via WebSocket alongside WebMIDI; MIDI learn.
