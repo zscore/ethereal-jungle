@@ -269,6 +269,27 @@ export function orbitAt(a, t, drift = 0) {
 // vignette opens, released exactly on the boundary bar); 'dissolve' refuses the
 // flash and opens the world instead — the arrival was never a moment.
 
+// The camera's resting field of view, and how far a landing opens it (M1).
+// A true dolly zoom would hold the subject exactly — pushing 4.5 units in from
+// 12 needs ~85° to compensate — and that is far too much: the effect stops
+// being unease and becomes a joke about vertigo. 14° is the partial version,
+// where the walls of the frame move and you cannot quite say why.
+export const FOV_BASE = 60;
+export const FOV_DOLLY = 14;
+
+/**
+ * Field of view during a seam (M1). The push-in already moves the camera
+ * forward; opening the lens *while* it moves is the one camera gesture that
+ * says "the ground is going" rather than "we are arriving" — so it is spent
+ * only on landings, exactly where the flash is. A dissolve decelerates and
+ * opens the air instead (I2); giving it a dolly too would make the two flavors
+ * say the same thing in different words.
+ */
+export function seamFov(seam, base = FOV_BASE) {
+  if (!seamFlashes(seam)) return base;
+  return base + FOV_DOLLY * seamPush(seam);
+}
+
 /** Camera push-in for the late seam window, by flavor. 0 outside the window. */
 export function seamPush(seam) {
   if (!seam?.active || seam.progress <= 0.6) return 0;

@@ -5,9 +5,9 @@
  * Run: node test/look.mjs  (included in `npm test`)
  */
 import {
-  look, railSplit, orbitAt, seamPush, seamFlashes, seamExhale,
+  look, railSplit, orbitAt, seamPush, seamFlashes, seamExhale, seamFov,
   gradeAt, styleAt, BAND_ORBITS, BAND_GRADES, FOCAL_SHARP, POSTERIZE_STEPS,
-  TINT_UNDER, TINT_THIN, INK_SECTIONS, HALFTONE_KNEE,
+  TINT_UNDER, TINT_THIN, INK_SECTIONS, HALFTONE_KNEE, FOV_BASE, FOV_DOLLY,
 } from '../src/visuals/look.js';
 import { PERFORM_DEFAULTS } from '../src/perform.js';
 
@@ -113,6 +113,23 @@ console.log('seam staging by flavor (I2, off D18)');
   check(arrived.bloom > idle().bloom && arrived.vignette < idle().vignette, 'the arrival spikes exposure and opens the frame');
   const exhaled = look(PERFORM_DEFAULTS, { ...ENV, exhale: 1 });
   check(exhaled.fogDensity < idle().fogDensity && exhaled.focal > idle().focal, 'the dissolve opens the air and the focus');
+
+  // M1 — the dolly zoom: the lens opens while the camera pushes in, and only
+  // on the flavor that resolves onto an event
+  check(seamFov(landing) > FOV_BASE, 'a landing opens the lens as it pushes in');
+  check(seamFov(dissolve) === FOV_BASE, 'a dissolve never dollies (it decelerates instead)');
+  check(seamFov({ active: false }) === FOV_BASE, 'and nothing outside a seam touches the lens');
+  check(seamFov({ active: true, progress: 0.3, variant: 'landing' }) === FOV_BASE,
+    'the dolly is a late-window gesture, like the push-in it rides');
+  let fovMonotone = true, fovBounded = true, prevFov = FOV_BASE;
+  for (let i = 0; i <= 100; i++) {
+    const f = seamFov({ active: true, progress: i / 100, variant: 'landing' });
+    if (f < prevFov - 1e-9) fovMonotone = false;
+    if (f > FOV_BASE + FOV_DOLLY + 1e-9) fovBounded = false;
+    prevFov = f;
+  }
+  check(fovMonotone, 'it only ever opens across the window — the walls never come back mid-gesture');
+  check(fovBounded, 'and never past its stated travel (a full vertigo compensation would be ~85°)');
 }
 
 console.log('camera waypoints stay continuous (I1 / §4.2)');
