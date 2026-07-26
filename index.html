@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ethereal jungle</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #04060a; font-family: ui-monospace, Menlo, monospace; color: #cfe3d8; }
+      #scene { position: fixed; inset: 0; }
+      #overlay {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: rgba(4, 6, 10, 0.92); z-index: 10; cursor: pointer; flex-direction: column; gap: 1rem;
+      }
+      #overlay h1 { font-weight: 400; letter-spacing: 0.4em; font-size: 1rem; opacity: 0.8; }
+      #overlay p { opacity: 0.4; font-size: 0.75rem; }
+      #panel {
+        position: fixed; right: 0.75rem; top: 0.75rem; z-index: 5; width: 220px;
+        background: rgba(8, 12, 18, 0.82); border: 1px solid #1c2a33; border-radius: 8px; padding: 0.8rem;
+        display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.7rem;
+      }
+      #panel label { display: flex; flex-direction: column; gap: 0.2rem; opacity: 0.85; }
+      #panel input[type="range"] { width: 100%; accent-color: #6fae8f; }
+      #panel .row { display: flex; gap: 0.5rem; align-items: center; }
+      #panel input[type="number"] { width: 5.5em; background: #0b1218; color: inherit; border: 1px solid #1c2a33; border-radius: 4px; padding: 2px 4px; }
+      #panel button { background: #12202a; color: inherit; border: 1px solid #24404d; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+      #readout { opacity: 0.55; white-space: pre; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="panel">
+      <label>tension override <span class="row"><input id="tensionMix" type="range" min="0" max="1" step="0.01" value="0" /></span></label>
+      <label>tension (manual) <input id="tension" type="range" min="0" max="1" step="0.01" value="0.4" /></label>
+      <label>wildness <input id="wildness" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
+      <label>mode brightness <input id="brightness" type="range" min="0" max="1" step="0.01" value="0.7" /></label>
+      <div class="row">
+        <label>seed <input id="seed" type="number" value="1" min="0" step="1" /></label>
+        <button id="reroll">reroll</button>
+      </div>
+      <div class="row">
+        <button id="toggle">stop</button>
+      </div>
+      <div id="readout"></div>
+    </div>
+    <div id="overlay">
+      <h1>ETHEREAL JUNGLE</h1>
+      <p>click to wake the audio context</p>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
