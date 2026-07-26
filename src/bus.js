@@ -66,6 +66,17 @@ export const BAR_SECONDS = 1 / CPS;
 export const PHRASE_BARS = 4;                  // the rebuild/variation granule
 export const PHRASE_SECONDS = PHRASE_BARS * BAR_SECONDS;
 
+// Ambience loops are 32-bar field recordings (D20). They are NOT triggered as
+// 32-bar events: a track is 68 bars, which is not a multiple of 32, so a
+// slow(32) event would only start on cycles 0, 32, 64… and a biome change at
+// bar 68 would sit silent until bar 96 — and the seam's incoming-bed crossfade
+// (§6.1) would never get an onset inside its 8-bar window at all. Instead each
+// phrase plays the NEXT PHRASE_BARS-long slice of the file via begin/end, so
+// the retrigger period stays 4 bars (every alignment above keeps working)
+// while the audible repeat period becomes the full 32 bars.
+export const AMB_BARS = 32;
+export const AMB_CHUNKS = AMB_BARS / PHRASE_BARS; // 8 slices per loop
+
 // ---------- the authored set timeline ----------
 // A set is a sequence of tracks; each track has authored tension breakpoints
 // (music doc §5) and a brightness walk (§2.2). The SAME breakpoint shape is

@@ -39,11 +39,16 @@ that band." Both media read the walk from `bus.brightnessAt(t)`.
 Bands deliberately **overlap by ~2 units** so no altitude ever shows a void
 between worlds. The figure stream (drum flashes) is band-independent — it
 spawns at the camera's altitude, because the drums are *here* wherever here is.
+Two non-band elements share the whole stack: the **air** (altitude-graded
+background sphere) and the **mist** (additive card stack through the floor and
+lower canopy, the parallax the fog can't give).
 
-Missing family, planned: the **corpus shrine** (§3.5) — a flickering
-video-chop object in the undergrowth, the one figure-affording *place* in the
-world. And **artifact operators** (§3.6) are a post-processing layer over any
-band, wired to wildness `w`.
+The last family landed as the **corpus shrine** (§3.5, D20): a flickering
+screen in the undergrowth playing back *this world's* own last bar, chopped by
+the break's own `permuteBreak` — the one figure-affording *place* in the world,
+and the only one that owns video. **Artifact operators** (§3.6) are a
+post-processing layer over any band, wired to wildness `w`, and now share the
+chain with the perform-rail twins and a ground-only depth of field (D19).
 
 ## 3. How a transition actually plays out
 
@@ -111,10 +116,11 @@ Ordered; each step is independently shippable.
    ground only and the kick ducks its strength; the figure composites sharp.
 3. **Blooms on anchors** for the floor biome: growth's one legal relationship
    to rhythm — events on the *surface* (flowers on downbeats, at most).
-4. **The corpus shrine** in the undergrowth: a small screen-object chopping
-   CC0 footage with the same σ-permutation machinery as the break (the
-   formalism transfers verbatim, §3.5). Figure-affording; obeys the same
-   anchor pricing as the flash cubes.
+4. **The corpus shrine** in the undergrowth: ✅ *done (D20)* — a screen-object
+   chopping the world's own recent frames with the same σ-permutation
+   machinery as the break. Not "the formalism transfers verbatim": it is the
+   same function, on a ring of render targets instead of drum slices, so the
+   anchors show *now* and the chop's edit rate is `w` by construction.
 5. **Artifact operators** wired to `w`: ✅ *done (D14)* — feedback smear
    (afterimage, high-`w` only), chroma displacement (rgbShift), grain/scanline
    (film) over the final composited frame, amounts driven by wildness.
@@ -133,10 +139,14 @@ Ordered; each step is independently shippable.
   timeline currently walks brightness monotonically upward across the set;
   a track whose brightness *falls* while tension rises (descending into the
   roots for the hardest section) is unexplored and probably potent.
-- **Camera path richness**: currently pure vertical + 1/f sway. Lateral
-  waypoints per biome (orbiting a vine cluster, threading shell gaps) would
-  buy variety, but every added path dimension must preserve the motion
-  signature across boundaries.
+- ~~**Camera path richness**~~ **answered (D19/I1)**: each band owns a lateral
+  orbit (radius + a near-coprime rate), tent-blended by altitude and
+  superimposed on the 1/f sway rather than replacing it. Because every band
+  keeps its own constant rate and phase, the path is continuous in altitude
+  *and* in time — the motion signature survives every boundary, and
+  `test/look.mjs` sweeps 2000 altitudes and 4000 instants to prove it. What is
+  still unexplored is *content-aware* pathing (orbiting a specific vine
+  cluster, threading shell gaps), which needs the world to expose landmarks.
 - **How much biome per track?** One track ↔ one biome band is the current
   mapping. A future set could traverse two bands in one track — nothing in
   the architecture forbids it; only the timeline authoring changes.

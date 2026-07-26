@@ -1,0 +1,219 @@
+{
+  "_doc": "Public-domain field recordings behind the biome ambience loops (D20). Every item is from archive.org's radio-aporee-maps collection under CC0 or the Public Domain Mark, so this file is both the build input and the attribution record. `start` = null lets tools/ingest_amb.py pick the best-looping window automatically; set it to a number of seconds to pin one. Run: python3 tools/ingest_amb.py",
+  "bpm": 168,
+  "bars": 32,
+  "sources": {
+    "ambinsects": {
+      "archive": "aporee_41451_47281",
+      "file": "nightgarden2.ogg",
+      "title": "Black Rd, Los Gatos, CA 95033, USA - Night forest insects",
+      "creator": "asya87piano",
+      "place": "19586 Black Rd, Los Gatos, CA 95033, USA",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 151.3,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambfrogs": {
+      "archive": "aporee_45956_52199",
+      "file": "frogs20190824125405.ogg",
+      "title": "Lacara, Sithonia 630 78, Griechenland - Night frogs",
+      "creator": "carsten stabenow",
+      "place": "Kalamonisia, Δήμος Σιθωνίας, Περιφερειακή Ενότητα Χαλκιδικής, Μακεδονία - Θράκη, Ελλάδα",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 254.3,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambrustle": {
+      "archive": "aporee_53005_60573",
+      "file": "ZOOM0005TrLRprocessed.mp3",
+      "title": "Vytauto pr. 23, Kaunas, Lithuania - Dry leaves rustling along pavement",
+      "creator": "Marius Paulikas",
+      "place": "Kaunas, Kauno miesto savivaldybė, Kauno apskritis, Lietuva",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 175.4,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambrain": {
+      "archive": "aporee_43527_49569",
+      "file": "1903270024ProjensdorferGehlzTascamDR100MKIIIOKMIIKlassikA3AdapterED.ogg",
+      "title": "Stadtparkweg 4, 24106 Kiel, Deutschland - Light rain in the forest",
+      "creator": "thore.siebrands",
+      "place": "Stadtparkweg 4, 24106 Kiel, Germany",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 371.8,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambthunder": {
+      "archive": "aporee_44701_50804",
+      "file": "190604001.ogg",
+      "title": "Coryluslaan 12, 1702 VN Heerhugowaard, Nederland - Rain, thunder",
+      "creator": "m_smit",
+      "place": "Coryluslaan 10, 1702 VN Heerhugowaard, Netherlands",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 1861.8,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambdrips": {
+      "archive": "aporee_30976_35615",
+      "file": "drips26.ogg",
+      "title": "Fleury-sur-Orne, France - Drips",
+      "creator": "Nicolas Germain",
+      "place": "3B Chemin des Coteaux, 14123 Fleury-sur-Orne, France",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 221.8,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambbirds": {
+      "archive": "aporee_45602_51785",
+      "file": "07202019WesthuesBirdsSIngingBikeTrail.ogg",
+      "title": "Paved Bike Trail, Ouabache State Park, Bluffton, IN 46714, USA - Morning bird song, Paved Bike Trail, Ouabache State Park, Bluffton, IN",
+      "creator": "Kay Westhues",
+      "place": "Wells County, Indiana, USA",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 90.0,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambcalls": {
+      "archive": "aporee_45002_51132",
+      "file": "CAPSValleyTraoueroBlackbirdsong.ogg",
+      "title": "Vallée des Traouiero, 22730 Trégastel, France - Blackbird song [Valley Traouïero]",
+      "creator": "Yponomeutaneko !",
+      "place": "Perros-Guirec, Lannion, Côtes-dArmor, Bretagne, France métropolitaine, 22700, France",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 94.6,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambleaves": {
+      "archive": "aporee_21424_24881",
+      "file": "San20Vicente200320Guadua.ogg",
+      "title": "San Vicente, Antioquia, Colombia - The wind that shakes the Guaduas",
+      "creator": "jo_pamo@yah...",
+      "place": "San # VICENTE-56 a VICENTE-82, San Vicente, Antioquia, Colombia",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 203.6,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambwind": {
+      "archive": "aporee_41780_47631",
+      "file": "VentTubeEolienChacaltaya96kHzSAM140214016.ogg",
+      "title": "Chacaltaya - Wind singing in an old tube on the top of the mountain",
+      "creator": "Felix BLUME",
+      "place": "Unnamed Road, Bolivia",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 1481.8,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambshimmer": {
+      "archive": "aporee_44454_50543",
+      "file": "1649trachiloswindwires.ogg",
+      "title": "Trachilos, Crete, wind in electric wires",
+      "creator": "alas23/sala",
+      "place": "Unnamed Road, Trachilos 734 00, Greece",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 167.9,
+      "start": null,
+      "gain_db": 0.0
+    },
+    "ambsparkle": {
+      "archive": "aporee_51657_58956",
+      "file": "dripsinsidelavacavetakapunacoast.mp3",
+      "title": "33 Kitchener Road, Takapuna, Auckland 0622, New Zealand - water drips in lava cave",
+      "creator": "eleanor.l.cooper",
+      "place": "Devonport-Takapuna, Auckland, New Zealand / Aotearoa",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 141.9,
+      "start": null,
+      "gain_db": 0.0
+    }
+  },
+  "alternates": {
+    "ambbirds": [
+      {
+        "archive": "aporee_22466_26067",
+        "file": "140406000dawnchorus.ogg",
+        "title": "Sounds from my Window, Glasgow, UK - Dawn Chorus",
+        "creator": "louwheeez@hotma...",
+        "place": "393 North Woodside Road, Glasgow, Glasgow City G20, UK",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 116.2,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ],
+    "ambinsects": [
+      {
+        "archive": "aporee_46226_52519",
+        "file": "R2600271tucskokmagashanguak.ogg",
+        "title": "Ellend, Hangfarm, 7744 Magyarország - High-pitched crickets of the nightfall",
+        "creator": "xrc",
+        "place": "Ellend, Pécsi járás, Baranya megye, Dél-Dunántúl, Dunántúl, 7744, Magyarország",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 175.5,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ],
+    "ambrustle": [
+      {
+        "archive": "aporee_50969_58152",
+        "file": "Z0000003.mp3",
+        "title": "Unnamed Road, Тульская обл., Россия, 301003 - In the grass",
+        "creator": "val.trubin",
+        "place": "Страховское сельское поселение, Заокский район, Тульская область, Центральный федеральный округ, 301013, Россия",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 120.9,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ],
+    "ambwind": [
+      {
+        "archive": "aporee_27952_32214",
+        "file": "hafrawiatrowamikrofonykontaktowenadrucianympocienaplay.ogg",
+        "title": "Wyspa Sobieszewska, Gdańsk, Poland - Wind harp",
+        "creator": "krzysztoftopolski...",
+        "place": "Falowa 8, Gdańsk, Poland",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 179.2,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ],
+    "ambsparkle": [
+      {
+        "archive": "aporee_51675_58977",
+        "file": "ZOOM001920201219204321.mp3",
+        "title": "10C Brett Avenue, Takapuna, Auckland 0622, New Zealand - water drips in lava cave",
+        "creator": "eleanor.l.cooper",
+        "place": "Devonport-Takapuna, Auckland, New Zealand / Aotearoa",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 114.3,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ],
+    "ambrain": [
+      {
+        "archive": "aporee_27198_31345",
+        "file": "riomindo.ogg",
+        "title": "Mindo Forest Reserve, Équateur - Rio Mindo",
+        "creator": "Chloé Despax",
+        "place": "Vía a Mindo, Ecuador",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 309.4,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ]
+  }
+}

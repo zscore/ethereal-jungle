@@ -1,14 +1,23 @@
 /**
- * visual_check.mjs — screenshot harness (visuals proposal E3).
+ * visual_check.mjs — screenshot harness (visuals proposal E3, extended by J2).
  *
  * Boots the app headless, wakes the audio engine, then captures every biome
- * band plus a high-tension shot, into shots/<backend>-<name>.png. Exists
- * because the WebGPU point-size bug survived as long as it did by us only
- * ever looking at one backend — run it on both before trusting a visual
- * change:
+ * band, the glyph, the climax, the corpus shrine, a full perform-rail sweep
+ * (each knob's visual twin, H1) and both seam flavors (I2), into
+ * shots/<backend>-<name>.png. Exists because the WebGPU point-size bug
+ * survived as long as it did by us only ever looking at one backend — run it
+ * on both before trusting a visual change:
  *
  *   node tools/visual_check.mjs                # WebGL2 (swiftshader, CI-safe)
  *   node tools/visual_check.mjs --backend=webgpu   # needs a WebGPU-capable chromium
+ *
+ * Known limitation, verified against a pre-change checkout: on this
+ * headless chromium the WebGPU canvas does not composite into screenshots —
+ * the PNGs come out black even though the run itself is clean (backend
+ * reports `webgpu`, no page errors, the governor holds full quality). So the
+ * WebGPU pass currently certifies *that the chain builds and runs*, and the
+ * WebGL2 pass certifies *what it looks like*. Look at WebGPU in a real
+ * browser window before trusting appearance there.
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -39,7 +48,20 @@ await page.click('#overlay');
 await page.waitForTimeout(9000); // samples load, engine schedules, figures fire
 
 const backend = await page.evaluate(() => window.jungle?.visuals?.backend ?? 'unknown');
+const tier = await page.evaluate(() => ({
+  optics: window.jungle?.visuals?.optics, styles: window.jungle?.visuals?.styles,
+  quality: window.jungle?.visuals?.quality,
+}));
 console.log(`backend: ${backend}${webgpu && backend !== 'webgpu' ? '  (WebGPU requested but unavailable — fell back)' : ''}`);
+console.log(`chain:   optics(dof)=${tier.optics}  styles(L)=${tier.styles}  quality=${tier.quality}`);
+if (!tier.styles) console.log('note: the style tier is NOT built — ink/halftone/kaleido/streak shots will be inert');
+
+const shot = async (name, settleMs = 2500) => {
+  await page.waitForTimeout(settleMs);
+  await page.screenshot({ path: `${outDir}${backend}-${name}.png` });
+  console.log(`captured ${backend}-${name}.png`);
+};
+const setParams = (p) => page.evaluate((o) => Object.assign(window.jungle.bus.params, o), p);
 
 const stops = [['roots', 0.05], ['floor', 0.35], ['canopy', 0.65], ['sky', 0.95]];
 for (const [name, a] of stops) {
@@ -70,9 +92,122 @@ await page.evaluate(() => {
   window.jungle.bus.params.tensionManual = 1;
   window.jungle.visuals.setAltitude(0.65, true);
 });
-await page.waitForTimeout(7000); // a rebuild lands, density/bloom rise
-await page.screenshot({ path: `${outDir}${backend}-climax.png` });
-console.log(`captured ${backend}-climax.png`);
+await shot('climax', 7000); // a rebuild lands, density/bloom rise
+
+// the corpus shrine (F1): it lives in the undergrowth and nowhere else, so go
+// there — transport and camera agreeing — and turn the wildness up, since the
+// edit rate of the chop IS w
+await page.evaluate(() => { window.jungle.bus.params.tensionMix = 0; });
+await page.click('button:has-text("undergrowth")').catch(() => {});
+await setParams({ wildness: 0.85 });
+await page.evaluate(() => {
+  window.jungle.visuals.setAltitude(0.02, true);
+  window.jungle.visuals.setLateral(-2); // pin the wander: the shrine stays framed
+  window.jungle.visuals.shrine(true);   // …and outvote the governor (swiftshader
+});                                     //   sheds this tier long before a GPU does)
+await shot('shrine', 5000);
+await page.evaluate(() => {
+  window.jungle.visuals.setLateral(null);
+  window.jungle.visuals.shrine(null);
+});
+
+// perform-rail twins (H1): each knob's picture, one at a time, then at rest
+for (const [name, params] of [
+  ['rail-lp', { filter: 0 }],
+  ['rail-hp', { filter: 1 }],
+  ['rail-echo', { echo: 1 }],
+  ['rail-crush', { crush: 1 }],
+  ['rail-space', { space: 1 }],
+]) {
+  await setParams({ filter: 0.5, echo: 0, crush: 0, space: 0, ...params });
+  await shot(name, 1800);
+}
+await setParams({ filter: 0.5, echo: 0, crush: 0, space: 0, wildness: 0.35 });
+
+// ---- the pizzaz tiers (K/L/M) ----
+// The nature layer is weather-gated, so each shot pins the weather rather than
+// waiting for the set to deal it: a rain frame that only appears 40 s into the
+// forest floor is not something a harness can certify.
+await setParams({ filter: 0.5, echo: 0, crush: 0, space: 0 });
+await page.evaluate(() => window.jungle.visuals.setStyles(true));
+
+// K3 rain + K1 wind, in the band that owns them
+await page.evaluate(() => {
+  window.jungle.visuals.setAltitude(0.3, true);
+  window.jungle.visuals.setLateral(0);
+  window.jungle.visuals.setWeather({ mist: 0.6, rain: 1, wind: 0.9, storm: 0 });
+});
+await shot('weather-rain', 3500);
+
+// K7 lightning: hold a strike open — the real one lasts ~200 ms
+await page.evaluate(() => window.jungle.visuals.strike(1));
+await shot('weather-lightning', 1200);
+await page.evaluate(() => window.jungle.visuals.strike(null));
+
+// K2/K5/K6: the living layer, low in the world where all three overlap
+await page.evaluate(() => {
+  window.jungle.visuals.setWeather({ mist: 0.8, rain: 0, wind: 0.5, storm: 0 });
+  window.jungle.visuals.setAltitude(0.08, true);
+});
+await shot('nature-undergrowth', 3500);
+for (const biome of ['fireflies', 'mycelium', 'nearfield', 'pool', 'rain']) {
+  await page.evaluate((b) => window.jungle.visuals.isolate(b), biome);
+  await shot(`biome-${biome}`, 1800);
+}
+await page.evaluate(() => window.jungle.visuals.isolate(null));
+
+// L2 god rays live in the canopy band and nowhere else
+await page.evaluate(() => {
+  window.jungle.visuals.setAltitude(0.62, true);
+  window.jungle.bus.params.brightnessMix = 1;
+  window.jungle.bus.params.brightnessManual = 0.62;
+});
+await shot('style-godrays', 3000);
+
+// L4 halftone: the far end of the crush knob (the knee is at 0.55). Pin the
+// transport to a section that HAS content first — a halftone of an intro bar
+// is a picture of an empty screen with dots on it, which certifies nothing.
+await page.click('button:has-text("canopy")').catch(() => {});
+await page.click('button:has-text("groove")').catch(() => {});
+await setParams({ crush: 1, tensionMix: 1, tensionManual: 0.85 });
+await shot('style-halftone', 2500);
+await setParams({ crush: 0, tensionMix: 0 });
+
+// L3 ink: bound to breakdown sections, so ask the transport for one
+await page.evaluate(() => {
+  window.jungle.bus.params.brightnessMix = 0;
+  window.jungle.visuals.setAltitude(null);
+});
+await page.click('button:has-text("breakdown")').catch(() => {});
+await shot('style-ink', 4000); // the ink fades in over ~1 s by design
+// a style bound to a section is easy to believe is on while its uniform is 0
+console.log('  style state:', JSON.stringify(await page.evaluate(() => window.jungle.visuals.debugStyle())));
+
+// L5 kaleido + B3 fusion: the one climax, where everything is spent at once
+await page.click('button:has-text("canopy")').catch(() => {});
+await page.click('button:has-text("peak")').catch(() => {});
+await shot('style-fusion', 5000);
+await page.evaluate(() => {
+  window.jungle.visuals.setWeather(null);
+  window.jungle.visuals.setLateral(null);
+});
+
+// seam flavors (I2): seek each track's seam, capture whichever variants the
+// seed dealt — the landing flashes on the boundary, the dissolve never does
+await page.evaluate(() => window.jungle.visuals.setAltitude(null));
+const seen = new Set();
+for (const track of ['undergrowth', 'forest floor', 'canopy', 'zenith']) {
+  if (seen.size === 2) break;
+  await page.click(`button:has-text("${track}")`).catch(() => {});
+  await page.click('button:has-text("seam")').catch(() => {});
+  await page.waitForTimeout(1200);
+  const variant = await page.evaluate(() => window.jungle.bus.seamAt(window.jungle.bus.now()).variant);
+  if (!variant || seen.has(variant)) continue;
+  seen.add(variant);
+  // the seam window is 2 phrases ≈ 11 s; land the shot on the boundary itself
+  await shot(`seam-${variant}`, 10500);
+}
+if (seen.size < 2) console.log(`note: seed dealt only ${[...seen].join(', ')} seams this run`);
 
 console.log('errors:', errors.length ? '\n' + errors.join('\n') : 'none');
 await browser.close();

@@ -22,3 +22,9 @@ npm-debug.log*
 .env
 .env.local
 shots/
+
+# Field-recording download cache (rebuilt by tools/ingest_amb.py)
+tools/.amb_cache/
+
+# Agent scratch + git worktrees
+.claude/

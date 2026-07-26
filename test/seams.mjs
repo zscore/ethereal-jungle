@@ -9,7 +9,7 @@ import { controls, stack, Pattern, Fraction } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
 import {
   bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS, BAR_SECONDS,
-  sectionSpans, seamVariant, trackStartBar,
+  AMB_CHUNKS, sectionSpans, seamVariant, trackStartBar,
 } from '../src/bus.js';
 import { makeSetPattern } from '../src/music/generators.js';
 
@@ -138,6 +138,31 @@ console.log('biome ambience beds + hat dynamics (D16)');
   const frogs = phrasesWith('ambfrogs'), rustle = phrasesWith('ambrustle');
   check(frogs + rustle > 0, 'accent layers surface during the track');
   check(frogs < nPhrases || rustle < nPhrases, 'accent layers also rest (episodic walks)');
+}
+
+console.log('ambience loops walk their 32-bar recording a phrase at a time (D20)');
+{
+  const bedAt = (phrase) => onsets(phrase * PHRASE_BARS, (phrase + 1) * PHRASE_BARS)
+    .find((h) => h.value?.s === 'ambinsects')?.value;
+  // consecutive phrases play consecutive slices, so the file advances rather
+  // than repeating — this is what buys 32 bars of material off a 4-bar trigger
+  const slices = [...Array(AMB_CHUNKS)].map((_, i) => bedAt(i));
+  check(slices.every((v) => v), 'the bed fires on every one of the first 8 phrases');
+  check(slices.every((v, i) => Math.abs(v.begin - i / AMB_CHUNKS) < 1e-9),
+    'slice n starts where slice n-1 ended (contiguous audio)');
+  check(slices.every((v, i) => Math.abs(v.end - (i + 1) / AMB_CHUNKS) < 1e-9),
+    'each slice is exactly one phrase of the file');
+  // ...and then wraps, which is the loop point the ingest crossfade smooths
+  check(Math.abs(bedAt(AMB_CHUNKS).begin - 0) < 1e-9, 'phrase 8 wraps back to the top of the file');
+  // the chunk must key to the ABSOLUTE phrase index, or a biome whose start is
+  // not a multiple of 8 phrases would restart the recording mid-set
+  const b = trackStartBar(1) / PHRASE_BARS;
+  const inBed = onsets(b * PHRASE_BARS, (b + 1) * PHRASE_BARS).find((h) => h.value?.s === 'ambrain')?.value;
+  check(inBed && Math.abs(inBed.begin - (b % AMB_CHUNKS) / AMB_CHUNKS) < 1e-9,
+    'a new biome picks up the slice its absolute phrase index implies');
+  // envelopes stay short: superdough plays on for `release` past the event end,
+  // and the next slice is that same audio — a long tail would double it
+  check(slices.every((v) => v.release <= 0.05), 'release is short enough not to overlap the next slice');
 }
 
 console.log('the set loop seam (zenith → undergrowth)');
