@@ -15,7 +15,7 @@ import {
   getSuperdoughAudioController,
 } from '@strudel/webaudio';
 import { bus, CPS, BAR_SECONDS } from '../bus.js';
-import { applyPerform, applyRoll, filterNeutral } from '../perform.js';
+import { applyPerform, applyRoll } from '../perform.js';
 import { createMasterChain } from './masterchain.js';
 import { makeSetPattern } from './generators.js';
 
@@ -80,27 +80,11 @@ export async function initEngine() {
   };
   masterChain = createMasterChain(ctx, controller.output, nextBarTime);
 
-  // Perform followers (D17/D19): one 30 Hz tick drives everything that must
-  // respond to a hand rather than to a rebuild. The filter slews every orbit's
-  // djf AudioParam; the master chain pushes its own params. Both build their
-  // nodes lazily on the knob's first departure from rest, so an untouched rail
-  // leaves the graph superdough built exactly as it was.
-  let filterCur = null; // null until the djf worklets exist
-  setInterval(() => {
-    masterChain.update(bus.params);
-
-    const target = Math.min(1, Math.max(0, bus.params.filter ?? 0.5));
-    if (filterCur === target || (filterCur == null && filterNeutral(target))) return;
-    const now = ctx.currentTime;
-    for (const orbit of [1, 2, 3, 4]) {
-      const node = controller.getOrbit(orbit, [0, 1]).getDjf(filterCur ?? target, now);
-      const p = node.parameters.get('value');
-      p.cancelScheduledValues(now);
-      p.setValueAtTime(filterCur ?? target, now);
-      p.linearRampToValueAtTime(target, now + 0.06); // slew — no zipper noise
-    }
-    filterCur = target;
-  }, 33);
+  // The perform follower (D17/D19/D20): one 30 Hz tick drives everything that
+  // must respond to a hand rather than to a rebuild. The chain builds its nodes
+  // lazily on the first knob to leave rest, so an untouched rail leaves the
+  // graph superdough built exactly as it was.
+  setInterval(() => masterChain.update(bus.params), 33);
 
   // bus t=0 and scheduler cycle 0 are pinned to the same instant: the set
   // compiler keys content to absolute cycles, the bus keys curves to seconds,

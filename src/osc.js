@@ -23,7 +23,8 @@ const ALIASES = {
 };
 const WRITABLE = new Set([
   'tensionMix', 'tensionManual', 'brightnessMix', 'brightnessManual', 'wildness', 'coupling', 'seed',
-  ...PERFORM_KEYS, // the perform rail: filter/echo/crush/space (D17), eq*/gate/drive/roll (D19)
+  ...PERFORM_KEYS, // the perform rail: echo/crush/space (D17), eq bands/gate/
+                   // drive/roll (D19), lpf/hpf (D20)
 ]);
 
 /**

@@ -494,6 +494,48 @@ headless browser by stopping the transport and injecting known 90 Hz and
 the signal, the gater chops a steady tone to 8% and reopens on release, and
 drive returns the same RMS it was given.
 
+## D20 — Two filter dials, replacing D17's bipolar knob (2026-07-26)
+
+**Decision.** D17's single `filter` knob (0 = LP kill, 0.5 = bypass, 1 = HP
+kill, riding superdough's per-orbit `djf` worklet) is retired. In its place:
+`lpf` (1 = wide open, sweep down to close) and `hpf` (0 = wide open, sweep up
+to thin), each two cascaded biquads at 24 dB/oct with mild resonance on the
+first stage, living in the D19 master insert between the EQ and the drive.
+This is a reversal of D17's filter mechanism only — the echo/crush/space
+overlay it introduced is untouched, and the "a mixer gesture's timing is the
+hand's" principle is what motivated the change.
+
+**Why.** A bipolar knob cannot be swept in two directions at once, and one
+`djf` AudioParam per orbit physically cannot hold two cutoffs, so independent
+dials were not a skin over the old control — they required owning the filter.
+Which turned out to be the cheaper thing anyway: the D19 insert already
+existed, and the D17 filter was *already* a master filter in everything but
+name (it wrote the same value to all four orbits). Consequences that fall
+out of the move: the two compose into a bandpass, the 0.49–0.51 dead zone and
+its double-click-to-recentre affordance are gone (each dial's home is now an
+end of its own travel), and the cutoff law is ours — an exponential sweep in
+octaves rather than the worklet's `(v·11)⁴`, whose useful range crowded into
+the last third of the knob.
+
+**Cost, accepted.** Four more biquads on the master path, and the loss of
+per-orbit filtering, which nothing used. The insert stays lazy: at rest the
+dials are not in the signal path at all.
+
+**Migration.** A controller that learned the old `filter` key would otherwise
+write a param nobody reads — inert, and miserable to diagnose. `loadMap` in
+midi.js rewrites a persisted `filter` binding to `lpf` on load.
+
+**Verification.** `test/perform.mjs` pins the cutoff law (transparent at each
+home, closed at each far end, geometric-mean midpoint, monotonic, clamped,
+and a passband rather than silence when both sit at half travel); the OSC test
+asserts the retired `filter` address is now rejected rather than silently
+accepted. In a headless browser, with the transport stopped and 90 Hz and
+9 kHz tones injected at the head of the chain: `lpf` at half travel passes the
+low tone (0.190 of 0.194) and removes the high one (0.000 of 0.179), `hpf` at
+half does the exact mirror, both engaged leave a band that excludes both test
+tones, and returning both dials home is transparent to within 2%. The D19
+stages were re-measured through the reordered chain and still hold.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

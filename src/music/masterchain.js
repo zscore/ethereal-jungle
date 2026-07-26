@@ -5,10 +5,15 @@
  * individual events. This is the "master bus as an addressable target" the
  * roadmap has been carrying as an open item since D10.
  *
- *   destinationGain → low ▸ mid ▸ high ▸ saturate ▸ makeup ▸ gate → destination
+ *   destinationGain → low ▸ mid ▸ high ▸ hp ▸ hp ▸ lp ▸ lp
+ *                   ▸ saturate ▸ makeup ▸ gate → destination
+ *
+ * The filters sit after the EQ and before the drive, so sweeping them changes
+ * what the saturation has to chew on — which is what makes a filtered build
+ * sound like it is being pushed rather than merely dimmed.
  *
  * Renderer contact is deliberate and confined: engine.js owns the superdough
- * handles and hands them here, exactly as it does for the djf orbit nodes.
+ * handles and hands them here, as it does for the orbit nodes the kick ducks.
  *
  * Everything is lazy. Until a knob leaves its rest position the splice never
  * happens and the graph superdough built is untouched — no extra filters, no
@@ -17,7 +22,9 @@
 import { CPS } from '../bus.js';
 import {
   EQ_LOW_HZ, EQ_MID_HZ, EQ_MID_Q, EQ_HIGH_HZ, GATE_SMOOTH_HZ,
-  bandGainDb, gateRateHz, driveCurve, driveMakeup, masterNeutral,
+  FILTER_Q, FILTER_Q2, LPF_MAX_HZ, HPF_MIN_HZ,
+  bandGainDb, gateRateHz, lpfCutoff, hpfCutoff,
+  driveCurve, driveMakeup, masterNeutral,
 } from '../perform.js';
 
 const SLEW = 0.02; // setTargetAtTime constant — fast enough to feel like a hand
@@ -37,6 +44,11 @@ export function createMasterChain(ctx, sdOutput, nextBarTime) {
     const low = new BiquadFilterNode(ctx, { type: 'lowshelf', frequency: EQ_LOW_HZ });
     const mid = new BiquadFilterNode(ctx, { type: 'peaking', frequency: EQ_MID_HZ, Q: EQ_MID_Q });
     const high = new BiquadFilterNode(ctx, { type: 'highshelf', frequency: EQ_HIGH_HZ });
+    // Two cascaded stages each: 24 dB/oct, resonance on the first only.
+    const hp1 = new BiquadFilterNode(ctx, { type: 'highpass', frequency: HPF_MIN_HZ, Q: FILTER_Q });
+    const hp2 = new BiquadFilterNode(ctx, { type: 'highpass', frequency: HPF_MIN_HZ, Q: FILTER_Q2 });
+    const lp1 = new BiquadFilterNode(ctx, { type: 'lowpass', frequency: LPF_MAX_HZ, Q: FILTER_Q });
+    const lp2 = new BiquadFilterNode(ctx, { type: 'lowpass', frequency: LPF_MAX_HZ, Q: FILTER_Q2 });
     const saturate = new WaveShaperNode(ctx, { oversample: '2x' }); // null curve = passthrough
     const makeup = new GainNode(ctx, { gain: 1 });
     // The gater's base gain stays 1 and the LFO sums into it, so the mix is
@@ -48,11 +60,15 @@ export function createMasterChain(ctx, sdOutput, nextBarTime) {
     src.connect(low);
     low.connect(mid);
     mid.connect(high);
-    high.connect(saturate);
+    high.connect(hp1);
+    hp1.connect(hp2);
+    hp2.connect(lp1);
+    lp1.connect(lp2);
+    lp2.connect(saturate);
     saturate.connect(makeup);
     makeup.connect(gate);
     gate.connect(ctx.destination);
-    nodes = { low, mid, high, saturate, makeup, gate };
+    nodes = { low, mid, high, hp1, hp2, lp1, lp2, saturate, makeup, gate };
   }
 
   function startLfo() {
@@ -82,6 +98,15 @@ export function createMasterChain(ctx, sdOutput, nextBarTime) {
       nodes.low.gain.setTargetAtTime(bandGainDb(p.eqLow), t, SLEW);
       nodes.mid.gain.setTargetAtTime(bandGainDb(p.eqMid), t, SLEW);
       nodes.high.gain.setTargetAtTime(bandGainDb(p.eqHigh), t, SLEW);
+
+      // The dials sweep continuously — this is the one place where a slew that
+      // is too slow reads as lag in the hand, and too fast reads as zipper.
+      const lp = lpfCutoff(p.lpf);
+      const hp = hpfCutoff(p.hpf);
+      nodes.lp1.frequency.setTargetAtTime(lp, t, SLEW);
+      nodes.lp2.frequency.setTargetAtTime(lp, t, SLEW);
+      nodes.hp1.frequency.setTargetAtTime(hp, t, SLEW);
+      nodes.hp2.frequency.setTargetAtTime(hp, t, SLEW);
 
       const drive = Math.min(1, Math.max(0, p.drive ?? 0));
       if (drive !== curDrive) {

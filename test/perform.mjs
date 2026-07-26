@@ -3,9 +3,10 @@
  * Run: node test/perform.mjs  (included in `npm test`)
  */
 import {
-  applyPerform, filterNeutral, PERFORM_DEFAULTS, PERFORM_KEYS, PERFORM_LIVE_KEYS,
+  applyPerform, PERFORM_DEFAULTS, PERFORM_KEYS, PERFORM_LIVE_KEYS,
   bandGainDb, gateRateHz, driveCurve, driveMakeup, driveNetGain, masterNeutral,
   rollDivision, rollGain, EQ_RANGE_DB, EQ_KILL_DB, GATE_PER_BAR,
+  lpfCutoff, hpfCutoff, LPF_MIN_HZ, LPF_MAX_HZ, HPF_MIN_HZ, HPF_MAX_HZ,
 } from '../src/perform.js';
 import { bus, CPS } from '../src/bus.js';
 
@@ -20,7 +21,7 @@ console.log('idle path is identity');
   const v = { s: 'bd', gain: 0.9 };
   check(applyPerform(v, PERFORM_DEFAULTS) === v, 'defaults return the same object');
   check(applyPerform(v, { ...PERFORM_DEFAULTS, echo: 0.005 }) === v, 'sub-epsilon knob is still idle');
-  check(applyPerform(v, { ...PERFORM_DEFAULTS, filter: 0 }) === v, 'filter alone never touches events (node-level FX)');
+  check(applyPerform(v, { ...PERFORM_DEFAULTS, lpf: 0, hpf: 1 }) === v, 'filters never touch events (they are master nodes)');
 }
 
 console.log('echo');
@@ -57,10 +58,25 @@ console.log('purity');
   check(JSON.stringify(original) === before, 'the input object is never mutated');
 }
 
-console.log('filter neutrality band');
+console.log('the two filter dials (D20)');
 {
-  check(filterNeutral(0.5) && filterNeutral(64 / 127), 'center (and MIDI center) are neutral');
-  check(!filterNeutral(0.4) && !filterNeutral(0.6), 'off-center is live');
+  check(lpfCutoff(1) === LPF_MAX_HZ && hpfCutoff(0) === HPF_MIN_HZ, 'each dial is transparent at its home');
+  check(lpfCutoff(0) === LPF_MIN_HZ && hpfCutoff(1) === HPF_MAX_HZ, 'each dial closes fully at its far end');
+  check(lpfCutoff(undefined) === LPF_MAX_HZ && hpfCutoff(undefined) === HPF_MIN_HZ,
+    'a missing dial reads as open — never as a filter nobody asked for');
+  // exponential, so the midpoint is the geometric mean, not the arithmetic one
+  check(Math.abs(lpfCutoff(0.5) - Math.sqrt(LPF_MIN_HZ * LPF_MAX_HZ)) < 1e-6, 'lpf sweeps in octaves, not hertz');
+  check(Math.abs(hpfCutoff(0.5) - Math.sqrt(HPF_MIN_HZ * HPF_MAX_HZ)) < 1e-6, 'hpf sweeps in octaves, not hertz');
+  check(lpfCutoff(0.5) > 700 && lpfCutoff(0.5) < 800, 'the lpf midpoint lands musically (~775 Hz)');
+  let mono = true;
+  for (let x = 0; x < 1; x += 0.05) {
+    if (lpfCutoff(x) > lpfCutoff(x + 0.05)) mono = false;
+    if (hpfCutoff(x) > hpfCutoff(x + 0.05)) mono = false;
+  }
+  check(mono, 'both dials are monotonic');
+  check(lpfCutoff(5) === LPF_MAX_HZ && hpfCutoff(-3) === HPF_MIN_HZ, 'out-of-range dials clamp');
+  // the two are independent: closing both leaves a band, not silence
+  check(hpfCutoff(0.5) < lpfCutoff(0.5), 'at half-travel the pair forms a passband, not a closed door');
 }
 
 console.log('master insert: eq (D19)');
@@ -98,7 +114,9 @@ console.log('master insert: rest detection (D19)');
   for (const [k, v] of [['eqLow', 0.5], ['eqMid', 0], ['eqHigh', 0.9], ['gate', 0.2], ['drive', 0.5]]) {
     check(!masterNeutral({ ...PERFORM_DEFAULTS, [k]: v }), `${k} off rest wakes the chain`);
   }
-  check(masterNeutral({ ...PERFORM_DEFAULTS, filter: 0, echo: 1 }), 'D17 knobs do not wake the master chain');
+  check(!masterNeutral({ ...PERFORM_DEFAULTS, lpf: 0.5 }), 'lpf off rest wakes the chain');
+  check(!masterNeutral({ ...PERFORM_DEFAULTS, hpf: 0.5 }), 'hpf off rest wakes the chain');
+  check(masterNeutral({ ...PERFORM_DEFAULTS, echo: 1, crush: 1 }), 'event-overlay knobs do not wake the master chain');
 }
 
 console.log('roll division (D19)');

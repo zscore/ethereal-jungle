@@ -11,12 +11,10 @@
  * into the generators (this file is pure — the plumbing lives in engine.js
  * and music/masterchain.js, which is what keeps all of it testable):
  *
- *   filter               — superdough's per-orbit `djf` worklet AudioParam,
- *                          slewed toward the knob by engine.js (D17).
  *   echo/crush/space     — overlay on each hap's value at the output tap as
  *                          it is scheduled (~latency window, no rebuild; D17).
- *   eq bands/gate/drive  — a master insert spliced between superdough's
- *                          destination gain and the speakers (D19).
+ *   lpf/hpf, eq bands,   — a master insert spliced between superdough's
+ *   gate, drive            destination gain and the speakers (D19, D20).
  *   roll                 — pattern surgery at rebuild: the ONE perform knob
  *                          that is launch-quantized, because a stutter has to
  *                          land on the grid to be a stutter at all (D19).
@@ -24,7 +22,8 @@
 
 export const PERFORM_DEFAULTS = {
   // live rail — read continuously, never rebuilt (D17)
-  filter: 0.5, // bipolar DJ filter: 0 = LP kill, 0.5 = bypass, 1 = HP kill
+  lpf: 1,      // sweep DOWN to take the top off; 1 = wide open (D20)
+  hpf: 0,      // sweep UP to take the bottom out; 0 = wide open (D20)
   echo: 0,     // dub echo send, dotted-eighth, feedback rises with the knob
   crush: 0,    // bit crush: 12 bits (subtle) down to 2 (destroyed)
   space: 0,    // reverb wash: pushes every stream's room send toward 0.9
@@ -49,7 +48,31 @@ export const PERFORM_LIVE_KEYS = new Set([...PERFORM_KEYS].filter((k) => k !== '
 
 const EPS = 0.01; // below this a knob is at rest — the rail costs nothing
 
-// ---------- master insert (D19) ----------
+// ---------- master insert (D19, D20) ----------
+
+// The two filter dials (D20). Independent, so they compose: sweep `lpf` down
+// for the classic "underwater" close, sweep `hpf` up to thin a track out for a
+// transition, or bring both toward each other for a telephone/bandpass. Each
+// is two cascaded biquads (24 dB/oct — a 12 dB slope leaves too much behind to
+// read as a kill), with mild resonance on the first stage only.
+export const LPF_MIN_HZ = 30;
+export const LPF_MAX_HZ = 20000;  // at the top the stage is transparent
+export const HPF_MIN_HZ = 20;     // at the bottom the stage is transparent
+export const HPF_MAX_HZ = 10000;
+export const FILTER_Q = 1.2;      // a little emphasis at the corner, no whistle
+export const FILTER_Q2 = 0.707;   // second stage stays flat
+
+const expMap = (x, lo, hi) => lo * Math.pow(hi / lo, Math.min(1, Math.max(0, x)));
+
+/** Lowpass corner for a 0..1 dial — 1 is wide open, 0 closes to a rumble. */
+export function lpfCutoff(x) {
+  return expMap(x ?? 1, LPF_MIN_HZ, LPF_MAX_HZ);
+}
+
+/** Highpass corner for a 0..1 dial — 0 is wide open, 1 leaves only air. */
+export function hpfCutoff(x) {
+  return expMap(x ?? 0, HPF_MIN_HZ, HPF_MAX_HZ);
+}
 
 // Crossover-free 3-band EQ: a shelf/peak/shelf series, flat by construction
 // when all three sit at unity. Frequencies are the DJ-mixer convention.
@@ -125,7 +148,8 @@ export function driveNetGain(drive) {
 /** True when every master-insert knob is at rest (so the splice can be skipped). */
 export function masterNeutral(p) {
   return (p.eqLow ?? 1) >= 1 - EPS && (p.eqMid ?? 1) >= 1 - EPS && (p.eqHigh ?? 1) >= 1 - EPS
-    && (p.gate ?? 0) <= EPS && (p.drive ?? 0) <= EPS;
+    && (p.gate ?? 0) <= EPS && (p.drive ?? 0) <= EPS
+    && (p.lpf ?? 1) >= 1 - EPS && (p.hpf ?? 0) <= EPS;
 }
 
 // ---------- roll (D19) ----------
@@ -161,18 +185,13 @@ export function applyRoll(pattern, roll, stack) {
   );
 }
 
-/** True when the knob sits in the djf worklet's own bypass band (0.49–0.51). */
-export function filterNeutral(x) {
-  return Math.abs(x - 0.5) < EPS;
-}
-
 /**
  * Overlay the event-scoped perform FX onto one hap value. Pure: returns the
  * SAME object when the rail is idle (the common case allocates nothing), a
  * shallow-augmented copy when any knob is live. Every mapping composes with
  * whatever the generators authored via max/min — the rail can only push an
- * effect further, never cancel the composition. `filter` is deliberately
- * absent here: it lives on the orbit nodes (engine.js), not on events.
+ * effect further, never cancel the composition. The filters are deliberately
+ * absent here: they are master-insert nodes (D20), not event params.
  */
 export function applyPerform(value, perf) {
   const echo = (perf.echo ?? 0) > EPS ? perf.echo : 0;

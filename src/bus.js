@@ -250,8 +250,8 @@ export const bus = {
     wildness: 0.35,      // base w; effective w also breathes with T
     coupling: 0.6,       // sidechain depth — how much the two worlds touch (§3.3)
     seed: 1,
-    // the perform rail (D17): DJ color FX applied at the renderer seam,
-    // never composition inputs — filter, echo, crush, space (src/perform.js)
+    // the perform rail (D17/D19/D20): DJ color FX applied at the renderer
+    // seam, never composition inputs (src/perform.js)
     ...PERFORM_DEFAULTS,
   },
 
