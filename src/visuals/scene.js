@@ -15,11 +15,25 @@
  * them on the shared audio clock. T(t) is sampled 2 s ahead and brightness
  * 4 s ahead, so the light rises — and the camera begins its travel — before
  * anything is audible. Track transitions are camera traversals, free.
+ *
+ * Post chain (scene_plan roadmap 2 + 5): ground and figure render as separate
+ * layer passes — bloom belongs to the ground only and the kick ducks it, the
+ * figure composites over it clinically sharp — then the artifact operators
+ * (feedback smear, chroma displacement, grain/scanline) run over the final
+ * frame with amount = wildness. If the post chain can't build (odd backend),
+ * we fall back to a direct render.
  */
 import * as THREE from 'three';
-import { WebGPURenderer } from 'three/webgpu';
+import { WebGPURenderer, PostProcessing } from 'three/webgpu';
+import { pass, uniform } from 'three/tsl';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { afterImage } from 'three/addons/tsl/display/AfterImageNode.js';
+import { rgbShift } from 'three/addons/tsl/display/RGBShiftNode.js';
+import { film } from 'three/addons/tsl/display/FilmNode.js';
 import { bus, makeRng } from '../bus.js';
 import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
+
+const FIGURE_LAYER = 1; // ground lives on 0; the streams never share a pass
 
 export async function initScene(canvas) {
   const renderer = new WebGPURenderer({ canvas, antialias: true });
@@ -30,6 +44,7 @@ export async function initScene(canvas) {
   scene.fog = new THREE.FogExp2(0x04060a, 0.055);
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 300);
   camera.position.set(0, 2, 12);
+  camera.layers.enable(FIGURE_LAYER); // the fallback direct render sees both streams
 
   // ---- GROUND: the one-world jungle (visual seed independent of the music's) ----
   const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7));
@@ -48,10 +63,38 @@ export async function initScene(canvas) {
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
     );
     m.visible = false;
+    m.layers.set(FIGURE_LAYER); // figure stream: its own pass, no bloom, no softness
     scene.add(m);
     figures.push({ mesh: m, life: 0 });
   }
   let poolIdx = 0;
+
+  // ---- post chain: per-stream passes + artifact operators (roadmap 2 + 5) ----
+  // Two cameras onto one scene, split by layer; synced to the main camera each
+  // frame. Bloom applies to the ground pass only and its strength is ducked by
+  // the kick — the sidechain rendered a third way. The composite then passes
+  // through the artifact operators, all silent at low wildness.
+  const groundCam = camera.clone();
+  const figureCam = camera.clone();
+  let post = null;
+  const fx = {};
+  try {
+    const groundPass = pass(scene, groundCam);
+    const figurePass = pass(scene, figureCam);
+    fx.bloom = bloom(groundPass, 0.6, 0.5, 0);
+    fx.smear = uniform(0);   // afterimage damp: feedback smear, high-w stasis only
+    fx.grain = uniform(0.1); // film intensity
+    let frame_ = groundPass.add(fx.bloom).add(figurePass);
+    frame_ = afterImage(frame_, fx.smear);
+    frame_ = rgbShift(frame_, 0);
+    fx.shift = frame_; // .amount uniform lives on the node
+    frame_ = film(frame_, fx.grain);
+    post = new PostProcessing(renderer);
+    post.outputNode = frame_;
+  } catch (err) {
+    console.warn('[visuals] post chain unavailable, direct render:', err.message);
+    post = null;
+  }
 
   // ---- event queue: fire haps on the audio clock (they arrive early) ----
   const pending = [];
@@ -136,7 +179,19 @@ export async function initScene(canvas) {
       f.mesh.rotation.y += dt * 4;
     }
 
-    renderer.render(scene, camera);
+    if (post) {
+      // sync the per-stream cameras, then split them by layer
+      groundCam.copy(camera); groundCam.layers.set(0);
+      figureCam.copy(camera); figureCam.layers.set(FIGURE_LAYER);
+      const w = bus.wildnessAt(t);
+      fx.bloom.strength.value = (0.4 + 0.5 * Tf) * (1 - duck * 0.6); // ducked bloom, lit ahead of the sound
+      fx.smear.value = Math.max(0, w - 0.55) * 1.8;                  // smear exists only in high-w stasis (§5)
+      fx.shift.amount.value = w * w * 0.004;
+      fx.grain.value = 0.05 + 0.3 * w;
+      post.render();
+    } else {
+      renderer.render(scene, camera);
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

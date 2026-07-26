@@ -101,23 +101,23 @@ A biome is ~40–80 lines in `src/visuals/biomes.js`. Checklist:
 
 Ordered; each step is independently shippable.
 
-1. **Per-point shaders / TSL compute** for roots and canopy: the roots' local
-   rule should be a real Gray–Scott-flavored pulse per point (the `phase`
-   attribute is already allocated), and the canopy ether should move by curl
-   noise instead of whole-cloud rotation. This is the "move the ether to TSL
-   compute particles" item from the README.
-2. **Bloom + per-stream post-processing** (§6 checklist item 4): ducked bloom
-   on the ground layer only; the figure stays clinically sharp. Requires
-   splitting ground/figure into render layers.
+1. **Per-point shaders / TSL compute** for roots and canopy: ✅ *roots half
+   done (D14)* — the roots pulse per point in the shader (phase-gradient
+   traveling waves via `PointsNodeMaterial.opacityNode`). Still open: the
+   canopy ether moving by curl noise instead of whole-cloud rotation ("move
+   the ether to TSL compute particles").
+2. **Bloom + per-stream post-processing** (§6 checklist item 4): ✅ *done
+   (D14)* — ground and figure are separate layer passes; bloom applies to the
+   ground only and the kick ducks its strength; the figure composites sharp.
 3. **Blooms on anchors** for the floor biome: growth's one legal relationship
    to rhythm — events on the *surface* (flowers on downbeats, at most).
 4. **The corpus shrine** in the undergrowth: a small screen-object chopping
    CC0 footage with the same σ-permutation machinery as the break (the
    formalism transfers verbatim, §3.5). Figure-affording; obeys the same
    anchor pricing as the flash cubes.
-5. **Artifact operators** wired to `w`: feedback smear, pixel displacement,
-   scanline/CRT pass over the final frame, amount = wildness. The one regime
-   where operators may touch the ground stream is high-`w` stasis (§5).
+5. **Artifact operators** wired to `w`: ✅ *done (D14)* — feedback smear
+   (afterimage, high-`w` only), chroma displacement (rgbShift), grain/scanline
+   (film) over the final composited frame, amounts driven by wildness.
 6. **The recurring glyph** (§5, repetition legitimizes): one silhouette that
    appears at each track's climax, transformed — the visual sibling of the
    set's single melodic cell (already in the music: `MOTIF` in generators.js).

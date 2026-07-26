@@ -19,6 +19,8 @@
  * never audio.
  */
 import * as THREE from 'three';
+import { PointsNodeMaterial } from 'three/webgpu';
+import { attribute, uniform } from 'three/tsl';
 
 export const WORLD_TOP = 62;
 
@@ -55,19 +57,29 @@ function makeRoots() {
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({
-    size: 0.22, transparent: true, opacity: 0.5,
-    blending: THREE.AdditiveBlending, depthWrite: false, color: BAND_COLORS[0].clone().multiplyScalar(2.2),
+  geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1));
+  // per-point pulse in the shader (scene_plan roadmap 1): each point breathes
+  // by its own phase, and the phase field is a spatial gradient — so the
+  // lattice carries slow traveling waves, Gray–Scott in spirit. All uniforms
+  // are bus signals; the wave never articulates rhythm (ground law).
+  const uT = uniform(0);      // bus time (not wall time — the pulse is V(S))
+  const uAmp = uniform(0.2);  // pulse depth, breathes with tension
+  const uBase = uniform(0.35);
+  const mat = new PointsNodeMaterial({
+    size: 0.22, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+    color: BAND_COLORS[0].clone().multiplyScalar(2.2),
   });
+  mat.opacityNode = uBase.add(uT.add(attribute('phase')).sin().mul(uAmp)).clamp(0, 1);
   const group = new THREE.Points(geo, mat);
   return {
     group,
     update(dt, env) {
-      // the whole lattice breathes as slow traveling waves — alive, going nowhere
-      mat.opacity = 0.3 + 0.25 * Math.sin(env.t * 0.6) * env.drift + 0.15 * env.T;
+      uT.value = env.t * 0.9;
+      uAmp.value = 0.12 + 0.22 * env.T;
+      uBase.value = 0.28 + 0.15 * env.T + 0.1 * env.drift;
       group.rotation.y += dt * 0.008;
       group.position.y = Math.sin(env.t * 0.11) * 0.6;
-      void phase; // per-point pulse belongs to the shader upgrade (scene_plan §roadmap)
     },
   };
 }
