@@ -5,12 +5,12 @@
  *   music   = M(S, seed_m)
  *   visuals = V(S, seed_v)      never V(audio)
  *
- * S = { T(t), drift(t), wildness, modeBrightness, events... }
+ * S = { T(t), brightness(t), drift(t), wildness, seam info, events... }
  *
- * T(t) is a *function of time* — so the visualizer can sample the FUTURE
- * (clairvoyance: it may begin its ascent before the drop is audible).
- * Discrete events are published with their scheduled audio-clock time,
- * slightly ahead of when they sound (the scheduler's look-ahead window).
+ * T(t) and brightness(t) are *functions of time* — so the visualizer can
+ * sample the FUTURE (clairvoyance: it may begin its ascent before the drop
+ * is audible). Discrete events are published with their scheduled
+ * audio-clock time, slightly ahead of when they sound.
  */
 
 // ---------- seedable RNG (mulberry32) ----------
@@ -55,30 +55,88 @@ export function makeDrift(seed, octaves = 5) {
   };
 }
 
-// ---------- the authored tension curve ----------
-// Default: one arc over SET_SECONDS with its climax at the golden-ratio point,
-// looping. Replace with an authored array of breakpoints when composing a real set.
-export const SET_SECONDS = 192;
-const CLIMAX = 0.618;
+// ---------- the authored set timeline ----------
+// A set is a sequence of tracks; each track has authored tension breakpoints
+// (music doc §5) and a brightness walk (§2.2). The SAME breakpoint shape is
+// reused at track scale, rescaled per track into [floor, peak] — fractal
+// self-similarity (§5): one curve, sampled at several scales. The set's own
+// climax is the track whose peak is 1.0, placed near the set's golden ratio.
+//
+// Each track: { name, seconds, shape: [[phase, v]...] normalized 0..1,
+//               floor, peak, brightness: [start, end] }
+// The brightness walk doubles as the visual altitude (visual doc §4.4):
+// phrygian roots → lydian sky. One axis, two media.
 
-function defaultTension(phase) {
-  // phase in [0,1). Rise to 1 at CLIMAX (slow start, accelerating), then release.
-  if (phase < CLIMAX) {
-    const p = phase / CLIMAX;
-    return Math.pow(p, 1.6);
+const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax, release
+  [0, 0.1], [0.2, 0.4], [0.35, 0.3], [0.618, 1.0], [0.75, 0.55], [1, 0.2],
+];
+
+export const TRACKS = [
+  { name: 'undergrowth', seconds: 96, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30] },
+  { name: 'forest floor', seconds: 96, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55] },
+  { name: 'canopy',      seconds: 96, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80] }, // set climax (~0.62 of set)
+  { name: 'zenith',      seconds: 96, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00] },
+];
+
+export const SEAM_SECONDS = 12; // seam window at the end of every track (§6.3)
+export const SET_SECONDS = TRACKS.reduce((s, tr) => s + tr.seconds, 0);
+
+function lerp(a, b, x) { return a + (b - a) * x; }
+
+/** Piecewise-linear sample of a [[phase, v]...] breakpoint list. */
+export function sampleBreakpoints(points, phase) {
+  if (phase <= points[0][0]) return points[0][1];
+  for (let i = 1; i < points.length; i++) {
+    if (phase <= points[i][0]) {
+      const [p0, v0] = points[i - 1];
+      const [p1, v1] = points[i];
+      return lerp(v0, v1, (phase - p0) / (p1 - p0 || 1));
+    }
   }
-  const p = (phase - CLIMAX) / (1 - CLIMAX);
-  return 1 - Math.pow(p, 0.8) * 0.85; // release, but land above zero (the set continues)
+  return points[points.length - 1][1];
+}
+
+/** Which track is playing at set-time t (looped), with local phase. */
+export function trackAt(t) {
+  const tSet = ((t % SET_SECONDS) + SET_SECONDS) % SET_SECONDS;
+  let acc = 0;
+  for (let i = 0; i < TRACKS.length; i++) {
+    const tr = TRACKS[i];
+    if (tSet < acc + tr.seconds) {
+      return { track: tr, index: i, tLocal: tSet - acc, phase: (tSet - acc) / tr.seconds, startsAt: t - (tSet - acc) };
+    }
+    acc += tr.seconds;
+  }
+  return { track: TRACKS[0], index: 0, tLocal: 0, phase: 0, startsAt: t };
+}
+
+/**
+ * Seam info at set-time t (§6.3). Active in the last SEAM_SECONDS of a track.
+ * progress ∈ [0,1) across the window; `to` is the incoming track.
+ */
+export function seamAt(t) {
+  const { track, index, tLocal } = trackAt(t);
+  const remaining = track.seconds - tLocal;
+  if (remaining > SEAM_SECONDS) return { active: false, progress: 0, from: track, to: track };
+  return {
+    active: true,
+    progress: 1 - remaining / SEAM_SECONDS,
+    from: track,
+    to: TRACKS[(index + 1) % TRACKS.length],
+    boundaryIn: remaining, // seconds until the downbeat of the next track
+  };
 }
 
 // ---------- the bus ----------
 export const bus = {
-  // knobs (UI / MIDI-writable). tensionMix blends authored curve vs manual knob.
+  // knobs (UI / MIDI-writable). *Mix knobs blend authored curve vs manual knob.
   params: {
-    tensionMix: 0,      // 0 = authored curve, 1 = manual knob
+    tensionMix: 0,       // 0 = authored timeline, 1 = manual knob
     tensionManual: 0.4,
-    wildness: 0.35,     // base w; effective w also breathes with T
-    modeBrightness: 0.7, // 0 = locrian … 1 = lydian
+    brightnessMix: 0,    // 0 = authored brightness walk, 1 = manual knob
+    brightnessManual: 0.7,
+    wildness: 0.35,      // base w; effective w also breathes with T
+    coupling: 0.6,       // sidechain depth — how much the two worlds touch (§3.3)
     seed: 1,
   },
 
@@ -94,12 +152,34 @@ export const bus = {
 
   now() { return this._now() - this._t0; },
 
-  /** Tension at set-time t (seconds). Sample t > now() for foreshadowing. */
+  /** Tension at set-time t. Sample t > now() for foreshadowing. */
   tensionAt(t) {
-    const phase = ((t / SET_SECONDS) % 1 + 1) % 1;
-    const authored = defaultTension(phase);
+    const { track, phase } = trackAt(t);
+    let T = lerp(track.floor, track.peak, sampleBreakpoints(SHAPE, phase));
+    const seam = seamAt(t);
+    if (seam.active) T = Math.max(T, lerp(T, 0.95, seam.progress)); // tension_spike: the countdown
     const p = this.params;
-    return authored * (1 - p.tensionMix) + p.tensionManual * p.tensionMix;
+    return T * (1 - p.tensionMix) + p.tensionManual * p.tensionMix;
+  },
+
+  /**
+   * Mode brightness at set-time t — the harmonic weather AND the camera's
+   * altitude (visual doc §4.4). During a seam the incoming track's opening
+   * brightness leaks in early: the new ether infiltrates before the boundary
+   * (§6.1), and BOTH media inherit the foreshadowing from this one function.
+   */
+  brightnessAt(t) {
+    const { track, phase } = trackAt(t);
+    let b = lerp(track.brightness[0], track.brightness[1], phase);
+    const seam = seamAt(t);
+    // smoothstep to FULL blend at the boundary: the walk stays continuous even
+    // across the set loop, so the camera's traversal never teleports
+    if (seam.active) {
+      const s = seam.progress * seam.progress * (3 - 2 * seam.progress);
+      b = lerp(b, seam.to.brightness[0], s);
+    }
+    const p = this.params;
+    return b * (1 - p.brightnessMix) + p.brightnessManual * p.brightnessMix;
   },
 
   /** Effective wildness: the knob, breathing with the tension curve. */
@@ -107,6 +187,9 @@ export const bus = {
     const w = this.params.wildness * (0.5 + 0.5 * this.tensionAt(t));
     return Math.min(1, w);
   },
+
+  trackAt(t) { return trackAt(t); },
+  seamAt(t) { return seamAt(t); },
 
   // ---------- event stream (published by the music scheduler, ahead of time) ----------
   _subs: new Set(),

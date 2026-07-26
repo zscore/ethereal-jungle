@@ -12,6 +12,7 @@ import {
   webaudioOutput,
   registerSynthSounds,
   samples,
+  getSuperdoughAudioController,
 } from '@strudel/webaudio';
 import { bus } from '../bus.js';
 import { buildArrangement } from './generators.js';
@@ -63,12 +64,18 @@ export async function initEngine() {
   }));
   scheduler.setCps(CPS);
 
+  // Pre-create the orbits (superdough makes them lazily on first use) so the
+  // kick's duck can target the pad/lead orbits before they've ever sounded.
+  const controller = getSuperdoughAudioController();
+  for (const orbit of [1, 2, 3, 4]) controller.getOrbit(orbit, [0, 1]); // stereo channel pair
+
   bus.start(() => ctx.currentTime);
   rebuild();
 
   // The permutation is seeded & static per build; re-permute each phrase so the
-  // break keeps developing (§1.1: theme and variations). 8 bars ≈ one phrase.
-  const phraseSeconds = (8 / CPS) | 0;
+  // break keeps developing (§1.1: theme and variations). 4 bars keeps seam
+  // phases responsive (the 12 s seam window spans ~2 rebuilds at 168 BPM).
+  const phraseSeconds = 4 / CPS;
   rebuildTimer = setInterval(rebuild, phraseSeconds * 1000);
 
   scheduler.start();
@@ -80,10 +87,14 @@ export function rebuild() {
   if (!scheduler) return;
   const t = bus.now();
   const tension = bus.tensionAt(t);
-  const p = { ...bus.params, seed: bus.params.seed + Math.floor(t / 16) }; // phrase-varying seed
-  const pattern = buildArrangement({ ...controls, stack }, p, tension);
+  const brightness = bus.brightnessAt(t);
+  const seam = bus.seamAt(t);
+  const { index } = bus.trackAt(t);
+  // seed varies per phrase AND per track, so each track is a different telling
+  const p = { ...bus.params, seed: bus.params.seed + Math.floor(t / 16) + index * 7919 };
+  const pattern = buildArrangement({ ...controls, stack }, p, tension, brightness, seam);
   scheduler.setPattern(pattern, false);
-  bus.publish({ type: 'rebuild', tension, when: getAudioContext().currentTime });
+  bus.publish({ type: 'rebuild', tension, brightness, seam: seam.active, when: getAudioContext().currentTime });
 }
 
 export function toggle() {

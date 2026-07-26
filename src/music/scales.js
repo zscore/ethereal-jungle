@@ -43,3 +43,8 @@ export function padVoicing(mode) {
 export function bassNotes(mode) {
   return [1, 2, 3, 5, 6].map((deg) => degreeToMidi(deg, mode, -1));
 }
+
+/** Lead pitch set: one octave of the mode, registered high (§2.3: ether ≥ octave 4). */
+export function leadNotes(mode) {
+  return [1, 2, 3, 4, 5, 6, 7].map((deg) => degreeToMidi(deg, mode, 2));
+}

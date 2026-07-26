@@ -1,24 +1,25 @@
 /**
- * scene.js — visualizer stub. Two streams, bimodally clustered (visual doc §2.1):
+ * scene.js — the visualizer. Two streams, bimodally clustered (visual doc §2.1):
  *
- *   GROUND — a vast slow particle ether + fog. Soft, far, continuous.
- *            Palette temperature & light altitude follow mode brightness;
- *            fog density follows (inverse) tension; drift(t) sways the camera.
+ *   GROUND — the one-world jungle (biomes.js): four family-biomes stacked in
+ *            altitude, soft, slow, continuous. The camera's height IS the mode
+ *            brightness — the set's harmonic story rendered as a journey
+ *            upward or downward through the jungle (§4.4).
  *   FIGURE — small hard-edged flashes on drum events. Sharp, near, discrete.
  *            Spent ONLY on anchor-priced positions (synch-point economy §2.2):
- *            here, kicks and snares — the break's interior chaos goes unmarked.
+ *            kicks and snares — the break's interior chaos goes unmarked.
  *
- * The sidechain rendered twice (§2.1): kicks duck the ether's bloom/exposure.
+ * The sidechain rendered twice (§2.1): kicks duck the ether AND shove the
+ * camera — one coupling constant, both media, same as the audio-side duck.
  * Clairvoyance: events arrive on the bus BEFORE they sound; we queue and fire
- * them on the shared audio clock. T(t) is sampled 2 s into the future to let
- * the light rise before the climax is audible.
+ * them on the shared audio clock. T(t) is sampled 2 s ahead and brightness
+ * 4 s ahead, so the light rises — and the camera begins its travel — before
+ * anything is audible. Track transitions are camera traversals, free.
  */
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
-import { bus } from '../bus.js';
-
-const COLD = new THREE.Color('#20315e'); // dark modes: deep blue-violet
-const WARM = new THREE.Color('#ffd9a0'); // lydian: high golden light
+import { bus, makeRng } from '../bus.js';
+import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
 
 export async function initScene(canvas) {
   const renderer = new WebGPURenderer({ canvas, antialias: true });
@@ -27,25 +28,11 @@ export async function initScene(canvas) {
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x04060a, 0.055);
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
-  camera.position.set(0, 2, 10);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 300);
+  camera.position.set(0, 2, 12);
 
-  // ---- GROUND stream: the ether ----
-  const N = 4000;
-  const pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    pos[i * 3 + 0] = (Math.random() - 0.5) * 80;
-    pos[i * 3 + 1] = Math.random() * 30;         // register → elevation
-    pos[i * 3 + 2] = (Math.random() - 0.5) * 80;
-  }
-  const etherGeo = new THREE.BufferGeometry();
-  etherGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const etherMat = new THREE.PointsMaterial({
-    size: 0.12, transparent: true, opacity: 0.55,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  });
-  const ether = new THREE.Points(etherGeo, etherMat);
-  scene.add(ether);
+  // ---- GROUND: the one-world jungle (visual seed independent of the music's) ----
+  const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7));
 
   const light = new THREE.DirectionalLight(0xffffff, 1.2);
   scene.add(light);
@@ -72,14 +59,20 @@ export async function initScene(canvas) {
     if (evt.type === 'hap' && (evt.sound === 'bd' || evt.sound === 'sd')) pending.push(evt);
   });
 
-  let duck = 0; // the coupling constant, rendered
+  let duck = 0;        // the coupling constant, rendered
+  let camY = 2;        // smoothed altitude — the traversal
+  let camDrift = 0;    // smoothed lateral motion signature (continuity layer, §4.2)
 
-  function spawnFigure(evt) {
+  function spawnFigure(evt, altitude) {
     const f = figures[poolIdx++ % POOL];
     f.mesh.visible = true;
     f.life = 1;
     const spread = evt.sound === 'bd' ? 3 : 6;
-    f.mesh.position.set((Math.random() - 0.5) * spread * 2, 1 + Math.random() * 2, (Math.random() - 0.5) * spread);
+    f.mesh.position.set(
+      camera.position.x + (Math.random() - 0.5) * spread * 2,
+      altitude - 1 + Math.random() * 3, // the figure lives where the camera lives
+      camera.position.z - 6 - Math.random() * spread,
+    );
     const s = evt.sound === 'bd' ? 0.9 : 0.5;
     f.mesh.scale.setScalar(s * (0.6 + evt.gain));
     if (evt.sound === 'bd') duck = 1; // kick ducks the ether — heaven touched
@@ -104,29 +97,35 @@ export async function initScene(canvas) {
     const t = bus.now();
     const audioNow = bus._now();
     const T = bus.tensionAt(t);
-    const Tfuture = bus.tensionAt(t + 2); // clairvoyance: light leads the sound
-    const b = bus.params.modeBrightness;
+    const Tf = bus.tensionAt(t + 2);      // clairvoyance: light leads the sound
+    const b = bus.brightnessAt(t);
+    const bAhead = bus.brightnessAt(t + 4); // the camera departs before the mode does
     const drift = bus.drift(t);
 
     // fire due events (arrived ahead of time, keyed to the audio clock)
-    while (pending.length && pending[0].when <= audioNow + dt) spawnFigure(pending.shift());
+    while (pending.length && pending[0].when <= audioNow + dt) spawnFigure(pending.shift(), camY);
 
     duck = Math.max(0, duck - dt * 6);
 
-    // ground: palette temperature + altitude of the light ← brightness
-    const col = COLD.clone().lerp(WARM, b);
-    etherMat.color = col;
-    etherMat.opacity = (0.35 + 0.35 * Tfuture) * (1 - duck * 0.45);
-    light.color = col;
-    light.position.set(0, 5 + b * 25, 5); // phrygian roots … lydian sky
-    scene.fog.density = 0.075 - 0.04 * T;
+    // ---- the traversal: altitude ← brightness walk (transition = travel) ----
+    const targetY = 2 + bAhead * (WORLD_TOP - 8);
+    camY += (targetY - camY) * Math.min(1, dt * 0.4); // slow — a journey, not a cut
+    camDrift += (drift * 2 - camDrift) * Math.min(1, dt * 0.8);
+    camera.position.x = camDrift;
+    camera.position.y = camY - duck * 0.18;           // the kick shoves the camera
+    camera.position.z = 12;
+    camera.lookAt(camDrift * 0.5, camY + 2, 0);       // always climbing toward the light
 
-    // ether motion: slow, 1/f-swayed; speed breathes gently with T
-    ether.rotation.y += dt * (0.01 + 0.04 * T);
-    ether.position.y = drift * 1.5;
-    camera.position.x = drift * 2;
-    camera.position.y = 2 + b * 3 - duck * 0.18; // the kick shoves the camera
-    camera.lookAt(0, 2 + b * 2, 0);
+    // ---- world state: one env object, bus signals only ----
+    world.update(dt, { t, T, Tf, b, drift, duck });
+
+    // palette center of gravity + fog: the continuity layer (§4.2)
+    const altitude01 = camY / WORLD_TOP;
+    const col = paletteAt(altitude01);
+    light.color = col;
+    light.position.set(0, 5 + b * 25, 5);             // phrygian roots … lydian sky
+    scene.fog.color.copy(col.clone().multiplyScalar(0.12));
+    scene.fog.density = 0.075 - 0.04 * T;
 
     // figure decay: fast, discrete
     for (const f of figures) {

@@ -17,28 +17,41 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
 ## Architecture (the part that matters)
 
 ```
-            ┌──────────── src/bus.js ────────────┐
-            │  T(t) · drift(t) · w · brightness  │   ← ui.js (knobs) writes here;
-            │  seeds · event stream (look-ahead) │     MIDI/OSC later writes here too
-            └──────┬──────────────────┬──────────┘
+            ┌────────────── src/bus.js ──────────────┐
+            │  T(t) · brightness(t) · drift(t) · w   │   ← ui.js (knobs) and
+            │  set timeline · seams · coupling       │     midi.js (CCs) write here
+            │  seeds · event stream (look-ahead)     │
+            └──────┬──────────────────┬──────────────┘
                    ▼                  ▼
         music/ = M(S, seed_m)   visuals/ = V(S, seed_v)     — never V(audio)
-        generators.js → engine.js     scene.js
-        (Strudel patterns             (three.js: ether ground stream,
-         → superdough orbits)          figure flashes, ducked bloom)
+        generators.js → engine.js     scene.js + biomes.js
+        (Strudel patterns             (one-world jungle: biome per family,
+         → superdough orbits,          camera altitude = brightness walk,
+         kick ducks the far orbits)    figure flashes, ducked ether)
 ```
 
-- `bus.js` — tension curve (golden-ratio climax, authored, **a function of time**
-  so both media can sample the future), 1/f drift, seedable RNGs, event pub/sub.
+- `bus.js` — the authored set timeline: tracks with tension breakpoints (one
+  shared golden-ratio shape, rescaled per track), a brightness walk that drives
+  **both** the mode ladder and the camera's altitude, seam windows, 1/f drift,
+  seedable RNGs, event pub/sub. Everything is **a function of time**, so both
+  media can sample the future.
 - `music/generators.js` — the machine room: break permuter with wildness knob +
-  Barlow-weighted generate-and-test, anchor skeleton, Euclidean hats, isorhythmic
-  bass (talea × color), tendency-free pad stack. Pure functions: params in, pattern out.
+  Barlow-weighted generate-and-test, anchor skeleton (kick carries the audio
+  sidechain via `duckorbit`), Euclidean hats, isorhythmic bass (talea × color),
+  tendency-free pads, contour-then-quantize lead over one set-wide motif
+  (80/20 transform bag), and the seam operator (intensified exit → drums die →
+  snare-roll countdown → clean drop). Pure functions: params in, pattern out.
 - `music/engine.js` — Strudel scheduler + superdough boot; wraps the audio output
   so **every event is mirrored to the bus with its audio-clock deadline before it
-  sounds** (the visualizer's clairvoyance); re-permutes the break each 8-bar phrase.
-- `visuals/scene.js` — two-stream stub: additive particle ether (palette/light
-  altitude ← mode brightness, fog ← tension, sampled 2 s ahead) and hard-edged
-  figure flashes spent only on kicks/snares, with the kick ducking the ether.
+  sounds** (the visualizer's clairvoyance); re-permutes each 4-bar phrase.
+- `visuals/biomes.js` + `visuals/scene.js` — the one-world solution: local-rule
+  roots, growth-vine floor, particle-ether canopy, self-similar sky, stacked in
+  altitude; track transitions are camera traversals (brightness sampled 4 s
+  ahead). Figure flashes spent only on kicks/snares; the kick ducks the ether.
+- `midi.js` — WebMIDI → `bus.params`, same single writable surface as the UI.
+
+Design rationale for all of the above: `docs/design_decisions.md`. How scenes
+are authored and transitioned: `docs/scene_plan.md`.
 
 **Engine discipline (the escape hatch):** generators emit events with abstract
 params; superdough is just the current renderer. If the ether outgrows WebAudio,
@@ -59,9 +72,14 @@ composition code. Keep renderer-specific tricks inside `engine.js` only.
 
 ## Next steps
 
-1. Sidechain in the *audio* (superdough `duck`/orbit ducking) to match the visual duck.
-2. Authored tension breakpoints per track + seam operator between tracks (§5/§6).
-3. Contour-then-quantize lead with the 80/20 motif bag.
-4. MIDI knobs (WebMIDI → `bus.params`) / open-stage-control via WebSocket.
-5. Replace figure cubes with a real family (corpus chops or growth systems);
-   move the ether to TSL compute particles.
+(1–4 of the original list — audio sidechain, tension timeline + seams, the
+lead, WebMIDI — are done; see `docs/design_decisions.md`.)
+
+1. Bar-exact seams: align track lengths to whole phrases and compile the seam
+   as an arrangement instead of phrase-granular rebuild modes (D3's revisit).
+2. Per-point shaders / TSL compute for roots + canopy; bloom with per-stream
+   post-processing (`docs/scene_plan.md` roadmap 1–2).
+3. The corpus shrine + artifact operators wired to `w` (roadmap 4–5).
+4. The mischief layer (theory §8): master-bus jokes — needs the master bus as
+   an addressable target.
+5. open-stage-control via WebSocket alongside WebMIDI; MIDI learn.

@@ -1,4 +1,5 @@
 // Headless smoke test: load the built app, click to start audio, watch for errors.
+import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
@@ -6,7 +7,8 @@ const server = await createServer({ root: process.cwd(), server: { port: 5199 } 
 await server.listen();
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium',
+  // sandbox image ships a system chromium; local dev uses playwright's own
+  ...(existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}),
   args: ['--autoplay-policy=no-user-gesture-required', '--use-gl=swiftshader'],
 });
 const page = await browser.newPage();
