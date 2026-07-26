@@ -405,6 +405,64 @@ breaks; synthesized beds are CC0-by-construction and swappable later). A
 dedicated ambience orbit (D8: it joins the far stream's character; a fifth
 orbit would need its own duck wiring for no audible gain).
 
+## D17 — The perform rail: DJ color FX at the renderer seam (2026-07-26)
+
+*(Numbering note, resolved at merge: D16 landed as hat breathing + ambience
+beds, and the seam variants that followed on main took D18.)*
+
+**Decision.** Four new 0–1 params form a *perform rail*, modeled on the DJ
+mixer canon (Pioneer's Sound Color FX: Filter, Dub Echo, Crush, Space):
+`filter` (bipolar LP/HP, 0.5 = bypass, double-click snaps home), `echo`
+(dotted-eighth dub echo whose feedback rises with the knob), `crush` (bit
+depth 12→2), `space` (reverb wash). They live in `bus.params` like every
+knob — slider, MIDI-learnable (default CCs 16–19), OSC-writable — but they
+are **not composition inputs** and never touch the generators. Two
+mechanisms, both at the renderer seam (engine.js, the one sanctioned
+superdough-contact file), mappings in `src/perform.js`:
+
+- `filter` drives superdough's per-orbit `djf` worklet — the literal DJ
+  filter the renderer already ships (0 = LP kill, 1 = HP kill, 0.49–0.51
+  bypass band). A 30 Hz follower in engine.js slews each orbit's AudioParam
+  toward the knob with a 60 ms linear ramp: continuous sweeps, alive during
+  silence, no zipper. Worklets are created lazily on first departure from
+  center, so an untouched rail leaves the graph untouched.
+- `echo`/`crush`/`space` overlay each hap's value at the existing output tap
+  (`applyPerform` — pure, identity when idle): `delay`/`delaysync`/
+  `delayfeedback`, `crush`, `room`, each composed with whatever the
+  generators authored via max/min so the rail can only push an effect
+  further, never cancel the composition.
+
+**Why not the rebuild path.** The latent knobs are *intent* — launch-
+quantized by D7's "immediate registration, quantized application," and that
+is right for them: wildness is a decision about the next phrase. A mixer
+gesture is the opposite — the hand IS the timing. Routing these through
+`rebuild()` would stair-step sweeps at the 250 ms coalesce and freeze the
+filter during silence. So ui.js binds them without onChange, and midi.js/
+osc.js skip the rebuild for `PERFORM_KEYS`: the overlay reads `bus.params`
+at scheduling time (inside the ~100 ms latency window) and the filter node
+follows the bus at 30 Hz — the same read-pull relationship the visualizer
+has always had.
+
+**Rejected.**
+- Pattern-route `.djf()` — 250 ms steps, frozen while silent; the whole
+  point of a DJ filter is the sweep.
+- Noise (the fourth Pioneer color FX) — a source, not a transform; if it
+  ever arrives it belongs to the generators (a riser layer), not the rail.
+- Roll/beat-repeat, backspin, tape stop — pattern-domain or playback-rate
+  gestures the per-orbit graph can't express; roll also overlaps wildness's
+  jurisdiction. Revisit as momentary *pattern* gestures on the D7 side of
+  the line (launch-quantized), where they'd feel right anyway.
+- A params registry (`{key, range, cc, …}` driving html/ui/midi/osc/tests)
+  — this change added four params across seven declaration sites, so the
+  smell is now measured, not hypothetical. Deferred until the next batch of
+  knobs; `PERFORM_DEFAULTS` spreading into `bus.params` is the first step.
+
+**Verification.** `test/perform.mjs` pins the overlay algebra: identity
+(same object) when idle, max/min composition, authored `delaytime`
+respected, `filter` never touching event values, the MIDI center value
+(64/127) landing inside the bypass band, and `PERFORM_DEFAULTS` ⊆
+`bus.params`. `test/osc.mjs` grew the four keys and a writable check.
+
 ## D18 — Seeded seam variants: the landing and the dissolve (2026-07-26)
 
 **Decision.** The seam→intro arrival was the awkward moment of the set: §6.3

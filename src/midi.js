@@ -12,6 +12,7 @@
  * once so you can discover what your controller sends.
  */
 import { bus } from './bus.js';
+import { PERFORM_KEYS } from './perform.js';
 
 const DEFAULT_CC_MAP = {
   1:  'wildness',         // mod wheel — violence of the surface
@@ -20,6 +21,10 @@ const DEFAULT_CC_MAP = {
   91: 'coupling',         // "reverb send" — how much the two worlds touch
   93: 'tensionMix',       // authored curve ↔ manual hand
   95: 'brightnessMix',
+  16: 'filter',           // perform rail (D17) — general-purpose CCs 16–19
+  17: 'echo',
+  18: 'crush',
+  19: 'space',
 };
 
 const STORE_KEY = 'jungle.midi.ccmap';
@@ -82,7 +87,9 @@ export async function initMidi({ onChange } = {}) {
       return;
     }
     bus.params[key] = value / 127;
-    scheduleChange();
+    // Perform-rail keys (D17) need no rebuild: the engine reads them live at
+    // the output tap / filter follower. Everything else is launch-quantized.
+    if (!PERFORM_KEYS.has(key)) scheduleChange();
   };
 
   const attach = () => {

@@ -15,9 +15,13 @@
  * manual knobs. Values clamp to 0..1 (seed: non-negative integer).
  */
 import { bus } from './bus.js';
+import { PERFORM_KEYS } from './perform.js';
 
 const ALIASES = { tension: 'tensionManual', brightness: 'brightnessManual' };
-const WRITABLE = new Set(['tensionMix', 'tensionManual', 'brightnessMix', 'brightnessManual', 'wildness', 'coupling', 'seed']);
+const WRITABLE = new Set([
+  'tensionMix', 'tensionManual', 'brightnessMix', 'brightnessManual', 'wildness', 'coupling', 'seed',
+  ...PERFORM_KEYS, // the perform rail (D17): filter, echo, crush, space
+]);
 
 /**
  * Apply one decoded message to a params object. Pure — returns the param key
@@ -75,9 +79,13 @@ export function initOsc({ onChange, url } = {}) {
       try { data = JSON.parse(e.data); } catch { return; }
       // open-stage-control can batch: accept a single message or an array
       const messages = Array.isArray(data) ? data : [data];
-      let touched = false;
-      for (const m of messages) touched = !!applyOscMessage(bus.params, m) || touched;
-      if (touched) scheduleChange();
+      let rebuildNeeded = false;
+      for (const m of messages) {
+        const key = applyOscMessage(bus.params, m);
+        // perform-rail keys (D17) are read live by the engine — no rebuild
+        if (key && !PERFORM_KEYS.has(key)) rebuildNeeded = true;
+      }
+      if (rebuildNeeded) scheduleChange();
     };
     socket.onclose = () => {
       if (closed) return;

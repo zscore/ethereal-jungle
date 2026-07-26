@@ -15,6 +15,7 @@ import {
   getSuperdoughAudioController,
 } from '@strudel/webaudio';
 import { bus, CPS, BAR_SECONDS } from '../bus.js';
+import { applyPerform, filterNeutral } from '../perform.js';
 import { makeSetPattern } from './generators.js';
 
 let scheduler = null;
@@ -41,7 +42,11 @@ export async function initEngine() {
   // Wrap the audio output so every event is mirrored to the bus with its
   // scheduled time — the one and only tap point.
   const output = (hap, deadline, hapDuration, cps, targetTime) => {
-    const v = hap.value ?? {};
+    // Perform rail (D17): overlay echo/crush/space onto the event as it is
+    // scheduled — reads bus.params live, so mixer gestures land within the
+    // latency window with no rebuild. Identity (no copy) while the rail idles.
+    const v = applyPerform(hap.value ?? {}, bus.params);
+    if (v !== hap.value) hap.value = v; // never mutate the pattern's own value object
     bus.publish({
       type: 'hap',
       sound: v.s ?? null,
@@ -64,6 +69,25 @@ export async function initEngine() {
   // kick's duck can target the pad/lead orbits before they've ever sounded.
   const controller = getSuperdoughAudioController();
   for (const orbit of [1, 2, 3, 4]) controller.getOrbit(orbit, [0, 1]); // stereo channel pair
+
+  // Perform filter (D17): a 30 Hz follower slews every orbit's djf AudioParam
+  // toward bus.params.filter — continuous sweeps, alive even during silence,
+  // no rebuild. The worklets are created lazily on the knob's first departure
+  // from center, so the untouched graph stays untouched.
+  let filterCur = null; // null until the djf worklets exist
+  setInterval(() => {
+    const target = Math.min(1, Math.max(0, bus.params.filter ?? 0.5));
+    if (filterCur === target || (filterCur == null && filterNeutral(target))) return;
+    const now = ctx.currentTime;
+    for (const orbit of [1, 2, 3, 4]) {
+      const node = controller.getOrbit(orbit, [0, 1]).getDjf(filterCur ?? target, now);
+      const p = node.parameters.get('value');
+      p.cancelScheduledValues(now);
+      p.setValueAtTime(filterCur ?? target, now);
+      p.linearRampToValueAtTime(target, now + 0.06); // slew — no zipper noise
+    }
+    filterCur = target;
+  }, 33);
 
   // bus t=0 and scheduler cycle 0 are pinned to the same instant: the set
   // compiler keys content to absolute cycles, the bus keys curves to seconds,

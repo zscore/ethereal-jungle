@@ -23,6 +23,21 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   bind('coupling', 'coupling');
   bind('seed', 'seed', (v) => parseInt(v, 10) || 0);
 
+  // Perform rail (D17): writes params only, NO onChange — a rebuild would add
+  // nothing. The engine's output tap and filter follower read the bus live.
+  const bindPerform = (id, key) => {
+    $(id).addEventListener('input', (e) => { bus.params[key] = parseFloat(e.target.value); });
+  };
+  bindPerform('filter', 'filter');
+  bindPerform('echo', 'echo');
+  bindPerform('crush', 'crush');
+  bindPerform('space', 'space');
+  // double-click the filter to snap back to bypass, DJ-mixer style
+  $('filter').addEventListener('dblclick', (e) => {
+    e.target.value = 0.5;
+    bus.params.filter = 0.5;
+  });
+
   $('reroll').addEventListener('click', () => {
     bus.params.seed = Math.floor(Math.random() * 1e6);
     $('seed').value = bus.params.seed;
@@ -65,6 +80,7 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
     ['tensionMix', 'tensionMix'], ['tension', 'tensionManual'],
     ['brightnessMix', 'brightnessMix'], ['brightness', 'brightnessManual'],
     ['wildness', 'wildness'], ['coupling', 'coupling'],
+    ['filter', 'filter'], ['echo', 'echo'], ['crush', 'crush'], ['space', 'space'],
   ];
   function enableLearn(midi) {
     for (const [id, key] of LEARNABLE) {
