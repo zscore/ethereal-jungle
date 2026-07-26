@@ -1,16 +1,16 @@
 /**
  * scene.js — the visualizer. Two streams, bimodally clustered (visual doc §2.1):
  *
- *   GROUND — the one-world jungle (biomes.js): four family-biomes stacked in
+ *   GROUND — the one-world jungle (biomes.js): family-biomes stacked in
  *            altitude, soft, slow, continuous. The camera's height IS the mode
  *            brightness — the set's harmonic story rendered as a journey
  *            upward or downward through the jungle (§4.4).
- *   FIGURE — small hard-edged flashes on drum events. Sharp, near, discrete.
- *            Spent ONLY on anchor-priced positions (synch-point economy §2.2):
- *            kicks and snares — the break's interior chaos goes unmarked.
+ *   FIGURE — figure.js: kick shockwave rings, snare shard scatters, and the
+ *            recurring glyph (peak sections only). Sharp, near, discrete.
+ *            Spent ONLY on anchor-priced positions (synch-point economy §2.2).
  *
- * The sidechain rendered twice (§2.1): kicks duck the ether AND shove the
- * camera — one coupling constant, both media, same as the audio-side duck.
+ * The sidechain rendered three ways (§2.1): kicks duck the ether, shove the
+ * camera, and dip the bloom — one coupling constant, everywhere.
  * Clairvoyance: events arrive on the bus BEFORE they sound; we queue and fire
  * them on the shared audio clock. T(t) is sampled 2 s ahead and brightness
  * 4 s ahead, so the light rises — and the camera begins its travel — before
@@ -22,6 +22,10 @@
  * (feedback smear, chroma displacement, grain/scanline) run over the final
  * frame with amount = wildness. If the post chain can't build (odd backend),
  * we fall back to a direct render.
+ *
+ * Stream fusion (proposal B3), spent ONCE per set: in the canopy track's
+ * golden-ratio window, kicks ignite the ether — the one effect forbidden
+ * everywhere else, which is what makes it the climax (§5).
  */
 import * as THREE from 'three';
 import { WebGPURenderer, PostProcessing } from 'three/webgpu';
@@ -30,15 +34,21 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { afterImage } from 'three/addons/tsl/display/AfterImageNode.js';
 import { rgbShift } from 'three/addons/tsl/display/RGBShiftNode.js';
 import { film } from 'three/addons/tsl/display/FilmNode.js';
-import { bus, makeRng } from '../bus.js';
+import * as B from '../bus.js';
 import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
+import { initFigure } from './figure.js';
+
+const { bus, makeRng } = B;
+const BAR = B.BAR_SECONDS ?? 240 / 168; // fallback if the bus is mid-refactor
 
 const FIGURE_LAYER = 1; // ground lives on 0; the streams never share a pass
 
 export async function initScene(canvas) {
   const renderer = new WebGPURenderer({ canvas, antialias: true });
   await renderer.init(); // falls back to WebGL2 automatically when WebGPU is absent
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const BASE_PR = Math.min(window.devicePixelRatio, 2);
+  let pixelRatio = BASE_PR;
+  renderer.setPixelRatio(pixelRatio);
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x04060a, 0.055);
@@ -53,21 +63,8 @@ export async function initScene(canvas) {
   scene.add(light);
   scene.add(new THREE.AmbientLight(0x223344, 0.6));
 
-  // ---- FIGURE stream: pooled flash cubes ----
-  const POOL = 12;
-  const figures = [];
-  const figGeo = new THREE.BoxGeometry(1, 1, 1);
-  for (let i = 0; i < POOL; i++) {
-    const m = new THREE.Mesh(
-      figGeo,
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }),
-    );
-    m.visible = false;
-    m.layers.set(FIGURE_LAYER); // figure stream: its own pass, no bloom, no softness
-    scene.add(m);
-    figures.push({ mesh: m, life: 0 });
-  }
-  let poolIdx = 0;
+  // ---- FIGURE: rings, shards, the glyph ----
+  const figure = initFigure(scene, FIGURE_LAYER);
 
   // ---- post chain: per-stream passes + artifact operators (roadmap 2 + 5) ----
   // Two cameras onto one scene, split by layer; synced to the main camera each
@@ -105,21 +102,34 @@ export async function initScene(canvas) {
   let duck = 0;        // the coupling constant, rendered
   let camY = 2;        // smoothed altitude — the traversal
   let camDrift = 0;    // smoothed lateral motion signature (continuity layer, §4.2)
+  let fusionNow = false;
 
-  function spawnFigure(evt, altitude) {
-    const f = figures[poolIdx++ % POOL];
-    f.mesh.visible = true;
-    f.life = 1;
-    const spread = evt.sound === 'bd' ? 3 : 6;
-    f.mesh.position.set(
-      camera.position.x + (Math.random() - 0.5) * spread * 2,
-      altitude - 1 + Math.random() * 3, // the figure lives where the camera lives
-      camera.position.z - 6 - Math.random() * spread,
-    );
-    const s = evt.sound === 'bd' ? 0.9 : 0.5;
-    f.mesh.scale.setScalar(s * (0.6 + evt.gain));
-    if (evt.sound === 'bd') duck = 1; // kick ducks the ether — heaven touched
+  function fire(evt) {
+    const x = camera.position.x + (Math.random() - 0.5) * 8;
+    const z = camera.position.z - 7 - Math.random() * 5;
+    if (evt.sound === 'bd') {
+      figure.kick(x, camY, z, evt.gain ?? 1, fusionNow);
+      duck = 1;                        // kick ducks the ether — heaven touched
+      world.onDownbeat();              // blooms: growth's one rhythm contact
+      if (fusionNow) world.ignite();   // the climax: figure ignites ground
+    } else {
+      figure.snare(x, camY + Math.random() * 2, z, evt.gain ?? 1);
+    }
   }
+
+  // ---- debug surface (proposal E2): ?altitude= / ?biome= + console API ----
+  let altitudeOverride = null;
+  const qp = new URLSearchParams(location.search);
+  if (qp.has('altitude')) altitudeOverride = parseFloat(qp.get('altitude'));
+  if (qp.get('biome')) world.isolate(qp.get('biome'));
+  (window.jungle ??= {}).visuals = {
+    backend: renderer.backend?.isWebGPUBackend ? 'webgpu' : 'webgl',
+    setAltitude(v, snap = false) {
+      altitudeOverride = v;
+      if (snap && v != null) camY = 2 + v * (WORLD_TOP - 8);
+    },
+    isolate(name) { world.isolate(name); },
+  };
 
   function resize() {
     const w = canvas.clientWidth || window.innerWidth;
@@ -131,11 +141,22 @@ export async function initScene(canvas) {
   window.addEventListener('resize', resize);
   resize();
 
+  // ---- adaptive quality (proposal E1): trade pixels, never the groove ----
+  let fpsEma = 60, qTimer = 0;
+
   let last = performance.now() / 1000;
   function frame() {
     const wall = performance.now() / 1000;
     const dt = Math.min(0.1, wall - last);
     last = wall;
+    fpsEma += (1 / Math.max(dt, 1e-3) - fpsEma) * 0.05;
+    qTimer += dt;
+    if (qTimer > 2) {
+      qTimer = 0;
+      const next = fpsEma < 40 ? Math.max(0.75, pixelRatio - 0.25)
+        : fpsEma > 55 ? Math.min(BASE_PR, pixelRatio + 0.25) : pixelRatio;
+      if (next !== pixelRatio) { pixelRatio = next; renderer.setPixelRatio(pixelRatio); resize(); }
+    }
 
     const t = bus.now();
     const audioNow = bus._now();
@@ -144,49 +165,62 @@ export async function initScene(canvas) {
     const b = bus.brightnessAt(t);
     const bAhead = bus.brightnessAt(t + 4); // the camera departs before the mode does
     const drift = bus.drift(t);
+    const trackInfo = bus.trackAt(t);
+    const seam = bus.seamAt(t);
+
+    // section name (bus D11) — guarded: the bus may be mid-refactor next door
+    let section = 'groove';
+    try { section = B.sectionAt(Math.floor(trackInfo.tLocal / BAR), trackInfo.track.bars).name; } catch { /* keep default */ }
+
+    // stream fusion window: canopy's golden-ratio bar, ±4 bars (B3)
+    fusionNow = trackInfo.track.name === 'canopy'
+      && Math.abs(trackInfo.phase - 0.618) < (4 * BAR) / trackInfo.track.seconds;
 
     // fire due events (arrived ahead of time, keyed to the audio clock)
-    while (pending.length && pending[0].when <= audioNow + dt) spawnFigure(pending.shift(), camY);
+    while (pending.length && pending[0].when <= audioNow + dt) fire(pending.shift());
 
     duck = Math.max(0, duck - dt * 6);
 
     // ---- the traversal: altitude ← brightness walk (transition = travel) ----
-    const targetY = 2 + bAhead * (WORLD_TOP - 8);
+    const altitude01 = altitudeOverride ?? bAhead;
+    const targetY = 2 + altitude01 * (WORLD_TOP - 8);
     camY += (targetY - camY) * Math.min(1, dt * 0.4); // slow — a journey, not a cut
     camDrift += (drift * 2 - camDrift) * Math.min(1, dt * 0.8);
+
+    // seam flourish (proposal D3): late-seam push-in + slight roll, released
+    // exactly on the boundary (bar-exact seams make the release a lookup)
+    const flourish = seam.active && seam.progress > 0.6 ? (seam.progress - 0.6) / 0.4 : 0;
     camera.position.x = camDrift;
     camera.position.y = camY - duck * 0.18;           // the kick shoves the camera
-    camera.position.z = 12;
+    camera.position.z = 12 - 4.5 * flourish;
     // pitch follows altitude: gaze down into the roots at the bottom of the
     // world, up toward the light near the top — the register is where you look
     camera.lookAt(camDrift * 0.5, camY + (-3 + 6 * b), 0);
+    camera.rotateZ(0.1 * flourish);
 
-    // ---- world state: one env object, bus signals only ----
-    world.update(dt, { t, T, Tf, b, drift, duck });
+    // ---- world + figure state: bus signals only ----
+    const env = {
+      t, T, Tf, b, drift, duck,
+      trackPhase: trackInfo.phase, trackIndex: trackInfo.index,
+      cam: camera.position,
+    };
+    world.update(dt, env);
+    figure.update(dt);
+    figure.updateGlyph(dt, env, camDrift, camY, section === 'peak');
 
     // palette center of gravity + fog: the continuity layer (§4.2)
-    const altitude01 = camY / WORLD_TOP;
-    const col = paletteAt(altitude01);
+    const col = paletteAt(camY / WORLD_TOP);
     light.color = col;
     light.position.set(0, 5 + b * 25, 5);             // phrygian roots … lydian sky
     scene.fog.color.copy(col.clone().multiplyScalar(0.12));
     scene.fog.density = 0.075 - 0.04 * T;
-
-    // figure decay: fast, discrete
-    for (const f of figures) {
-      if (!f.mesh.visible) continue;
-      f.life -= dt * 7;
-      if (f.life <= 0) { f.mesh.visible = false; continue; }
-      f.mesh.material.opacity = f.life;
-      f.mesh.rotation.y += dt * 4;
-    }
 
     if (post) {
       // sync the per-stream cameras, then split them by layer
       groundCam.copy(camera); groundCam.layers.set(0);
       figureCam.copy(camera); figureCam.layers.set(FIGURE_LAYER);
       const w = bus.wildnessAt(t);
-      fx.bloom.strength.value = (0.4 + 0.5 * Tf) * (1 - duck * 0.6); // ducked bloom, lit ahead of the sound
+      fx.bloom.strength.value = (0.4 + 0.5 * Tf) * (1 - duck * 0.6) + (fusionNow ? 0.15 : 0);
       fx.smear.value = Math.max(0, w - 0.55) * 1.8;                  // smear exists only in high-w stasis (§5)
       fx.shift.amount.value = w * w * 0.004;
       fx.grain.value = 0.05 + 0.3 * w;
