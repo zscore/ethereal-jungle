@@ -80,7 +80,8 @@ npm run smoke      # headless browser boot: audio + visuals + bus events
 ## Next steps
 
 (1–4 of the original list — audio sidechain, tension timeline + seams, the
-lead, WebMIDI — are done, and so are bar-exact seams (D9); see
+lead, WebMIDI — are done, and so are bar-exact seams (D9) and MIDI learn +
+OSC-over-WebSocket (D10, `?osc=ws://host:port`); see
 `docs/design_decisions.md`.)
 
 1. Per-point shaders / TSL compute for roots + canopy; bloom with per-stream
@@ -88,4 +89,3 @@ lead, WebMIDI — are done, and so are bar-exact seams (D9); see
 2. The corpus shrine + artifact operators wired to `w` (roadmap 4–5).
 3. The mischief layer (theory §8): master-bus jokes — needs the master bus as
    an addressable target.
-4. open-stage-control via WebSocket alongside WebMIDI; MIDI learn.

@@ -6,12 +6,14 @@
  * they take effect at the next rebuild — launch quantization for free (§9.2):
  * the performer supplies intent, the phrase clock supplies timing.
  *
- * Default CC map (remap here; unmapped CCs are logged once so you can
- * discover what your controller sends):
+ * The CC map starts from the default table below, is remappable at runtime
+ * via MIDI learn (the `cc` buttons in the panel, or jungle.midi.learn('key')
+ * from the console), and persists in localStorage. Unmapped CCs are logged
+ * once so you can discover what your controller sends.
  */
 import { bus } from './bus.js';
 
-const CC_MAP = {
+const DEFAULT_CC_MAP = {
   1:  'wildness',         // mod wheel — violence of the surface
   71: 'tensionManual',    // "resonance" — the manual tension hand
   74: 'brightnessManual', // "cutoff" — the harmonic weather
@@ -19,6 +21,16 @@ const CC_MAP = {
   93: 'tensionMix',       // authored curve ↔ manual hand
   95: 'brightnessMix',
 };
+
+const STORE_KEY = 'jungle.midi.ccmap';
+
+function loadMap() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (saved && typeof saved === 'object') return saved;
+  } catch { /* absent or corrupt — fall through to the default */ }
+  return { ...DEFAULT_CC_MAP };
+}
 
 export async function initMidi({ onChange } = {}) {
   if (!navigator.requestMIDIAccess) {
@@ -33,6 +45,13 @@ export async function initMidi({ onChange } = {}) {
     return null;
   }
 
+  const ccMap = loadMap();
+  const persist = () => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(ccMap)); } catch { /* private mode */ }
+  };
+
+  let learnState = null; // { key, resolve, timer } while a learn is armed
+
   const seenUnmapped = new Set();
   let changeTimer = null;
   const scheduleChange = () => { // coalesce knob twists into one rebuild per 250 ms
@@ -43,11 +62,22 @@ export async function initMidi({ onChange } = {}) {
   const handle = (msg) => {
     const [status, cc, value] = msg.data;
     if ((status & 0xf0) !== 0xb0) return; // CC messages only
-    const key = CC_MAP[cc];
+    if (learnState) {
+      const { key, resolve, timer } = learnState;
+      clearTimeout(timer);
+      learnState = null;
+      for (const c of Object.keys(ccMap)) if (ccMap[c] === key) delete ccMap[c]; // one CC per param
+      ccMap[cc] = key;
+      persist();
+      console.info(`[midi] learned CC ${cc} → ${key}`);
+      resolve(cc);
+      // fall through: the learning twist also applies, which feels right
+    }
+    const key = ccMap[cc];
     if (!key) {
       if (!seenUnmapped.has(cc)) {
         seenUnmapped.add(cc);
-        console.info(`[midi] unmapped CC ${cc} — add it to CC_MAP in src/midi.js`);
+        console.info(`[midi] unmapped CC ${cc} — hit a cc button in the panel to learn it`);
       }
       return;
     }
@@ -63,5 +93,22 @@ export async function initMidi({ onChange } = {}) {
 
   const names = [...access.inputs.values()].map((i) => i.name);
   console.info('[midi] listening on:', names.length ? names.join(', ') : '(no devices yet)');
-  return access;
+
+  return {
+    access,
+    /** CC currently bound to a param key, or null. */
+    ccFor(key) {
+      const hit = Object.entries(ccMap).find(([, k]) => k === key);
+      return hit ? Number(hit[0]) : null;
+    },
+    /** Arm learn mode: resolves with the next CC number, or null on 10 s timeout. */
+    learn(key) {
+      return new Promise((resolve) => {
+        if (learnState) { clearTimeout(learnState.timer); learnState.resolve(null); }
+        const timer = setTimeout(() => { learnState = null; resolve(null); }, 10000);
+        learnState = { key, resolve, timer };
+        console.info(`[midi] learning ${key} — move a controller knob…`);
+      });
+    },
+  };
 }

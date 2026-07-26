@@ -214,6 +214,30 @@ those rebase inner cycle time per section, which would break the half-time
 layers' absolute cycle parity; the dispatcher queries phrases at absolute
 time instead.
 
+## D10 — MIDI learn + OSC-over-WebSocket, both as params-writers (2026-07-26)
+
+**Decision.** D7's deferred ergonomics are in. midi.js keeps its default CC
+table but the map is now mutable at runtime — `learn(key)` arms one-shot
+binding (next CC wins, one CC per param, 10 s timeout) — and persists in
+localStorage. ui.js grows small `cc` buttons beside each slider once WebMIDI
+resolves; they display the live binding. New src/osc.js connects to a
+WebSocket named by `?osc=ws://host:port` (persisted) or localStorage and
+accepts open-stage-control-style JSON (`{address, args}` with plain or typed
+args, batched arrays) plus a plain `{param, value}` form; the last address
+path segment names the param, `tension`/`brightness` alias the manual knobs;
+values clamp; unknown params and non-numbers are ignored. Same 250 ms rebuild
+coalescing as MIDI. Reconnects with capped backoff so the o-s-c server can
+start after the page.
+
+**Why.** Both are ui.js with a different transport (§9.1) — they write
+`bus.params` and call the same coalesced rebuild, nothing else. The decoder
+(`applyOscMessage`) is a pure function so it's unit-tested in node
+(test/osc.mjs) without a socket.
+
+**Rejected.** Implementing o-s-c's full session protocol (its widget sync is
+server-driven; we only need param writes). Binary OSC framing — o-s-c speaks
+JSON over its WebSocket, and anything else can too.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

@@ -34,6 +34,33 @@ export function initUI({ onChange, onToggle, onReroll }) {
     $('toggle').textContent = playing ? 'stop' : 'start';
   });
 
+  // MIDI learn: once WebMIDI is up (it arrives async), grow a `cc` button per
+  // slider — click, twist a hardware knob, done. Buttons show the live binding.
+  const LEARNABLE = [
+    ['tensionMix', 'tensionMix'], ['tension', 'tensionManual'],
+    ['brightnessMix', 'brightnessMix'], ['brightness', 'brightnessManual'],
+    ['wildness', 'wildness'], ['coupling', 'coupling'],
+  ];
+  function enableLearn(midi) {
+    for (const [id, key] of LEARNABLE) {
+      const btn = document.createElement('button');
+      btn.className = 'learn';
+      const show = () => {
+        const cc = midi.ccFor(key);
+        btn.textContent = cc == null ? 'cc?' : `cc${cc}`;
+      };
+      show();
+      btn.title = `MIDI learn: click, then move a controller knob`;
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        btn.textContent = '…';
+        await midi.learn(key);
+        show();
+      });
+      $(id).parentElement.appendChild(btn);
+    }
+  }
+
   // readout: current bus state, for trust in what the knobs are doing
   const readout = $('readout');
   setInterval(() => {
@@ -49,4 +76,6 @@ export function initUI({ onChange, onToggle, onReroll }) {
       `w(T)     ${bus.wildnessAt(t).toFixed(2)}\n` +
       `drift    ${bus.drift(t).toFixed(2)}`;
   }, 250);
+
+  return { enableLearn };
 }

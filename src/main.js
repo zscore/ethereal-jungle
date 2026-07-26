@@ -7,6 +7,7 @@ import { initEngine, rebuild, toggle } from './music/engine.js';
 import { initScene } from './visuals/scene.js';
 import { initUI } from './ui.js';
 import { initMidi } from './midi.js';
+import { initOsc } from './osc.js';
 
 window.jungle = { bus }; // console access for poking the running system
 
@@ -27,10 +28,12 @@ overlay.addEventListener('click', async () => {
     overlay.querySelector('p').textContent = `engine failed: ${err.message} (see console)`;
     return;
   }
-  initUI({
+  const ui = initUI({
     onChange: () => rebuild(),
     onReroll: () => rebuild(),
     onToggle: () => toggle(),
   });
-  initMidi({ onChange: () => rebuild() }); // non-fatal if WebMIDI is unavailable
+  // non-fatal if WebMIDI is unavailable; learn buttons appear once it is
+  initMidi({ onChange: () => rebuild() }).then((midi) => { if (midi) ui.enableLearn(midi); });
+  initOsc({ onChange: () => rebuild() }); // silent no-op without ?osc=ws://…
 }, { once: false });
