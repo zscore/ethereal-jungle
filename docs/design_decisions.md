@@ -673,5 +673,249 @@ panel was inspected, not just asserted on.
 
 ---
 
+## D19 — The look module: the renderer seam gets the perform rail's treatment (2026-07-26)
+
+**Decision.** All mapping from bus state to post-chain state moves out of the
+frame loop into `src/visuals/look.js` — a pure module with no three.js import,
+no state and no DOM, tested by `test/look.mjs`. `look(params, env)` returns
+every uniform the chain wants (bloom, smear, chroma shift, grain, saturation,
+posterize steps, tint + amount, dim, vignette, focus/focal/bokeh, fog density);
+`orbitAt`, `seamPush`, `seamFlashes` and `seamExhale` return the camera's. This
+is exactly what D17 did for the audio seam with `perform.js`, and for the same
+reason: the mapping is where the claims live, and claims deserve assertions.
+
+Three things become checkable rather than assertable, and all three are theory:
+**idle is identity** (the rail at rest reproduces the frame we already had —
+so the fancy tier can never silently tax the default look); **perceptual
+monotonicity** (§9.1: each knob moves exactly one nameable percept in one
+direction, swept 0→1 in the test); and **continuity of the motion signature**
+(§4.2: the camera's per-band orbit is sampled across 2000 altitudes and 4000
+instants, and the largest step in either is bounded).
+
+Built on it, three visual features that were previously blocked or missing:
+
+- **The perform twins (H1).** The four D17 knobs get pictures, read from
+  `bus.params` in the same frame — the old D2 "mischief twins" item, which was
+  blocked on a music-side mischief layer that still doesn't exist. The twins
+  are deliberately about three *different objects*: `filter`/`space` move the
+  world (defocus, fog, vignette, dim), `crush` degrades the medium (posterize
+  + grain), `echo` repeats the frame (afterimage + chroma displacement). That
+  split is why they read as three jokes instead of three amounts.
+- **Depth of field (G1).** The dictionary's `DRR → depth of field` row (§2),
+  finally rendered: a bokeh DoF over the **ground pass only**, focus riding the
+  camera's own look-at distance. The figure composites sharp on top — the eye's
+  "no reverb on the drum bus."
+- **Seam flavors, staged (I2).** D18 has published each boundary's flavor since
+  it landed and the camera ignored it. A landing now resolves onto an *event*
+  (exposure spike + vignette open, released on the boundary bar, decaying ~1 s);
+  a dissolve never flashes — the fog opens, the focus widens, the push-in
+  decelerates. Plus per-biome camera waypoints (I1), answering scene_plan §6.
+
+**Two rendering details that were bugs before they were decisions.** The tint
+is applied *scaled by luminance*, because mixing a flat color into the frame
+lifts the blacks and turns a filter kill into a grey card. And the posterize
+runs in gamma space with half-step rounding, because quantizing a dark linear
+frame with `floor` costs exposure rather than color resolution — crush must
+degrade the medium, not turn the lights off.
+
+**Rejected.** Computing the look inline (status quo — untestable, and the
+mapping is the interesting part). A uniform-per-effect registry (premature;
+`look()`'s return object already is the registry). Driving any of it from
+audio analysis — the rail is a bus param; inferring it from the signal would
+be inference of the known (§1).
+
+**Verification.** `test/look.mjs` (in `npm test`): idle identity, monotonicity
+per knob, the twin semantics (LP submerges and defocuses, HP subtracts and
+never defocuses, crush leaves exposure alone, echo moves nothing in the world),
+timeline ownership (Tf raises bloom, duck dips it, fusion ignites), seam
+staging by flavor, and the two continuity sweeps. `tools/visual_check.mjs`
+grew a rail sweep and both seam flavors, on both backends.
+
+**Revisit when** a music-side mischief layer (§8) lands — its events ride this
+same module — or if the DoF pass proves too expensive on some backend, in
+which case the governor's optics tier (D20) already knows how to drop it.
+
+## D20 — The corpus shrine is self-corpus: the world films itself (2026-07-26)
+
+**Decision.** The fifth visualizer family (§3.5) arrives as `shrine.js`: a
+screen in the undergrowth showing **this world's** recent past, chopped by
+`permuteBreak` imported from `music/generators.js` — the same σ, the same
+anchors, the same per-bar re-permutation, the same `w`. A shrine-eye camera
+records the ground stream into a ring of sixteen 256×144 render targets on the
+16th-note grid; the screen displays slice σ(i) instead of slice i.
+
+The long-open question (visuals proposal, open decision #2) was curated CC0
+footage vs. self-corpus. **Self-corpus wins on four counts**: no licensing
+surface, no asset pipeline (the reason D1 was scheduled last simply
+evaporates), the thematically exact image — the jungle dreaming of itself, one
+bar behind — and, decisively, the formalism stops being an analogy. §1.1 is a
+theory of resequencing an ordered tuple under a recognizability constraint; the
+break is one tuple of sixteen slices and the ring buffer is another, so the
+*same function* runs on both.
+
+Three properties fall out of that reuse:
+- ANCHORS (0, 4, 8, 12) are never permuted, so on the downbeat and the
+  backbeats the shrine shows **now** and agrees with the world, and lies only
+  between them. The corpus family pays *into* the synch-point economy (§2.2)
+  instead of spending from it — a visual downbeat is a metric anchor (§1.2).
+- Edit rate = `w` by construction: identity at 0 (a quiet window onto the
+  jungle), breakcore at 1. No second wildness mapping to keep in sync.
+- The capture camera is restricted to layer 0, so it can film neither the
+  figure stream nor the shrine itself: no feedback recursion, and the recording
+  carries the weather without the drums.
+
+Stream: figure (sharp, near, discrete, unbloomed), but figure confined to one
+*place* — it fades out above the roots band, so the one biome that owns video
+is the one you leave.
+
+**Cost, and how it is paid (J1).** The shrine is one extra low-res scene render
+per 16th (~11 Hz), gated on being in band, and the frame-time governor now has
+three levers instead of one: a `quality` scalar the heavy biomes read (roots
+sim steps, ether population, mist density), the **optics tier** (rebuild the
+post chain without DoF — `PostProcessing.outputNode` is swappable, so a tier is
+a rebuild, not a branch), and pixel ratio last. Spend order is by how little
+each costs in meaning. The shrine drops out below quality 0.5, and
+`?shrine=0` / `?dof=0` force either off.
+
+**Rejected.** Found footage (licensing + a curation pipeline, for a strictly
+weaker theoretical fit). Recording the composited frame (that includes the
+shrine — recursion, and it would smuggle the figure stream into the ground
+recording). A GPU ring texture with a compute copy (three's RenderTarget ring
+is simpler and the cost is the scene render, not the copy). Chopping on the
+figure's event stream instead of the grid (the corpus family's whole value is
+that it articulates the *grid*, and the bar-exact clock already knows it).
+
+**Revisit when** the ring's 16 frames prove too short to read as "the past" at
+low `w` (a 32-slot two-bar ring is a one-line change), or if a curated CC0 pack
+ever arrives — the shrine takes a frame source, so found footage remains a
+drop-in behind the same interface.
+
+## D20 — The biome beds become field recordings (2026-07-26)
+
+**Decision.** The twelve synthesized ambience loops of D16 are replaced by
+twelve **public-domain field recordings**, 32 bars (45.7 s) long and in stereo:
+night insects on a Californian ridge, Greek night frogs, dry leaves; light rain
+in a Kiel forest, a Dutch thunderstorm, cave drips at Fleury-sur-Orne; morning
+birds over an Indiana trail, a Breton blackbird, wind through Colombian guadua
+bamboo; wind singing in a pipe at 5 200 m on Chacaltaya, wind in Cretan power
+lines, water drips in Takapuna. Every source is an archive.org
+*radio aporee ::: maps* item under CC0 or the Public Domain Mark;
+`tools/amb_sources.json` lists item, recordist and place, so the build input
+*is* the attribution record. `tools/ingest_amb.py` (ffmpeg) downloads into a
+gitignored cache, scores every candidate window for level, dropouts,
+stationarity and — weighted hardest — **head/tail match**, then highpasses,
+loudness-matches every layer to −23 LUFS and crossfades the tail into the head.
+Output is Ogg Opus at 128 k: the sources are already lossy, so WAV would only
+turn the same audio into 8 MB files. All twelve total 8 MB — about what the old
+5.7 s mono WAVs cost, for 8× the material in stereo.
+
+**The engine change this forced.** A 32-bar loop cannot be a 32-bar *event*. A
+track is 68 bars, which is not a multiple of 32, so `slow(32)` would only fire
+on cycles 0, 32, 64… — the biome change at bar 68 would sit silent until bar 96,
+and the seam's incoming-bed crossfade (§6.1, D16) would never get an onset
+inside its 8-bar window at all. So the trigger period stays one phrase and the
+*file* is walked instead: phrase `n` plays slice `n mod 8` via `begin`/`end`
+(`AMB_CHUNKS` in bus.js). Consecutive phrases play consecutive audio, so the
+recording advances rather than repeating, and the audible loop period is 32 bars
+off a 4-bar trigger. Because the chunk keys to the **absolute** phrase index,
+every biome picks up wherever the set has got to. The envelopes had to come down
+with it (0.5 s/2 s → ~0.01 s): superdough keeps the source playing for `release`
+past the event end, and the next slice is that same audio, so any real release
+would sum the recording with itself. The presence walks are unaffected — their
+level curve is already continuous through the threshold, which is what the long
+attack was doing anyway.
+
+**Why.** The synthesized beds read as *synthesis* — sine trills and filtered
+noise, not a place. Place-identity was the whole point of D16, and a real
+recording carries room, distance and incident (a bird crossing, a gust arriving)
+that no 4-bar generated loop reproduces. Length compounds it: at 5.7 s the ear
+locks onto the loop within one phrase, and biomes run ~97 s.
+
+**Reverses D16's "Rejected: field recordings."** That entry rejected them on
+licensing discipline — the same rule as the breaks — and said the synthesized
+beds were "swappable later." The rule is intact, not waived: CC0/PDM sources
+only, provenance tracked in-repo, nothing of unclear origin vendored. What
+changed is that a filterable public-domain corpus made the licensing-clean
+version *also* the good-sounding one, so the tradeoff D16 accepted no longer
+exists. D16's rejection of a fifth ambience orbit still stands.
+
+**Rejected.** Freesound (its API needs an account key, so the build stops being
+reproducible from a clean checkout). WAV output (105 MB of git for decoded lossy
+audio). Ogg Vorbis (Homebrew's ffmpeg ships no libvorbis; Opus is better on
+noise-like material anyway, and Chromium is the documented target). Retuning the
+track length to a power of two so `slow(32)` would work — 68 bars is load-bearing
+structure (D9), and the sample layer is not the thing that gets to move it.
+
+## D21 — One atmosphere, and styles that are spent (2026-07-26)
+
+**The world was four systems, not one place.** Every biome breathed on its own
+private sine — the mist scrolled, the shafts flickered, the ether advected, the
+aurora drifted — and nothing that happened to one ever happened to another. The
+eye reads shared causation as place, and there was none. Second, everything
+lived 12–90 units out, so the depth-of-field pass built in G1 had nothing close
+enough to blur and the frame had no parallax gradient at all.
+
+**Decision: a shared analytic wind field, and a near field.** `weather.js` is
+pure (no three.js, no state, no DOM) for the same reason `look.js` and
+`perform.js` are: the claims become assertions in `test/weather.mjs` rather than
+paragraphs here. Gusts are a **plane wave travelling** along the prevailing
+direction, not a global multiplier — a gust that arrives everywhere at once
+reads as a fade. Wind grows monotonically with altitude, so climbing the world
+is also climbing into more weather. Every biome samples `env.wind(x, y, z)` at
+its own position and nothing else; any new biome should sample the field rather
+than invent a clock.
+
+**Decision: weather is a second authored axis (M2), not a knob.** Per-track
+character crossfaded across seams on the same smoothstep the brightness walk
+uses, so the incoming air arrives before the incoming downbeat (§6.1). Each row
+is the visual half of a D16 ambience bed — the forest floor is the rainiest
+because it is the track whose bed is `ambrain`, and its long-silent
+`ambthunder` accent finally has lightning in front of it.
+
+**Decision: lightning is weather, not meter.** Strikes are a seeded slot
+schedule, so `lightningAt(t)` is time-addressable like every other bus signal —
+askable about any instant, not a timer that must be stepped to stay correct.
+This is what lets a hard-edged, high-contrast event live on the ground stream
+without spending a synch point: it is caused by the sky, not by the bar.
+
+**Decision: a style is spent, not sprinkled.** The new rule, and the reason
+there are only three. An effect that changes *what kind of picture this is* —
+ink, halftone, a kaleidoscopic fold — must be bound to a place in the set that
+already carries meaning, so that seeing it is information: ink to breakdowns
+(the section already about stripping back to lines), halftone to the far end of
+`crush` (the medium degrading one register louder), the fold to the fusion
+climax alone. A style visible at any moment is wallpaper, and §5's whole
+argument about spending the climax applies verbatim. Adding a fourth means
+answering *what does seeing this tell me?* first.
+
+**Decision: the governor sheds ornament before it sheds sentences.** Three
+chain tiers now — styles, then optics, then pixels, and never the groove. Depth
+of field is the dictionary's DRR row and losing it costs a statement; the ink
+pass costs nothing the set depends on. Bought back in reverse order.
+
+**Learned the hard way, recorded so it is not relearned.** (1) `Object3D.copy()`
+clones children by default, and since K5 the camera *has* children — the
+per-frame `groundCam.copy(camera)` was grafting three more frond meshes onto
+each pass camera every frame. Harmless for as long as the camera was childless,
+which is why it survived F–J. (2) A dark sprite used as a colour `map` runs the
+colour-space gauntlet (an unmanaged `CanvasTexture` is treated as linear data,
+not sRGB) and a silhouette comes out as a pale card; `alphaMap` plus a material
+colour states the intent and has no such failure mode. (3) The quality governor
+drops the style tier within seconds on a software rasterizer, so the harness has
+to *pin* it, not merely switch it on — the first style sweep photographed a
+chain that had already dropped the tier while the boot log still said
+`styles=true`. A screenshot cannot tell you a uniform was zero, so
+`debugStyle()` exists and the harness asserts it.
+
+**Rejected.** Real volumetrics for the god rays (still above what the governor
+can shed; the radial-blur fake cannot honour depth and says so). Synchronised
+fireflies — real ones synchronise, and a synchronised swarm is rhythm on the
+ground stream (§2.1), so the physics is wrong on purpose. Ripple rings on kicks
+(the pool's rings would counterfeit the figure's shockwave and devalue it,
+§2.2). Making the near field bokeh at rest, which would need a real resting
+aperture and contradicts F–J's "at rest, the frame is indistinguishable."
+
+---
+
 *Add new entries above this line, newest last. If a decision is reversed,
 don't delete it — append the reversal as a new entry referencing the old.*

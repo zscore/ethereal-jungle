@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --import ./test/register.mjs test/seams.mjs && node --import ./test/register.mjs test/roll.mjs && node test/osc.mjs && node test/perform.mjs",
+    "test": "node --import ./test/register.mjs test/seams.mjs && node --import ./test/register.mjs test/roll.mjs && node test/osc.mjs && node test/perform.mjs && node test/look.mjs && node test/weather.mjs",
     "smoke": "node smoke.mjs"
   },
   "dependencies": {

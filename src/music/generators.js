@@ -11,7 +11,7 @@
  * 3 = pads (far/wet), 4 = lead (far/wet). The kick ducks orbits 3 & 4 — the
  * sidechain is the coupling constant of the whole system (§3.3).
  */
-import { makeRng, phraseStateAt, seamVariant, PHRASE_BARS, SEAM_BARS } from '../bus.js';
+import { makeRng, phraseStateAt, seamVariant, PHRASE_BARS, SEAM_BARS, AMB_CHUNKS } from '../bus.js';
 import { modeAt, padVoicing, bassNotes, leadNotes } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
@@ -408,17 +408,27 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       .orbit(3),
   );
 
-  // ---- ambience: the biome's noise floor, layered (D16, first slice of D12) ----
-  // ambience.current = [bed, ...accents]: 4-bar synthesized loops retriggered
-  // phrase-aligned (slow(4) at absolute cycles). The bed is always on — loud
-  // where the ether is figure (intro/breakdown/seam), tucked under the full
-  // arrangement elsewhere. Accent layers ride their own slow presence walks:
-  // below threshold they rest; above it their gain follows the walk, and long
-  // envelopes smooth the per-phrase steps into fades. During the seam the
-  // INCOMING biome's bed crossfades in early — §6.1's infiltrating ether.
+  // ---- ambience: the biome's noise floor, layered (D16; recordings D20) ----
+  // ambience.current = [bed, ...accents]: 32-bar field recordings played one
+  // phrase-long slice at a time — chunk `c` advances with the phrase index, so
+  // consecutive phrases play consecutive audio and the loop only repeats every
+  // AMB_BARS. Retriggers stay phrase-aligned (slow(4) at absolute cycles), which
+  // is what keeps biome changes and the seam crossfade landing on their bars.
+  // The bed is always on — loud where the ether is figure (intro/breakdown/seam),
+  // tucked under the full arrangement elsewhere. Accent layers ride slow presence
+  // walks: below threshold they rest, above it their gain follows the walk (the
+  // walk is continuous through the threshold, so entries fade rather than pop).
+  // During the seam the INCOMING biome's bed crossfades in early — §6.1's
+  // infiltrating ether.
+  // Envelopes are deliberately near-instant: superdough keeps the source playing
+  // for `release` past the event end, and since the next chunk starts on that
+  // same audio, any real release would sum the recording with itself.
   if (ambience?.current?.length) {
-    const bed = (name, g, atk = 0.5, rel = 2, panPos = 0.5) =>
-      s(name).gain(g).attack(atk).release(rel).pan(panPos).slow(4).orbit(3);
+    const chunk = ((ambience.phraseIndex ?? 0) % AMB_CHUNKS + AMB_CHUNKS) % AMB_CHUNKS;
+    const bed = (name, g, atk = 0.01, rel = 0.01, panPos = 0.5) =>
+      s(name)
+        .begin(chunk / AMB_CHUNKS).end((chunk + 1) / AMB_CHUNKS)
+        .gain(g).attack(atk).release(rel).pan(panPos).slow(4).orbit(3);
     const [baseBed, ...accents] = ambience.current;
     const baseG = landingArrival ? 0.45 // the biome answers the hit at full voice
       : ambient || seamLate ? 0.35 : sec === 'build' || sec === 'release' ? 0.25 : 0.15;
@@ -431,7 +441,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const lvl = Math.max(0, (v - 0.35) / 0.65); // rest below the threshold
       if (lvl <= 0.02) return;
       const g = (ambient || seamLate ? 0.3 : 0.12) * lvl * (1 - x);
-      layers.push(bed(name, g, 1.5, 3, 0.35 + 0.3 * li)); // slower fades, spread in the field
+      layers.push(bed(name, g, 0.02, 0.01, 0.35 + 0.3 * li)); // spread in the field
     });
   }
 

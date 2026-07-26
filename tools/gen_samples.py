@@ -386,18 +386,16 @@ def ambience_sparkle():
     return loopify(out, n)
 
 
-write_wav(os.path.join(base, "amb", "insects.wav"), ambience_insects())
-write_wav(os.path.join(base, "amb", "rain.wav"), ambience_rain())
-write_wav(os.path.join(base, "amb", "birds.wav"), ambience_birds())
-write_wav(os.path.join(base, "amb", "wind.wav"), ambience_wind())
-write_wav(os.path.join(base, "amb", "frogs.wav"), ambience_frogs())
-write_wav(os.path.join(base, "amb", "rustle.wav"), ambience_rustle())
-write_wav(os.path.join(base, "amb", "thunder.wav"), ambience_thunder())
-write_wav(os.path.join(base, "amb", "drips.wav"), ambience_drips())
-write_wav(os.path.join(base, "amb", "calls.wav"), ambience_calls())
-write_wav(os.path.join(base, "amb", "leaves.wav"), ambience_leaves())
-write_wav(os.path.join(base, "amb", "shimmer.wav"), ambience_shimmer())
-write_wav(os.path.join(base, "amb", "sparkle.wav"), ambience_sparkle())
+# D20 retired these twelve: the biome beds are now public-domain field
+# recordings, built by tools/ingest_amb.py from tools/amb_sources.json. The
+# generators are still CALLED — and their output thrown away — because this
+# file is one deterministic random stream seeded at the top, and skipping them
+# would shift every subsequent draw and so change every byte of the impact
+# one-shot below. Cheap insurance for a few seconds of compute.
+for _superseded in (ambience_insects, ambience_rain, ambience_birds, ambience_wind,
+                    ambience_frogs, ambience_rustle, ambience_thunder, ambience_drips,
+                    ambience_calls, ambience_leaves, ambience_shimmer, ambience_sparkle):
+    _superseded()
 
 
 # ---------------------------------------------------------------------------

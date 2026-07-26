@@ -13,40 +13,40 @@
     "breaks/break168.wav"
   ],
   "ambinsects": [
-    "amb/insects.wav"
+    "amb/ambinsects.ogg"
   ],
   "ambrain": [
-    "amb/rain.wav"
+    "amb/ambrain.ogg"
   ],
   "ambbirds": [
-    "amb/birds.wav"
+    "amb/ambbirds.ogg"
   ],
   "ambwind": [
-    "amb/wind.wav"
+    "amb/ambwind.ogg"
   ],
   "ambfrogs": [
-    "amb/frogs.wav"
+    "amb/ambfrogs.ogg"
   ],
   "ambrustle": [
-    "amb/rustle.wav"
+    "amb/ambrustle.ogg"
   ],
   "ambthunder": [
-    "amb/thunder.wav"
+    "amb/ambthunder.ogg"
   ],
   "ambdrips": [
-    "amb/drips.wav"
+    "amb/ambdrips.ogg"
   ],
   "ambcalls": [
-    "amb/calls.wav"
+    "amb/ambcalls.ogg"
   ],
   "ambleaves": [
-    "amb/leaves.wav"
+    "amb/ambleaves.ogg"
   ],
   "ambshimmer": [
-    "amb/shimmer.wav"
+    "amb/ambshimmer.ogg"
   ],
   "ambsparkle": [
-    "amb/sparkle.wav"
+    "amb/ambsparkle.ogg"
   ],
   "ambimpact": [
     "amb/impact.wav"
