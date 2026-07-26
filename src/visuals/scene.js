@@ -157,7 +157,9 @@ export async function initScene(canvas) {
     camera.position.x = camDrift;
     camera.position.y = camY - duck * 0.18;           // the kick shoves the camera
     camera.position.z = 12;
-    camera.lookAt(camDrift * 0.5, camY + 2, 0);       // always climbing toward the light
+    // pitch follows altitude: gaze down into the roots at the bottom of the
+    // world, up toward the light near the top — the register is where you look
+    camera.lookAt(camDrift * 0.5, camY + (-3 + 6 * b), 0);
 
     // ---- world state: one env object, bus signals only ----
     world.update(dt, { t, T, Tf, b, drift, duck });

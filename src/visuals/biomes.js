@@ -19,8 +19,27 @@
  * never audio.
  */
 import * as THREE from 'three';
-import { PointsNodeMaterial } from 'three/webgpu';
-import { attribute, uniform } from 'three/tsl';
+
+// WebGPU renders THREE.Points as fixed 1-px primitives (point size is not in
+// the WebGPU spec), so every "glow dot" cloud is an InstancedMesh of tiny
+// spheres instead — sized identically on WebGPU and the WebGL2 fallback.
+function glowCloud(positions, color, radius) {
+  const n = positions.length / 3;
+  const mesh = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(radius, 6, 4),
+    new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }),
+    n,
+  );
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < n; i++) {
+    m4.setPosition(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+    mesh.setMatrixAt(i, m4);
+  }
+  return mesh;
+}
 
 export const WORLD_TOP = 62;
 
@@ -51,35 +70,30 @@ function makeRoots() {
     const gx = (i % SIDE) - SIDE / 2;
     const gz = Math.floor(i / SIDE) - SIDE / 2;
     pos[i * 3 + 0] = gx * 1.6 + Math.sin(gx * 3.7 + gz) * 0.4;
-    pos[i * 3 + 1] = 2 + Math.sin(gx * 0.7) * Math.cos(gz * 0.9) * 3 + (i % 7) * 0.6;
+    pos[i * 3 + 1] = 2 + Math.sin(gx * 0.7) * Math.cos(gz * 0.9) * 3 + (i % 7) * 1.1;
     pos[i * 3 + 2] = gz * 1.6 + Math.cos(gz * 2.9 + gx) * 0.4;
     phase[i] = (gx * 0.35 + gz * 0.53); // neighboring cells pulse near-together
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1));
-  // per-point pulse in the shader (scene_plan roadmap 1): each point breathes
-  // by its own phase, and the phase field is a spatial gradient — so the
-  // lattice carries slow traveling waves, Gray–Scott in spirit. All uniforms
-  // are bus signals; the wave never articulates rhythm (ground law).
-  const uT = uniform(0);      // bus time (not wall time — the pulse is V(S))
-  const uAmp = uniform(0.2);  // pulse depth, breathes with tension
-  const uBase = uniform(0.35);
-  const mat = new PointsNodeMaterial({
-    size: 0.22, transparent: true,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-    color: BAND_COLORS[0].clone().multiplyScalar(2.2),
-  });
-  mat.opacityNode = uBase.add(uT.add(attribute('phase')).sin().mul(uAmp)).clamp(0, 1);
-  const group = new THREE.Points(geo, mat);
+  // per-point pulse by a spatial phase gradient — the lattice carries slow
+  // traveling waves, Gray–Scott in spirit; never articulates rhythm (ground law)
+  const mesh = glowCloud(pos, 0xffffff, 0.22);
+  // well above the band anchor: additive violet through exp2 fog needs the headroom
+  const base = BAND_COLORS[0].clone().multiplyScalar(4.5);
+  const tmp = new THREE.Color();
+  for (let i = 0; i < N; i++) mesh.setColorAt(i, tmp.copy(base));
   return {
-    group,
+    group: mesh,
     update(dt, env) {
-      uT.value = env.t * 0.9;
-      uAmp.value = 0.12 + 0.22 * env.T;
-      uBase.value = 0.28 + 0.15 * env.T + 0.1 * env.drift;
-      group.rotation.y += dt * 0.008;
-      group.position.y = Math.sin(env.t * 0.11) * 0.6;
+      const tt = env.t * 0.9;
+      const amp = 0.12 + 0.22 * env.T;
+      const floor = 0.28 + 0.15 * env.T + 0.1 * env.drift;
+      for (let i = 0; i < N; i++) {
+        const k = Math.max(0, Math.min(1.3, floor + Math.sin(tt + phase[i]) * amp));
+        mesh.setColorAt(i, tmp.copy(base).multiplyScalar(k));
+      }
+      mesh.instanceColor.needsUpdate = true;
+      mesh.rotation.y += dt * 0.008;
+      mesh.position.y = Math.sin(env.t * 0.11) * 0.6;
     },
   };
 }
@@ -111,15 +125,15 @@ function makeFloor(rng) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
   const mat = new THREE.LineBasicMaterial({
-    color: BAND_COLORS[1].clone().multiplyScalar(2.5),
-    transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending,
+    color: BAND_COLORS[1].clone().multiplyScalar(3.5),
+    transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending,
   });
   const group = new THREE.LineSegments(geo, mat);
   return {
     group,
     update(dt, env) {
       group.rotation.y = env.drift * 0.05;             // 1/f sway, quasi-vestibular
-      mat.opacity = 0.25 + 0.2 * env.Tf;               // growth answers the arc, not the beat
+      mat.opacity = 0.35 + 0.25 * env.Tf;              // growth answers the arc, not the beat
     },
   };
 }
@@ -134,20 +148,15 @@ function makeCanopy() {
     pos[i * 3 + 1] = 22 + Math.random() * 20;
     pos[i * 3 + 2] = (Math.random() - 0.5) * 90;
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({
-    size: 0.12, transparent: true, opacity: 0.55,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  });
-  const group = new THREE.Points(geo, mat);
+  const mesh = glowCloud(pos, 0xffffff, 0.16);
+  const mat = mesh.material;
   return {
-    group, mat,
+    group: mesh,
     update(dt, env) {
-      mat.color = paletteAt(env.b);
+      mat.color.copy(paletteAt(env.b)).multiplyScalar(1.6);
       mat.opacity = (0.35 + 0.35 * env.Tf) * (1 - env.duck * 0.45); // the kick ducks the ether
-      group.rotation.y += dt * (0.01 + 0.04 * env.T);
-      group.position.y = env.drift * 1.5;
+      mesh.rotation.y += dt * (0.01 + 0.04 * env.T);
+      mesh.position.y = env.drift * 1.5;
     },
   };
 }
