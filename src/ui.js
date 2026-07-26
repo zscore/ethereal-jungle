@@ -3,9 +3,9 @@
  * (The WebMIDI layer in midi.js does exactly the same thing: write params,
  * nothing else. The bus is the single writable surface.)
  */
-import { bus } from './bus.js';
+import { bus, TRACKS, BAR_SECONDS, sectionSpans, sectionAt, trackStartBar } from './bus.js';
 
-export function initUI({ onChange, onToggle, onReroll }) {
+export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   const $ = (id) => document.getElementById(id);
 
   const bind = (id, key, parse = parseFloat) => {
@@ -33,6 +33,31 @@ export function initUI({ onChange, onToggle, onReroll }) {
     const playing = onToggle?.();
     $('toggle').textContent = playing ? 'stop' : 'start';
   });
+
+  // transport (D15): skip to any track, or to a section of the CURRENT track.
+  // These write no params — they move the playhead, and seeking while stopped
+  // starts playback (onSeek returns the playing state, like onToggle).
+  const seek = (bar) => {
+    if (onSeek?.(bar)) $('toggle').textContent = 'stop';
+  };
+  TRACKS.forEach((tr, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = tr.name;
+    btn.title = `skip to the top of ${tr.name}`;
+    btn.addEventListener('click', () => seek(trackStartBar(i)));
+    $('tracks').appendChild(btn);
+  });
+  for (const { name } of sectionSpans(TRACKS[0].bars)) {
+    const btn = document.createElement('button');
+    btn.textContent = name;
+    btn.title = `skip to the ${name} of the current track`;
+    btn.addEventListener('click', () => {
+      const { track, index } = bus.trackAt(bus.now());
+      const sp = sectionSpans(track.bars).find((s) => s.name === name);
+      if (sp) seek(trackStartBar(index) + sp.startBar);
+    });
+    $('sections').appendChild(btn);
+  }
 
   // MIDI learn: once WebMIDI is up (it arrives async), grow a `cc` button per
   // slider — click, twist a hardware knob, done. Buttons show the live binding.
@@ -65,11 +90,13 @@ export function initUI({ onChange, onToggle, onReroll }) {
   const readout = $('readout');
   setInterval(() => {
     const t = bus.now();
-    const { track, phase } = bus.trackAt(t);
+    const { track, phase, tLocal } = bus.trackAt(t);
     const seam = bus.seamAt(t);
+    const sec = sectionAt(Math.floor(tLocal / BAR_SECONDS), track.bars);
     readout.textContent =
       `track    ${track.name} ${(phase * 100).toFixed(0)}%` +
       (seam.active ? `  → ${seam.to.name}` : '') + `\n` +
+      `section  ${sec.name} ${sec.phraseInSection + 1}/${sec.sectionPhrases}\n` +
       `t        ${t.toFixed(1)}s\n` +
       `T(t)     ${bus.tensionAt(t).toFixed(2)}\n` +
       `bright   ${bus.brightnessAt(t).toFixed(2)}\n` +

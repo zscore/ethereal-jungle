@@ -143,6 +143,65 @@ export function seamAt(t) {
   };
 }
 
+// ---------- in-track sections (D11) ----------
+// One shared section form per track (like SHAPE, D1): proportional phrase
+// weights over the track's non-seam phrases. Edges snap to whole phrases, so
+// sections inherit D9's bar-exactness. The seam (last 2 phrases) is owned by
+// the seam machinery and never allocated here.
+export const SECTION_LAYOUT = [
+  ['intro', 2],      // ether only: pads establish the world
+  ['build', 2],      // thin break, reduced anchor, floor enters
+  ['groove', 2],     // the full arrangement
+  ['breakdown', 2],  // drums+bass out at the tension dip; pads swell, lead featured
+  ['build2', 2],     // intensified; final bar is the pre-drop dropout (§5)
+  ['peak', 3],       // the drop: full slam at ~golden ratio of the track
+  ['release', 2],    // full arrangement, tension curve falling
+];
+
+/**
+ * Section spans for a track of trackBars bars: [{ name, startBar, bars }] in
+ * order, seam last, tiling the track exactly. This is the one place the
+ * proportional allocation runs — sectionAt and the transport UI both read it.
+ */
+export function sectionSpans(trackBars) {
+  const nAlloc = (trackBars - SEAM_BARS) / PHRASE_BARS; // whole by construction (D9)
+  const totalW = SECTION_LAYOUT.reduce((s, [, w]) => s + w, 0);
+  const spans = [];
+  let start = 0, accW = 0;
+  for (const [name, w] of SECTION_LAYOUT) {
+    accW += w;
+    const end = Math.round((accW / totalW) * nAlloc);
+    if (end > start) spans.push({ name, startBar: start * PHRASE_BARS, bars: (end - start) * PHRASE_BARS });
+    start = end;
+  }
+  spans.push({ name: 'seam', startBar: trackBars - SEAM_BARS, bars: SEAM_BARS });
+  return spans;
+}
+
+/**
+ * Section for the phrase containing barInTrack (integer bar arithmetic only).
+ * Returns { name, phraseInSection, sectionPhrases }. Phrases inside the seam
+ * window return name 'seam' — callers should keep using seam phase info.
+ */
+export function sectionAt(barInTrack, trackBars) {
+  for (const sp of sectionSpans(trackBars)) {
+    if (barInTrack < sp.startBar + sp.bars) {
+      return {
+        name: sp.name,
+        phraseInSection: Math.floor((barInTrack - sp.startBar) / PHRASE_BARS),
+        sectionPhrases: sp.bars / PHRASE_BARS,
+      };
+    }
+  }
+}
+
+/** First absolute set-bar of TRACKS[index] — transport targets. */
+export function trackStartBar(index) {
+  let acc = 0;
+  for (let i = 0; i < index; i++) acc += TRACKS[i].bars;
+  return acc;
+}
+
 /**
  * Bar-exact phrase state for the phrase starting at bar phraseIndex*PHRASE_BARS.
  * Integer bar arithmetic only — no float drift at boundaries. This is what the
@@ -164,6 +223,7 @@ export function phraseStateAt(phraseIndex) {
         track: tr,
         trackIndex: i,
         barInTrack,
+        section: sectionAt(barInTrack, tr.bars), // D11: in-track form
         tStart: phraseIndex * PHRASE_BARS * BAR_SECONDS,
         seam: {
           active,
@@ -195,9 +255,10 @@ export const bus = {
   _now: () => performance.now() / 1000, // replaced with AudioContext clock at boot
   drift: makeDrift(1),
 
-  start(nowFn) {
+  /** Pin set-time: now maps to atSeconds (0 = the top; a seek passes the target). */
+  start(nowFn, atSeconds = 0) {
     this._now = nowFn;
-    this._t0 = nowFn();
+    this._t0 = nowFn() - atSeconds;
     this.drift = makeDrift(this.params.seed);
   },
 

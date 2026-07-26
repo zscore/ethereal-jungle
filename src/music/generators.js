@@ -106,13 +106,13 @@ export function leadContour(rng, w) {
   return out;
 }
 
-function buildLead(ctx, rng, mode, tension, w) {
+function buildLead(ctx, rng, mode, tension, w, featured = false) {
   const { note } = ctx;
   const contour = leadContour(rng, w);
   const scale = leadNotes(mode); // quantize: shape → current mode, octave 5 (§2.3)
   // sparse placement: E(k,16) with k breathing with tension — the lead is a
   // guest in the ether, not a soloist (visual doc §5's economy applies here too)
-  const k = 3 + Math.round(tension * 3);
+  const k = featured ? 5 : 3 + Math.round(tension * 3);
   const mask = euclid(k, 16, Math.floor(rng() * 16));
   let ci = 0;
   const seq = mask.map((v) => {
@@ -125,7 +125,8 @@ function buildLead(ctx, rng, mode, tension, w) {
     .attack(0.05).release(1.5)
     .room(0.8).roomsize(6)      // drowned: the pluck problem's legal resolution (§7.2)
     .lpf(1200 + 2400 * tension)
-    .gain(0.28 * Math.min(1, (tension - 0.3) / 0.3)) // enters only past T ≈ 0.3
+    // featured (breakdown, D11): the ether becomes figure, tension gate waived
+    .gain(featured ? 0.34 : 0.28 * Math.min(1, (tension - 0.3) / 0.3))
     .pan(0.5)
     .slow(2)                     // half-time layer: lyrical, not rhythmic
     .orbit(4);
@@ -153,7 +154,7 @@ export function makeSetPattern(ctx, p, signals) {
       // seed varies per phrase AND per track: each track is a different telling,
       // and the break re-permutes every phrase (§1.1 theme-and-variations)
       const seed = p.seed + idx * 101 + ps.trackIndex * 7919;
-      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, ps.seam);
+      pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, ps.seam, ps.section);
       cache.set(idx, pat);
       if (cache.size > 32) cache.delete(cache.keys().next().value); // bounded over long runs
     }
@@ -174,14 +175,22 @@ export function makeSetPattern(ctx, p, signals) {
  * Build one phrase's arrangement as a stacked 1-cycle pattern.
  * `ctx` provides the pattern-building functions (from @strudel/core controls)
  * so this module stays import-order agnostic. `p` is a bus params snapshot.
- * `brightness` comes from the bus's authored walk; `seam` comes from
- * phraseStateAt — when active the arrangement becomes the seam operator (§6.3).
+ * `brightness` comes from the bus's authored walk; `seam` and `section` come
+ * from phraseStateAt — the seam makes the arrangement the seam operator
+ * (§6.3), the section (D11) gates which layers exist at all: form is what
+ * plays, tension only shades how it plays.
  */
-export function buildArrangement(ctx, p, tension, brightness, seam) {
+export function buildArrangement(ctx, p, tension, brightness, seam, section) {
   const { s, note, stack } = ctx;
   const rng = makeRng(p.seed);
   const mode = modeAt(brightness);
   const w = Math.min(1, p.wildness * (0.5 + 0.5 * tension));
+
+  // ---- section state (D11) ----
+  const sec = section?.name ?? 'groove';
+  const lastPhraseOf = section ? section.phraseInSection === section.sectionPhrases - 1 : false;
+  // bar-level progress through the section is secProgress + j/(4·sectionPhrases)
+  const secProgress = section ? section.phraseInSection / section.sectionPhrases : 0;
 
   // Seam phases (§6.3), bar-exact: early seam = intensified exit (A's drums
   // peak), late seam = the drums die BEFORE the boundary (§6.1's asymmetry —
@@ -189,60 +198,87 @@ export function buildArrangement(ctx, p, tension, brightness, seam) {
   // ether is already here via brightnessAt's forward leak.
   const seamEarly = seam?.active && !seam.late;
   const seamLate = seam?.active && seam.late;
-  const wEff = seamEarly ? Math.min(1, w + 0.25) : w;
-  const leadPresent = tension > 0.3 && !seamLate;
+  const wEff = Math.min(1, w + (seamEarly ? 0.25 : 0) + (sec === 'build2' ? 0.15 : 0));
+
+  // Which layers exist. intro = kick heartbeat + ether; breakdown = ether only
+  // (skeleton off ⇒ the break must go too — the anchor rule, §1.2 inverted).
+  const ambient = sec === 'intro' || sec === 'breakdown';
+  const breakIn = !seamLate && !ambient;
+  const kickIn = !seamLate && sec !== 'breakdown';
+  const snareIn = !seamLate && !ambient;
+  const bassIn = !seamLate && !ambient;
+  const leadPresent = !seamLate &&
+    (sec === 'breakdown' || (tension > 0.3 && sec !== 'intro' && sec !== 'build'));
+
+  // §5's pre-drop denial: the final bar of build2 is ether-only. The mask is
+  // keyed to absolute cycle mod 4 = bar-in-phrase (same trick as the roll).
+  const dropout = sec === 'build2' && lastPhraseOf;
+  const gate = (pat) => (dropout ? pat.mask('[1 1 1 0]/4') : pat);
 
   const layers = [];
 
   // ---- drums: the break (figure) — sharp, dry, narrow, double-time ----
-  if (!seamLate) {
+  if (breakIn) {
+    const thin = sec === 'build'; // degraded entry: the break fades in over the build
     const sigma = permuteBreak(wEff, rng);
-    layers.push(
+    layers.push(gate(
       s('jbreak') // local synthesized break; try s('breaks165') with the remote pack
         .slice(16, sigma.join(' '))
-        .sometimesBy(wEff * 0.4, (x) => x.ply(2))  // stochastic re-subdivision
-        .degradeBy(wEff * 0.15)                     // …and deletion, below anchor-threat level
-        .gain(0.9)
+        .sometimesBy(thin ? 0 : wEff * 0.4, (x) => x.ply(2)) // stochastic re-subdivision
+        .degradeBy(thin ? 0.4 - 0.2 * secProgress : wEff * 0.15)
+        .gain(sec === 'peak' && section?.phraseInSection === 0
+          ? '[1 0.9 0.9 0.9]/4'  // the drop bar slams (per-bar, phrase-aligned)
+          : thin ? 0.75 : 0.9)
         .orbit(1),
-    );
+    ));
   }
 
   // ---- skeleton: the metric anchor (§1.2) — strength rises with tension ----
   // Kick and snare split so ONLY the kick carries the sidechain: the audio
   // duck now mirrors the visual duck — one coupling constant, both media.
-  const anchorStrength = 0.45 + 0.5 * tension;
+  const anchorStrength =
+    Math.min(1, 0.45 + 0.5 * tension + (sec === 'peak' ? 0.15 : 0)) * (sec === 'build' ? 0.7 : 1);
   const duckDepth = p.coupling * (0.4 + 0.6 * tension);
-  if (!seamLate) {
-    layers.push(
-      s('bd ~ ~ ~').gain(anchorStrength)
-        .duckorbit('3:4').duckattack(0.12).duckdepth(duckDepth) // engine pre-creates orbits
-        .orbit(1),
-      s('~ ~ sd ~').gain(anchorStrength).orbit(1),
-    );
-  } else {
+  if (seamLate) {
     // clean_downbeat countdown: a bare snare roll doubling every bar across the
     // late phrase — §5's accelerating fill, bar-exact into the new downbeat.
     // slow(4) keys the roll to absolute cycle mod 4, which IS the bar-in-phrase
     // because track lengths are whole phrases (D9).
     layers.push(s('[sd sd*2 sd*4 sd*8]').gain('[0.55 0.65 0.75 0.88]').slow(4).orbit(1));
+  } else {
+    if (kickIn) {
+      layers.push(gate(
+        s('bd ~ ~ ~').gain(anchorStrength)
+          .duckorbit('3:4').duckattack(0.12).duckdepth(duckDepth) // engine pre-creates orbits
+          .orbit(1),
+      ));
+    }
+    if (snareIn) layers.push(gate(s('~ ~ sd ~').gain(anchorStrength).orbit(1)));
   }
 
-  // ---- hats: E(k, 16), k breathing with tension; riser during the seam ----
-  const k = seam?.active ? 7 : 3 + Math.round(tension * 4);
-  const hatMask = euclid(k, 16, Math.floor(rng() * 16));
-  let hats = s(hatMask.map((v) => (v ? 'hh' : '~')).join(' ')).pan(0.4 + rng() * 0.2);
-  if (seam?.active) {
-    // per-bar gain ramp across the phrase: the riser climbs bar by bar
-    const gains = Array.from({ length: 4 }, (_, j) =>
-      (0.35 + 0.25 * tension + 0.25 * (seam.progress + j / SEAM_BARS)).toFixed(3));
-    hats = hats.gain(`[${gains.join(' ')}]/4`); // /4: one gain step per bar, phrase-aligned
-  } else {
-    hats = hats.gain(0.35 + 0.25 * tension);
+  // ---- hats: E(k, 16), k breathing with tension; riser during seam & build2 ----
+  if (!ambient) {
+    const k = seam?.active ? 7 : 3 + Math.round(tension * 4);
+    const hatMask = euclid(k, 16, Math.floor(rng() * 16));
+    let hats = s(hatMask.map((v) => (v ? 'hh' : '~')).join(' ')).pan(0.4 + rng() * 0.2);
+    if (seam?.active) {
+      // per-bar gain ramp across the phrase: the riser climbs bar by bar
+      const gains = Array.from({ length: 4 }, (_, j) =>
+        (0.35 + 0.25 * tension + 0.25 * (seam.progress + j / SEAM_BARS)).toFixed(3));
+      hats = hats.gain(`[${gains.join(' ')}]/4`); // /4: one gain step per bar, phrase-aligned
+    } else if (sec === 'build2' && section) {
+      // the pre-drop riser (§5): same per-bar ramp, keyed to section progress
+      const gains = Array.from({ length: 4 }, (_, j) =>
+        (0.3 + 0.25 * tension + 0.3 * (secProgress + j / (4 * section.sectionPhrases))).toFixed(3));
+      hats = hats.gain(`[${gains.join(' ')}]/4`);
+    } else {
+      hats = hats.gain(0.35 + 0.25 * tension);
+    }
+    layers.push(gate(hats.orbit(1)));
   }
-  layers.push(hats.orbit(1));
 
   // ---- bass: isorhythm — talea E(5,16) × pentatonic color walk (lcm cycling) ----
-  if (!seamLate) { // the floor leaves with the drums; the drop restores it whole
+  if (bassIn) { // the floor leaves with the drums; the drop restores it whole
     const talea = euclid(5, 16, 2);
     const colors = bassNotes(mode);
     let ci = Math.floor(rng() * colors.length);
@@ -251,34 +287,36 @@ export function buildArrangement(ctx, p, tension, brightness, seam) {
       ci = (ci + (rng() < 0.6 ? 1 : 2)) % colors.length; // walk, not shuffle
       return colors[ci];
     });
-    layers.push(
+    layers.push(gate(
       note(bassSeq.join(' '))
         .s('sawtooth')
         .lpf(140 + 260 * tension)
         .gain(0.5)
         .slow(2)          // half-time layer (§1.4): bass lives at the felt pulse
         .orbit(2),
-    );
+    ));
   }
 
   // ---- pads: the ether (ground) — slow, wide, drowned, half-time and slower ----
-  // Survives the seam untouched: the continuity layer, the common tone (§6.1).
+  // Survives the seam AND the dropout untouched: the continuity layer, the
+  // common tone (§6.1). In the breakdown it swells — the ether becomes figure.
+  const swell = sec === 'breakdown';
   const chord = padVoicing(mode);
   layers.push(
     note(`[${chord.join(',')}]`)
       .s('sawtooth')
-      .attack(1.2).release(4)
+      .attack(swell ? 2.4 : 1.2).release(swell ? 6 : 4)
       .detune(0.12)                // §3.4: the ether is never in tune with itself
-      .lpf(900 + 2600 * tension)
+      .lpf(900 + 2600 * tension + (swell ? 600 : 0))
       .room(0.9).roomsize(8)       // low DRR: distance, the heavens
-      .gain(0.32)
+      .gain(swell ? 0.45 : 0.32)
       .pan(0.5)
       .slow(4)
       .orbit(3),
   );
 
   // ---- lead: the set's one melodic cell, transformed (80/20) ----
-  if (leadPresent) layers.push(buildLead(ctx, rng, mode, tension, w));
+  if (leadPresent) layers.push(buildLead(ctx, rng, mode, tension, w, sec === 'breakdown'));
 
   return stack(...layers);
 }

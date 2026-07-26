@@ -14,7 +14,7 @@ import {
   samples,
   getSuperdoughAudioController,
 } from '@strudel/webaudio';
-import { bus, CPS } from '../bus.js';
+import { bus, CPS, BAR_SECONDS } from '../bus.js';
 import { makeSetPattern } from './generators.js';
 
 let scheduler = null;
@@ -96,6 +96,26 @@ export function rebuild() {
     seam: bus.seamAt(t).active,
     when: getAudioContext().currentTime,
   });
+}
+
+/**
+ * Jump the playhead to an absolute set bar (D15). The set pattern is keyed to
+ * the scheduler's cycle count (D9), so seeking is: point the scheduler's next
+ * query window at the target cycle and reset the tick counter so it re-anchors
+ * its wall-time↔cycle mapping on the next tick (the same path setCps uses),
+ * then re-pin bus t=0 so both clocks agree that "now" is that bar. The right
+ * content follows from the cycle-keyed compiler — no rebuild needed.
+ * Returns true if playing afterwards (seeking while stopped starts playback).
+ */
+export function seekToBar(bar) {
+  if (!scheduler) return false;
+  const ctx = getAudioContext();
+  bus.start(() => ctx.currentTime, bar * BAR_SECONDS);
+  scheduler.lastEnd = bar;                    // next query begins at the target cycle
+  scheduler.num_ticks_since_cps_change = 0;   // re-anchor time↔cycle at next tick
+  if (!scheduler.started) scheduler.start();
+  bus.publish({ type: 'seek', bar, when: ctx.currentTime });
+  return true;
 }
 
 export function toggle() {

@@ -238,6 +238,134 @@ start after the page.
 server-driven; we only need param writes). Binary OSC framing — o-s-c speaks
 JSON over its WebSocket, and anything else can too.
 
+## D11 — In-track sections: tension gates the arrangement, not just the knobs (2026-07-26)
+
+**Decision.** Each track now has an internal section form, computed bar-exactly
+from `barInTrack` (new `sectionAt` in bus.js, surfaced via
+`phraseStateAt(i).section`): **intro** (ether only — pads, no drums/bass/lead)
+→ **build** (thin degraded break, reduced anchor, bass enters, no lead) →
+**groove** (the full arrangement, previous behavior) → **breakdown** (drums and
+bass out, pads swell, lead featured — placed at the tension curve's authored
+dip) → **build2** (full arrangement intensified, hat riser, and a one-bar
+ether-only dropout in its final bar — §5's pre-drop denial) → **drop/peak**
+(everything slams back at full anchor strength, landing at ~0.59 of the track,
+the golden-ratio prior) → **release** → the existing 2-phrase **seam**.
+Sections are allocated in whole phrases by proportional weights
+(`SECTION_LAYOUT`), so every edge lands on a phrase line and inherits D9's
+bar-exactness for free. `buildArrangement` takes the section and gates which
+layers exist; continuous tension/brightness modulation is unchanged.
+
+**Why.** Listening verdict on the D9-era engine: tracks were ~97 s of the full
+stack playing continuously, so the authored tension arc (D1) was nearly
+inaudible — tension only turned continuous knobs (lpf, gain, hat density),
+never *what plays*. The theory already demanded this fix: §5's drop is
+expectation arithmetic (riser + countdown + withheld arrival), the breakdown
+rule is "skeleton off ⇒ reduce w," and ambient sections are where the ether
+becomes figure. Deriving sections from bar arithmetic (not from thresholding
+the tension value) keeps them deterministic, phrase-cached, and identical
+across recompiles — the same properties D9 bought for seams.
+
+**Rejected.** Thresholding `tensionAt` into states (edges would move when the
+tension knobs move — sections are form, and form is authored, D1). A separate
+section timer/state object in the engine (the phrase compiler is already the
+one place arrangement state lives). Sections expressed as Strudel `arrange()`
+(same absolute-cycle-parity objection as D9).
+
+**Revisit when** tracks earn bespoke forms — `SECTION_LAYOUT` is one shared
+shape like `SHAPE`; a per-track `layout` field is the natural extension.
+
+## D12 — Per-track instrumentation palette (planned, not yet implemented) (2026-07-26)
+
+**Decision (planned).** Give each track an identity by varying *sounds* over
+the fixed machinery (§7: "the half that keeps a twenty-minute generative set
+from feeling like one very long track"): a per-track palette object on
+`TRACKS[i]` — break sample (Think/Apache/etc. via the remote dirt-samples
+pack, with `jbreak` as the offline fallback), pad/bass waveform and register,
+hat character, lead patch. Same σ-permuter, same isorhythm, same voicing
+logic — a different *performer* per track. This is orchestration downgraded
+to data, so it belongs in the authored timeline (bus.js), not in generators.
+
+**Why deferred.** D11 (sections) gives the most audible payoff per line and
+had to land first — palette changes on top of an undifferentiated wall would
+still sound like one long track. Also the richer break palette depends on the
+remote sample pack, which is dev-only (licensing, README) — the palette
+design must degrade gracefully to the local synthesized kit.
+
+## D13 — Key movement across tracks (open question, deliberately unresolved) (2026-07-26)
+
+**Status.** The single tonal center (`ROOT = 50`, D — §2.1 rule 1, strong
+version) is a founding commitment: the set's harmonic story lives entirely on
+the brightness/mode axis (D2), and "maximal harmonic stasis" is half the
+genre thesis. Listening feedback says tracks blur together; mode color alone
+may be too subtle a differentiator once D11/D12 land — or may be exactly
+enough. **Option on the table:** per-track root offsets (e.g. movement by
+fourths, returning home for the set loop), applied at the seam so the
+boundary carries the modulation — §6's "transitions are modulation at macro
+scale" supports this without new machinery (a `root` field per track,
+threaded through scales.js). **Decision deferred** until D11 + D12 are
+audible: change one variable at a time, and key movement is the one that
+spends the thesis.
+
+## D14 — Per-stream post chain + artifact operators + roots per-point pulse (2026-07-26)
+
+*(Renumbered from a duplicate "D11" — written concurrently with the music-side
+D11 above; any code comments citing D11 for the post chain mean this entry.)*
+
+**Decision.** scene_plan roadmap items 2 and 5, plus the roots half of item 1.
+The figure stream moved to render layer 1; two cameras (synced from the main
+camera each frame, split by layer) drive two TSL `pass()` nodes through
+`THREE.PostProcessing`. Bloom applies to the ground pass only, with
+`strength = (0.4 + 0.5·Tf) · (1 − duck·0.6)` — the sidechain rendered a third
+way, and lit ahead of the sound like everything else. The figure pass
+composites over the bloomed ground additively, clinically sharp. The
+artifact operators then run over the final frame: afterimage (feedback smear,
+damp = max(0, w−0.55)·1.8 so it exists only in high-w stasis, §5), rgbShift
+(amount = w²·0.004), film grain (0.05 + 0.3·w). The roots biome upgraded from
+whole-cloud opacity to a per-point shader pulse: `PointsNodeMaterial` with
+`opacityNode = base + sin(t·0.9 + phase)·amp`, phase being the pre-existing
+spatial gradient attribute — traveling waves, alive, going nowhere. All
+uniforms are bus signals (`env.t`, T, drift), never wall time.
+
+**Why layers, not MRT masks.** Two cheap scene passes avoid per-material
+`mrtNode` compatibility questions across the WebGPU/WebGL2 backends, and the
+ground/figure split by camera layer is the literal implementation of §2.1's
+bimodal stream clustering. The whole chain is wrapped in try/catch with a
+direct-render fallback; verified live under the WebGL2 (swiftshader) backend:
+post chain builds, frame renders, figure sharp with visible chroma fringe.
+
+**Still open from roadmap 1.** The canopy ether still rotates as a whole
+cloud; curl-noise TSL compute particles remain the end state.
+
+## D15 — Transport: seek to any track or section by moving the playhead (2026-07-26)
+
+**Decision.** `seekToBar(bar)` in engine.js jumps the set to an absolute bar:
+it points the Cyclist's next query window at the target cycle
+(`scheduler.lastEnd = bar`) and resets `num_ticks_since_cps_change` so the
+scheduler re-anchors its wall-time↔cycle mapping on the next tick — the exact
+mechanism `setCps` already uses — then re-pins bus t=0 with an offset
+(`bus.start(nowFn, atSeconds)`) so both clocks agree "now" is that bar. No
+rebuild, no pattern swap: because the set is one cycle-keyed pattern (D9),
+the right phrase, section, and seam state follow from the cycle count by
+construction. ui.js grows track buttons (jump to a track's top) and section
+buttons (jump to that section of the *current* track), driven by the shared
+allocator `sectionSpans` (bus.js) — the same function `sectionAt` now reads,
+so the buttons and the compiler can never disagree about where a section
+starts. Seeking while stopped starts playback at the target; a `seek` event
+is published on the bus for any subscriber that wants to react discontinuously
+(the camera will teleport, since brightness is a function of set-time).
+
+**Why.** D11 made sections exist; auditioning them by waiting ~97 s per track
+is not a workflow. Seeking by moving the playhead (rather than by rebuilding
+patterns with faked state) keeps one source of truth — everything downstream
+is already a function of (cycle, params), which is also why the whole feature
+is ~15 lines of engine code.
+
+**Accepted roughness.** Haps already scheduled within the ~latency window
+(~100 ms) from the old position still sound at the moment of the jump — below
+the threshold of caring for a monitoring control. The camera teleports on
+seek; if that ever matters, the `seek` event is the hook for a visual cut
+(change blindness at drops, D5, would even endorse it).
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

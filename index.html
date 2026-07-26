@@ -27,6 +27,8 @@
       #panel input[type="number"] { width: 5.5em; background: #0b1218; color: inherit; border: 1px solid #1c2a33; border-radius: 4px; padding: 2px 4px; }
       #panel button { background: #12202a; color: inherit; border: 1px solid #24404d; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
       #panel button.learn { padding: 0 5px; font-size: 0.6rem; opacity: 0.55; align-self: flex-end; }
+      #panel .wrap { flex-wrap: wrap; gap: 0.3rem; }
+      #panel .wrap button { padding: 2px 6px; font-size: 0.62rem; }
       #readout { opacity: 0.55; white-space: pre; line-height: 1.5; }
     </style>
   </head>
@@ -43,6 +45,8 @@
         <label>seed <input id="seed" type="number" value="1" min="0" step="1" /></label>
         <button id="reroll">reroll</button>
       </div>
+      <label>skip to track <span class="row wrap" id="tracks"></span></label>
+      <label>skip to section <span class="row wrap" id="sections"></span></label>
       <div class="row">
         <button id="toggle">stop</button>
       </div>

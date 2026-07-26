@@ -3,7 +3,7 @@
  * the pattern engine renders the bus for the ear, the scene renders it for the eye.
  */
 import { bus } from './bus.js';
-import { initEngine, rebuild, toggle } from './music/engine.js';
+import { initEngine, rebuild, toggle, seekToBar } from './music/engine.js';
 import { initScene } from './visuals/scene.js';
 import { initUI } from './ui.js';
 import { initMidi } from './midi.js';
@@ -32,6 +32,7 @@ overlay.addEventListener('click', async () => {
     onChange: () => rebuild(),
     onReroll: () => rebuild(),
     onToggle: () => toggle(),
+    onSeek: (bar) => seekToBar(bar),
   });
   // non-fatal if WebMIDI is unavailable; learn buttons appear once it is
   initMidi({ onChange: () => rebuild() }).then((midi) => { if (midi) ui.enableLearn(midi); });

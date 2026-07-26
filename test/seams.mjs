@@ -7,7 +7,7 @@
  */
 import { controls, stack, Pattern, Fraction } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
-import { bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS } from '../src/bus.js';
+import { bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS, sectionSpans } from '../src/bus.js';
 import { makeSetPattern } from '../src/music/generators.js';
 
 miniAllStrings();
@@ -38,6 +38,12 @@ const earlyStart = T0 - SEAM_BARS;
 console.log('geometry');
 check(TRACKS.every((tr) => tr.bars % PHRASE_BARS === 0), 'every track length is whole phrases');
 check(SEAM_BARS % PHRASE_BARS === 0 && SEAM_LATE_BARS % PHRASE_BARS === 0, 'seam phases are whole phrases');
+check(TRACKS.every((tr) => {
+  const spans = sectionSpans(tr.bars);
+  let bar = 0;
+  for (const sp of spans) { if (sp.startBar !== bar) return false; bar += sp.bars; }
+  return bar === tr.bars;
+}), 'section spans tile every track contiguously (D15 transport targets)');
 
 console.log('pre-seam phrase (full arrangement)');
 {
@@ -78,11 +84,33 @@ console.log('bar-exactness at the phase edges');
   // …and the countdown's first snare lands exactly ON it
   const first = onsets(lateStart, lateStart + 1).find((h) => h.value?.s === 'sd');
   check(first && first.whole.begin.equals(Fraction(lateStart)), 'countdown starts exactly on the bar line');
-  // the drop: full arrangement returns exactly on the track boundary
+  // the boundary (D11): the incoming track opens with its intro — the kick
+  // heartbeat lands exactly on the downbeat, the break waits for the build
   const drop = onsets(T0, T0 + 1);
   const kick = drop.find((h) => h.value?.s === 'bd');
   check(kick && kick.whole.begin.equals(Fraction(T0)), 'kick returns exactly on the downbeat');
-  check(drop.some((h) => h.value?.s === 'jbreak'), 'break returns at the drop');
+  check(!drop.some((h) => h.value?.s === 'jbreak'), 'boundary opens the intro: no break yet');
+  check(soundsIn(T0 + 8, T0 + 12).has('jbreak'), 'break enters with the build section');
+}
+
+console.log('in-track sections (D11) — track 0 form');
+{
+  // layout for a 68-bar track: intro 0-8, build 8-16, groove 16-24,
+  // breakdown 24-32, build2 32-40 (dropout bar 39), peak 40-52, release 52-60
+  const intro = soundsIn(0, 4);
+  check(intro.has('bd') && !intro.has('jbreak') && !intro.has('sd'), 'intro: kick heartbeat, no break/snare');
+  check(!orbitsIn(0, 4).has(2) && orbitsIn(0, 8).has(3), 'intro: no bass, pads present');
+  const groove = soundsIn(16, 20);
+  check(groove.has('jbreak') && groove.has('sd') && orbitsIn(16, 20).has(2), 'groove: full arrangement');
+  const bd = soundsIn(24, 28);
+  check(!bd.has('bd') && !bd.has('jbreak') && !bd.has('hh') && !orbitsIn(24, 28).has(2), 'breakdown: drums and bass gone');
+  check(orbitsIn(24, 32).has(3) && orbitsIn(24, 32).has(4), 'breakdown: pads swell, lead featured');
+  const dropoutBar = soundsIn(39, 40);
+  check(!dropoutBar.has('bd') && !dropoutBar.has('jbreak') && !dropoutBar.has('hh'), 'pre-drop dropout bar is ether-only');
+  check(!orbitsIn(39, 40).has(2) && orbitsIn(39, 40 + 1).has(3), 'dropout: bass gone, pads survive');
+  const dropKick = onsets(40, 41).find((h) => h.value?.s === 'bd');
+  check(dropKick && dropKick.whole.begin.equals(Fraction(40)), 'the drop lands exactly on bar 40');
+  check(soundsIn(40, 44).has('jbreak') && orbitsIn(40, 44).has(2), 'drop: break and bass slam back');
 }
 
 console.log('the set loop seam (zenith → undergrowth)');
