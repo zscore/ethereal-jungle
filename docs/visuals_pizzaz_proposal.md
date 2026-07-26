@@ -1,7 +1,7 @@
 # Visuals Expansion III — nature, and other kinds of picture
 
-Status: **implemented** (K1–K7, L1–L6, L8, M2 all landed; see design_decisions
-D21). Successor to `visuals_fancy_proposal.md` (tiers F–J, all shipped), which
+Status: **implemented** (K1–K7, L1–L6, L8, M1–M2 all landed; see
+design_decisions D21). Successor to `visuals_fancy_proposal.md` (tiers F–J, all shipped), which
 stays the record of how the optics and the perform twins got built. Same rules,
 same § references to the visualizer theory doc. Item letters continue at **K**.
 
@@ -176,7 +176,22 @@ Refraction is the air becoming visible, so it belongs to the two moments the
 air is doing the most work: the fusion climax, and the top of a tension curve.
 Ground-only, like the fold.
 
-## Tier M — the second axis
+## Tier M — choreography and the second axis
+
+### M1. Dolly zoom on landings (S)
+The push-in built in I2 moves the camera forward through the late seam window;
+this opens the lens *while* it moves. That combination is the one camera
+gesture that says "the ground is going" rather than "we are arriving", so it is
+spent only on landings — exactly where the arrival flash already lives. A
+dissolve decelerates and opens the air instead; giving it a dolly too would
+make the two flavors say the same thing in different words.
+
+Partial on purpose: holding the subject exactly, against a 4.5-unit push from
+12, needs ~85°, and at that point the effect stops being unease and becomes a
+joke about vertigo. 14° is the version where the walls of the frame move and
+you cannot quite say why. Smoothed on release rather than assigned — the
+push-in ends the instant the boundary passes, and a 14° snap back on one frame
+reads as a dropped frame instead of a release.
 
 ### M2. A weather axis on the bus (M)
 `weatherAt()` gives each track a character — `{mist, rain, wind, storm}` —
@@ -207,9 +222,6 @@ tying accent walks to the climax, on the visual side first.
 
 ## What is NOT done
 
-- **M1. Dolly zoom on landings** (FOV widening against a push-in) — the only
-  proposed item not built. It belongs with I2's seam staging and is a small
-  change to the same code; it was cut for time, not for a reason.
 - **The near field never bokehs.** K5's fronds sit at 2.8–3.4 units and the
   focus rides the look-at target ~14 units out, but at rest the focal length is
   1200 (G1's "off"), so the pass is a no-op and the fronds render sharp. Making
@@ -218,11 +230,16 @@ tying accent walks to the climax, on the visual side first.
   is therefore a decision, not a bug fix.
 - **Fireflies are O(n²) with a 3-frame stride.** Fine at 220 agents; a spatial
   hash is the obvious move if the population ever grows.
-- **Only WebGL2 has been looked at.** The style tier builds and runs on both
-  backends (the harness certifies that), but the WebGPU screenshots are black
-  on this headless chromium — a known limitation predating this pass. **The
-  style tier has not been seen by a human eye on WebGPU.** Do that in a real
-  browser window before trusting it there.
+- **Only WebGL2 has been looked at.** The whole chain — every style node
+  included — compiles and boots on WebGPU, and the harness certifies that much.
+  It certifies nothing else: on this headless chromium the WebGPU **device is
+  lost a few seconds into every run**, which is why those PNGs are black. That
+  reproduces on the fa38e86 baseline (3.9 s in, predating all of this work), so
+  it is the environment rather than the scene — but it does mean **the style
+  tier has never been seen by a human eye on WebGPU**, and neither has its
+  frame cost. Do that in a real browser window before trusting it there.
+  (`tools/visual_check.mjs` used to claim this run was error-free; it never
+  was, and the header now says so.)
 - **Perf on real hardware is unmeasured.** Every new biome respects the quality
   dial and every style is droppable, but the whole pass was developed against
   swiftshader, where the governor sits at the bottom of its ladder by design.

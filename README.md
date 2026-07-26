@@ -124,7 +124,12 @@ corpus shrine, one shot per perform-rail knob, both seam flavors, the weather
 (rain, a held lightning strike), each new nature biome in isolation, and each
 style tier, into `shots/<backend>-<name>.png`. Run it on **both** backends
 before trusting a visual change — that is how the WebGPU point-size bug got
-away from us.
+away from us. Note what the WebGPU pass actually proves: on this headless
+chromium the WebGPU device is lost a few seconds in (it reproduces on a
+baseline from before any of the visual work, so it is the environment), the
+PNGs come out black, and the run *does* print errors. It certifies that the
+chain compiles and the world boots on that backend, and nothing more —
+appearance and frame rate there need a real browser window.
 
 Escape hatches while looking: `?altitude=0.6`, `?biome=canopy`, `?shrine=0`,
 `?dof=0`, `?style=0`, `?weather={"rain":1}`, and `window.jungle.visuals` in the

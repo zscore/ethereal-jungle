@@ -11,13 +11,24 @@
  *   node tools/visual_check.mjs                # WebGL2 (swiftshader, CI-safe)
  *   node tools/visual_check.mjs --backend=webgpu   # needs a WebGPU-capable chromium
  *
- * Known limitation, verified against a pre-change checkout: on this
- * headless chromium the WebGPU canvas does not composite into screenshots —
- * the PNGs come out black even though the run itself is clean (backend
- * reports `webgpu`, no page errors, the governor holds full quality). So the
- * WebGPU pass currently certifies *that the chain builds and runs*, and the
- * WebGL2 pass certifies *what it looks like*. Look at WebGPU in a real
- * browser window before trusting appearance there.
+ * Known limitation, re-verified 2026-07-27 against the fa38e86 baseline (a
+ * checkout predating the look module, the weather layer and the style tiers):
+ * on this headless chromium **the WebGPU device is lost a few seconds into
+ * every run** — `WebGPU Device Lost: A valid external Instance reference no
+ * longer exists`, followed by a stream of `Instance dropped in popErrorScope`.
+ * It happens on the baseline too (3.9 s in), so it is the environment, not the
+ * scene: headless WebGPU on this machine, where chromium is asked for Vulkan
+ * on a Metal platform. That lost device is also *why* the PNGs are black.
+ *
+ * An earlier version of this note claimed the WebGPU run was "clean, no page
+ * errors". It is not, and it apparently never was — the errors arrive after
+ * the boot log, so a glance at the head of the output missed them.
+ *
+ * So: the WebGPU pass certifies *that the chain compiles and the world boots
+ * on that backend* — a real thing to certify, and how the point-size bug would
+ * be caught — and nothing about appearance or stability. The WebGL2 pass
+ * certifies what it looks like. Look at WebGPU in a real browser window
+ * before trusting either appearance or frame rate there.
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';

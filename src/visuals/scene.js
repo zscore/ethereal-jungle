@@ -54,7 +54,9 @@ import * as B from '../bus.js';
 import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
 import { initFigure } from './figure.js';
 import { initShrine } from './shrine.js';
-import { look, orbitAt, seamPush, seamFlashes, seamExhale, gradeAt, styleAt } from './look.js';
+import {
+  look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt, FOV_BASE,
+} from './look.js';
 import { windAt, weatherAt, lightningAt } from './weather.js';
 
 const { bus, makeRng } = B;
@@ -73,7 +75,7 @@ export async function initScene(canvas) {
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x04060a, 0.055);
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 300);
+  const camera = new THREE.PerspectiveCamera(FOV_BASE, 1, 0.1, 300);
   camera.position.set(0, 2, 12);
   camera.layers.enable(FIGURE_LAYER); // the fallback direct render sees both streams
 
@@ -276,6 +278,7 @@ export async function initScene(canvas) {
   let wasSeam = false;
   let quality = 1;     // the governor's dial, read by the heavy biomes (J1)
   let inkAmt = 0;      // smoothed style target: a medium fades in, it never cuts (L3)
+  let camFov = FOV_BASE;               // smoothed dolly zoom on landings (M1)
   let lastSection = 'groove';          // exposed for the harness's style assertions
   const SUN = new THREE.Vector3();     // scratch: the god-ray origin, projected
   const scratchColor = new THREE.Color();
@@ -497,6 +500,17 @@ export async function initScene(canvas) {
     const lookAt = new THREE.Vector3(lateral * 0.5, camY + (-3 + 6 * b), 0);
     camera.lookAt(lookAt);
     camera.rotateZ(0.1 * flourish);
+
+    // M1 — the dolly zoom, on landings only. Smoothed rather than assigned:
+    // the push-in ends the instant the boundary passes, and a 14° snap back on
+    // one frame reads as a dropped frame instead of a release. Decaying over
+    // ~0.4 s makes the frame relax after the hit, which is what the arrival
+    // flash is already doing to the exposure.
+    camFov += (seamFov(seam) - camFov) * Math.min(1, dt * 2.5);
+    if (Math.abs(camera.fov - camFov) > 0.005) {
+      camera.fov = camFov;
+      camera.updateProjectionMatrix();
+    }
 
     // ---- world + figure state: bus signals only ----
     const env = {
