@@ -29,6 +29,18 @@
       #panel button { background: #12202a; color: inherit; border: 1px solid #24404d; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
       #panel button.learn { padding: 0 5px; font-size: 0.6rem; opacity: 0.55; align-self: flex-end; }
       #panel hr { border: 0; border-top: 1px solid #1c2a33; margin: 0.1rem 0; width: 100%; }
+      /* rotary dials (D21): the filters read as knobs, like the mixer they ape */
+      #panel .dials { justify-content: space-around; padding: 0.15rem 0 0.05rem; }
+      #panel label.dial { flex-direction: column; align-items: center; gap: 0.15rem; }
+      #panel .knob-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+      #panel .hz { opacity: 0.5; font-size: 0.6rem; font-variant-numeric: tabular-nums; }
+      svg.knob { display: block; cursor: ns-resize; touch-action: none; }
+      svg.knob:focus { outline: none; }
+      svg.knob:focus .knob-track { stroke: #2f4756; }
+      .knob-track { fill: none; stroke: #23343f; stroke-width: 4; stroke-linecap: round; }
+      .knob-val { fill: none; stroke: #6fae8f; stroke-width: 4; stroke-linecap: round; }
+      .knob-pin { stroke: #cfe3d8; stroke-width: 2; stroke-linecap: round; }
+      svg.knob.turning .knob-val, svg.knob:focus .knob-val { stroke: #8fd0ab; }
       #panel .wrap { flex-wrap: wrap; gap: 0.3rem; }
       #panel .wrap button { padding: 2px 6px; font-size: 0.62rem; }
       #readout { opacity: 0.55; white-space: pre; line-height: 1.5; }
@@ -44,8 +56,10 @@
       <label>wildness <input id="wildness" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
       <label>coupling (sidechain) <input id="coupling" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
       <hr />
-      <label>lpf (sweep down to close) <input id="lpf" type="range" min="0" max="1" step="0.005" value="1" /></label>
-      <label>hpf (sweep up to thin) <input id="hpf" type="range" min="0" max="1" step="0.005" value="0" /></label>
+      <div class="row dials">
+        <label class="dial">lpf <input id="lpf" type="range" min="0" max="1" step="0.005" value="1" /><span class="hz" id="lpfHz"></span></label>
+        <label class="dial">hpf <input id="hpf" type="range" min="0" max="1" step="0.005" value="0" /><span class="hz" id="hpfHz"></span></label>
+      </div>
       <label>echo <input id="echo" type="range" min="0" max="1" step="0.01" value="0" /></label>
       <label>crush <input id="crush" type="range" min="0" max="1" step="0.01" value="0" /></label>
       <label>space (reverb wash) <input id="space" type="range" min="0" max="1" step="0.01" value="0" /></label>

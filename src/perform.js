@@ -55,23 +55,39 @@ const EPS = 0.01; // below this a knob is at rest — the rail costs nothing
 // transition, or bring both toward each other for a telephone/bandpass. Each
 // is two cascaded biquads (24 dB/oct — a 12 dB slope leaves too much behind to
 // read as a kill), with mild resonance on the first stage only.
-export const LPF_MIN_HZ = 30;
+export const LPF_MIN_HZ = 40;
 export const LPF_MAX_HZ = 20000;  // at the top the stage is transparent
 export const HPF_MIN_HZ = 20;     // at the bottom the stage is transparent
-export const HPF_MAX_HZ = 10000;
+export const HPF_MAX_HZ = 8000;
 export const FILTER_Q = 1.2;      // a little emphasis at the corner, no whistle
 export const FILTER_Q2 = 0.707;   // second stage stays flat
 
-const expMap = (x, lo, hi) => lo * Math.pow(hi / lo, Math.min(1, Math.max(0, x)));
+/**
+ * Skew on the sweep (D21). Exponential alone — constant octaves per degree of
+ * travel — is the right first guess, since the ear hears filter sweeps in
+ * octaves. But it sounds dead at the open end, because the top octaves
+ * (10–20 kHz) carry almost no musical energy: the first fifth of the throw
+ * moved the corner from 20 kHz to 5 kHz and you could barely tell. An exponent
+ * below 1 spends travel where the ear actually notices, so the corner is down
+ * at ~5.8 kHz by a tenth of a turn and the dial bites immediately.
+ */
+export const FILTER_SKEW = 0.7;
+
+/**
+ * Corner frequency for a dial `amount` away from its open position (0 = home,
+ * 1 = fully closed), sweeping from `open` Hz to `closed` Hz.
+ */
+const sweep = (amount, open, closed) =>
+  open * Math.pow(closed / open, Math.pow(Math.min(1, Math.max(0, amount)), FILTER_SKEW));
 
 /** Lowpass corner for a 0..1 dial — 1 is wide open, 0 closes to a rumble. */
 export function lpfCutoff(x) {
-  return expMap(x ?? 1, LPF_MIN_HZ, LPF_MAX_HZ);
+  return sweep(1 - (x ?? 1), LPF_MAX_HZ, LPF_MIN_HZ);
 }
 
 /** Highpass corner for a 0..1 dial — 0 is wide open, 1 leaves only air. */
 export function hpfCutoff(x) {
-  return expMap(x ?? 0, HPF_MIN_HZ, HPF_MAX_HZ);
+  return sweep(x ?? 0, HPF_MIN_HZ, HPF_MAX_HZ);
 }
 
 // Crossover-free 3-band EQ: a shelf/peak/shelf series, flat by construction

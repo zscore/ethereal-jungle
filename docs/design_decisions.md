@@ -619,6 +619,58 @@ half does the exact mirror, both engaged leave a band that excludes both test
 tones, and returning both dials home is transparent to within 2%. The D19
 stages were re-measured through the reordered chain and still hold.
 
+## D21 — Filter dials: a rotary control, and a sweep the hand can hear (2026-07-26)
+
+**Decision.** Two corrections to D20, which got the routing right and the
+*control* wrong in both senses of the word.
+
+*The gesture.* `lpf`/`hpf` are now rotary dials (`src/knob.js`), not the
+horizontal sliders every other param uses. The knob is progressive
+enhancement over the existing `<input type="range">`: the input stays in the
+DOM as the source of truth and the dial writes to it and dispatches the same
+`input` event a drag would, so ui.js's bindings, the MIDI learn buttons that
+anchor to the label, the `value` attribute that documents the default, and
+keyboard access all keep working untouched — the knob is an affordance, not a
+second control path. The gesture is a vertical drag rather than a circular
+one: a filter sweep wants a decisive throw, and tracing an arc is a wrist
+motion you run out of halfway through a build. Each dial carries a live Hz
+readout, because a filter position is a number a performer wants to see.
+
+*The law.* The cutoff sweep gains a skew: `f = open · (closed/open)^(amount^0.7)`.
+A pure exponential — constant octaves per degree — is the right first guess,
+since the ear hears filter sweeps in octaves, and it is what D20 shipped. It
+sounds dead anyway, because the top octaves carry almost no musical energy:
+the first fifth of the lpf's throw moved the corner from 20 kHz to 5.4 kHz,
+which on a jungle mix is very close to nothing, and every audible thing
+happened in the last third. The skew spends travel where the ear notices —
+the corner is at 5.8 kHz by a tenth of a turn and 2.7 kHz by a fifth. The hpf
+gets the same treatment (139 Hz by a fifth of a turn, where D20 needed half
+the throw to reach 450 Hz). Ranges tightened to 40 Hz–20 kHz and 20 Hz–8 kHz.
+
+**Consequence, accepted.** Two aggressive dials now overlap: both at noon is
+silence rather than a token passband, and D20's test asserting otherwise was
+replaced. That is what independent LP/HP filters do on real hardware — it is
+how you filter something out completely — and a usable band still lives
+off-centre (hpf at a third, lpf at two-thirds gives 264 Hz–758 Hz).
+
+**Rejected.** A circular drag gesture (wrist runs out, and it fights the
+panel's vertical scroll). Making the whole rail rotary — the latent knobs are
+set-and-leave, and a fader is the honest shape for those; only the filters are
+ridden continuously. Special-casing a bypass band at each dial's home: the
+skew already reaches transparency at the endpoint, and D17's 0.49–0.51 dead
+zone is exactly the affordance D20 was written to delete.
+
+**Verification.** `test/perform.mjs` now pins the fix rather than the old
+curve: the corner must be under 6 kHz by a tenth of a turn and under 3 kHz by
+a fifth, the hpf must be past 120 Hz by a fifth, and — the general form of the
+bug — *no* tenth of either throw may move the corner less than half an octave.
+The dial itself was driven in a headless browser: a 60 px drag lands within
+0.003 of the predicted value and reaches `bus.params` through the hidden
+input, the Hz readout tracks, the arc renders only when off home, double-click
+snaps home, the wheel nudges, the master chain splices on the first turn, and
+the label still wraps the control so MIDI learn keeps its anchor. The rendered
+panel was inspected, not just asserted on.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,
