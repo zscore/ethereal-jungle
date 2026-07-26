@@ -20,6 +20,7 @@
         position: fixed; right: 0.75rem; top: 0.75rem; z-index: 5; width: 220px;
         background: rgba(8, 12, 18, 0.82); border: 1px solid #1c2a33; border-radius: 8px; padding: 0.8rem;
         display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.7rem;
+        max-height: calc(100vh - 1.5rem); overflow-y: auto; /* the rail outgrew the viewport */
       }
       #panel label { display: flex; flex-direction: column; gap: 0.2rem; opacity: 0.85; }
       #panel input[type="range"] { width: 100%; accent-color: #6fae8f; }
@@ -43,10 +44,18 @@
       <label>wildness <input id="wildness" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
       <label>coupling (sidechain) <input id="coupling" type="range" min="0" max="1" step="0.01" value="0.6" /></label>
       <hr />
-      <label>filter (lp &#8249; &#183; &#8250; hp) <input id="filter" type="range" min="0" max="1" step="0.005" value="0.5" /></label>
+      <label>lpf (sweep down to close) <input id="lpf" type="range" min="0" max="1" step="0.005" value="1" /></label>
+      <label>hpf (sweep up to thin) <input id="hpf" type="range" min="0" max="1" step="0.005" value="0" /></label>
       <label>echo <input id="echo" type="range" min="0" max="1" step="0.01" value="0" /></label>
       <label>crush <input id="crush" type="range" min="0" max="1" step="0.01" value="0" /></label>
       <label>space (reverb wash) <input id="space" type="range" min="0" max="1" step="0.01" value="0" /></label>
+      <hr />
+      <label>eq low (kill) <input id="eqLow" type="range" min="0" max="1" step="0.01" value="1" /></label>
+      <label>eq mid (kill) <input id="eqMid" type="range" min="0" max="1" step="0.01" value="1" /></label>
+      <label>eq high (kill) <input id="eqHigh" type="range" min="0" max="1" step="0.01" value="1" /></label>
+      <label>gate (8ths) <input id="gate" type="range" min="0" max="1" step="0.01" value="0" /></label>
+      <label>drive <input id="drive" type="range" min="0" max="1" step="0.01" value="0" /></label>
+      <label>roll (drums &#215;2 &#215;3 &#215;4) <input id="roll" type="range" min="0" max="1" step="0.25" value="0" /></label>
       <hr />
       <div class="row">
         <label>seed <input id="seed" type="number" value="1" min="0" step="1" /></label>

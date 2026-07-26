@@ -28,15 +28,20 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   const bindPerform = (id, key) => {
     $(id).addEventListener('input', (e) => { bus.params[key] = parseFloat(e.target.value); });
   };
-  bindPerform('filter', 'filter');
-  bindPerform('echo', 'echo');
-  bindPerform('crush', 'crush');
-  bindPerform('space', 'space');
-  // double-click the filter to snap back to bypass, DJ-mixer style
-  $('filter').addEventListener('dblclick', (e) => {
-    e.target.value = 0.5;
-    bus.params.filter = 0.5;
-  });
+  for (const id of ['lpf', 'hpf', 'echo', 'crush', 'space', 'eqLow', 'eqMid', 'eqHigh', 'gate', 'drive']) {
+    bindPerform(id, id);
+  }
+  // roll is the exception (D19): pattern surgery, so it rides the rebuild.
+  bind('roll', 'roll');
+
+  // double-click a perform slider to snap it home, DJ-mixer style
+  for (const [id, home] of [['lpf', 1], ['hpf', 0], ['echo', 0], ['crush', 0], ['space', 0],
+    ['eqLow', 1], ['eqMid', 1], ['eqHigh', 1], ['gate', 0], ['drive', 0]]) {
+    $(id).addEventListener('dblclick', (e) => {
+      e.target.value = home;
+      bus.params[id] = home;
+    });
+  }
 
   $('reroll').addEventListener('click', () => {
     bus.params.seed = Math.floor(Math.random() * 1e6);
@@ -80,7 +85,9 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
     ['tensionMix', 'tensionMix'], ['tension', 'tensionManual'],
     ['brightnessMix', 'brightnessMix'], ['brightness', 'brightnessManual'],
     ['wildness', 'wildness'], ['coupling', 'coupling'],
-    ['filter', 'filter'], ['echo', 'echo'], ['crush', 'crush'], ['space', 'space'],
+    ['lpf', 'lpf'], ['hpf', 'hpf'], ['echo', 'echo'], ['crush', 'crush'], ['space', 'space'],
+    ['eqLow', 'eqLow'], ['eqMid', 'eqMid'], ['eqHigh', 'eqHigh'],
+    ['gate', 'gate'], ['drive', 'drive'], ['roll', 'roll'],
   ];
   function enableLearn(midi) {
     for (const [id, key] of LEARNABLE) {

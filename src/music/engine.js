@@ -15,10 +15,12 @@ import {
   getSuperdoughAudioController,
 } from '@strudel/webaudio';
 import { bus, CPS, BAR_SECONDS } from '../bus.js';
-import { applyPerform, filterNeutral } from '../perform.js';
+import { applyPerform, applyRoll } from '../perform.js';
+import { createMasterChain } from './masterchain.js';
 import { makeSetPattern } from './generators.js';
 
 let scheduler = null;
+let masterChain = null;
 
 export async function initEngine() {
   miniAllStrings(); // let plain strings act as mini-notation inside s()/note()
@@ -70,24 +72,19 @@ export async function initEngine() {
   const controller = getSuperdoughAudioController();
   for (const orbit of [1, 2, 3, 4]) controller.getOrbit(orbit, [0, 1]); // stereo channel pair
 
-  // Perform filter (D17): a 30 Hz follower slews every orbit's djf AudioParam
-  // toward bus.params.filter — continuous sweeps, alive even during silence,
-  // no rebuild. The worklets are created lazily on the knob's first departure
-  // from center, so the untouched graph stays untouched.
-  let filterCur = null; // null until the djf worklets exist
-  setInterval(() => {
-    const target = Math.min(1, Math.max(0, bus.params.filter ?? 0.5));
-    if (filterCur === target || (filterCur == null && filterNeutral(target))) return;
-    const now = ctx.currentTime;
-    for (const orbit of [1, 2, 3, 4]) {
-      const node = controller.getOrbit(orbit, [0, 1]).getDjf(filterCur ?? target, now);
-      const p = node.parameters.get('value');
-      p.cancelScheduledValues(now);
-      p.setValueAtTime(filterCur ?? target, now);
-      p.linearRampToValueAtTime(target, now + 0.06); // slew — no zipper noise
-    }
-    filterCur = target;
-  }, 33);
+  // The master insert (D19): EQ kills, gater, drive on the finished mix. The
+  // gater starts on a bar line, so hand it our clock rather than wall time.
+  const nextBarTime = () => {
+    const t = bus.now();
+    return ctx.currentTime + (Math.ceil(t / BAR_SECONDS) * BAR_SECONDS - t);
+  };
+  masterChain = createMasterChain(ctx, controller.output, nextBarTime);
+
+  // The perform follower (D17/D19/D20): one 30 Hz tick drives everything that
+  // must respond to a hand rather than to a rebuild. The chain builds its nodes
+  // lazily on the first knob to leave rest, so an untouched rail leaves the
+  // graph superdough built exactly as it was.
+  setInterval(() => masterChain.update(bus.params), 33);
 
   // bus t=0 and scheduler cycle 0 are pinned to the same instant: the set
   // compiler keys content to absolute cycles, the bus keys curves to seconds,
@@ -111,7 +108,10 @@ export function rebuild() {
     { ...bus.params },
     { tensionAt: (t) => bus.tensionAt(t), brightnessAt: (t) => bus.brightnessAt(t) },
   );
-  scheduler.setPattern(pattern, false);
+  // Roll (D19) is the one perform knob that IS launch-quantized: a stutter
+  // has to land on the grid, and it is pattern surgery, not a node. Applied
+  // outside the generators so the composition never learns it happened.
+  scheduler.setPattern(applyRoll(pattern, bus.params.roll, stack), false);
   const t = bus.now();
   bus.publish({
     type: 'rebuild',
@@ -155,4 +155,9 @@ export function toggle() {
 
 export function stopEngine() {
   scheduler?.stop();
+}
+
+/** The master insert (D19) — exposed for console poking and for metering. */
+export function getMasterChain() {
+  return masterChain;
 }

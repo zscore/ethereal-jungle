@@ -15,12 +15,16 @@
  * manual knobs. Values clamp to 0..1 (seed: non-negative integer).
  */
 import { bus } from './bus.js';
-import { PERFORM_KEYS } from './perform.js';
+import { PERFORM_KEYS, PERFORM_LIVE_KEYS } from './perform.js';
 
-const ALIASES = { tension: 'tensionManual', brightness: 'brightnessManual' };
+const ALIASES = {
+  tension: 'tensionManual', brightness: 'brightnessManual',
+  low: 'eqLow', mid: 'eqMid', high: 'eqHigh', // /jungle/low reads better on a fader strip
+};
 const WRITABLE = new Set([
   'tensionMix', 'tensionManual', 'brightnessMix', 'brightnessManual', 'wildness', 'coupling', 'seed',
-  ...PERFORM_KEYS, // the perform rail (D17): filter, echo, crush, space
+  ...PERFORM_KEYS, // the perform rail: echo/crush/space (D17), eq bands/gate/
+                   // drive/roll (D19), lpf/hpf (D20)
 ]);
 
 /**
@@ -82,8 +86,8 @@ export function initOsc({ onChange, url } = {}) {
       let rebuildNeeded = false;
       for (const m of messages) {
         const key = applyOscMessage(bus.params, m);
-        // perform-rail keys (D17) are read live by the engine — no rebuild
-        if (key && !PERFORM_KEYS.has(key)) rebuildNeeded = true;
+        // live perform keys (D17/D19) are read live by the engine — no rebuild
+        if (key && !PERFORM_LIVE_KEYS.has(key)) rebuildNeeded = true;
       }
       if (rebuildNeeded) scheduleChange();
     };

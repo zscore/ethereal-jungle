@@ -12,7 +12,7 @@
  * once so you can discover what your controller sends.
  */
 import { bus } from './bus.js';
-import { PERFORM_KEYS } from './perform.js';
+import { PERFORM_LIVE_KEYS } from './perform.js';
 
 const DEFAULT_CC_MAP = {
   1:  'wildness',         // mod wheel — violence of the surface
@@ -21,10 +21,17 @@ const DEFAULT_CC_MAP = {
   91: 'coupling',         // "reverb send" — how much the two worlds touch
   93: 'tensionMix',       // authored curve ↔ manual hand
   95: 'brightnessMix',
-  16: 'filter',           // perform rail (D17) — general-purpose CCs 16–19
+  16: 'lpf',              // perform rail (D17/D20) — general-purpose CCs 16–19
   17: 'echo',
   18: 'crush',
   19: 'space',
+  26: 'hpf',              // the lpf's twin, added with D20
+  20: 'eqLow',            // master insert + roll (D19) — CCs 20–25
+  21: 'eqMid',
+  22: 'eqHigh',
+  23: 'gate',
+  24: 'drive',
+  25: 'roll',
 };
 
 const STORE_KEY = 'jungle.midi.ccmap';
@@ -32,7 +39,13 @@ const STORE_KEY = 'jungle.midi.ccmap';
 function loadMap() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-    if (saved && typeof saved === 'object') return saved;
+    if (saved && typeof saved === 'object') {
+      // D20 split the bipolar `filter` into lpf/hpf. A controller already
+      // learned to the old key would otherwise write a param nobody reads —
+      // silently dead, and confusing to diagnose. Point it at the lowpass.
+      for (const cc of Object.keys(saved)) if (saved[cc] === 'filter') saved[cc] = 'lpf';
+      return saved;
+    }
   } catch { /* absent or corrupt — fall through to the default */ }
   return { ...DEFAULT_CC_MAP };
 }
@@ -87,9 +100,10 @@ export async function initMidi({ onChange } = {}) {
       return;
     }
     bus.params[key] = value / 127;
-    // Perform-rail keys (D17) need no rebuild: the engine reads them live at
-    // the output tap / filter follower. Everything else is launch-quantized.
-    if (!PERFORM_KEYS.has(key)) scheduleChange();
+    // Live perform keys (D17/D19) need no rebuild: the engine reads them at
+    // the output tap, the filter follower and the master chain. Everything
+    // else — including `roll`, which is pattern surgery — is launch-quantized.
+    if (!PERFORM_LIVE_KEYS.has(key)) scheduleChange();
   };
 
   const attach = () => {

@@ -3,13 +3,13 @@
  * the pattern engine renders the bus for the ear, the scene renders it for the eye.
  */
 import { bus } from './bus.js';
-import { initEngine, rebuild, toggle, seekToBar } from './music/engine.js';
+import { initEngine, rebuild, toggle, seekToBar, getMasterChain } from './music/engine.js';
 import { initScene } from './visuals/scene.js';
 import { initUI } from './ui.js';
 import { initMidi } from './midi.js';
 import { initOsc } from './osc.js';
 
-window.jungle = { bus }; // console access for poking the running system
+window.jungle = { bus, getMasterChain }; // console access for poking the running system
 
 const overlay = document.getElementById('overlay');
 const canvas = document.getElementById('scene');
