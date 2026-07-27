@@ -386,7 +386,7 @@ def ambience_sparkle():
     return loopify(out, n)
 
 
-# D20 retired these twelve: the biome beds are now public-domain field
+# D26 retired these twelve: the biome beds are now public-domain field
 # recordings, built by tools/ingest_amb.py from tools/amb_sources.json. The
 # generators are still CALLED — and their output thrown away — because this
 # file is one deterministic random stream seeded at the top, and skipping them

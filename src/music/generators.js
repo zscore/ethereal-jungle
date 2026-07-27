@@ -369,7 +369,7 @@ function bowlLayer(ctx, bw, mode, tuning) {
 /**
  * The granular ghost (zenith): the break itself, in grains — half speed, often
  * reversed, drowned, with no skeleton under it. §3.4's timestretch artifact
- * heard as weather, and the audio sibling of the corpus shrine (D20): at the
+ * heard as weather, and the audio sibling of the corpus shrine (D25): at the
  * top of the set, the piece plays back its own earlier material as ether.
  */
 function ghostLayer(ctx, gh, rng, breakSound) {
@@ -806,7 +806,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     );
   }
 
-  // ---- ambience: the biome's noise floor, layered (D16; recordings D20) ----
+  // ---- ambience: the biome's noise floor, layered (D16; recordings D26) ----
   // ambience.current = [bed, ...accents]: 32-bar field recordings played one
   // phrase-long slice at a time — chunk `c` advances with the phrase index, so
   // consecutive phrases play consecutive audio and the loop only repeats every

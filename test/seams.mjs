@@ -140,7 +140,7 @@ console.log('biome ambience beds + hat dynamics (D16)');
   check(frogs < nPhrases || rustle < nPhrases, 'accent layers also rest (episodic walks)');
 }
 
-console.log('ambience loops walk their 32-bar recording a phrase at a time (D20)');
+console.log('ambience loops walk their 32-bar recording a phrase at a time (D26)');
 {
   const bedAt = (phrase) => onsets(phrase * PHRASE_BARS, (phrase + 1) * PHRASE_BARS)
     .find((h) => h.value?.s === 'ambinsects')?.value;

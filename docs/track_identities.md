@@ -82,7 +82,7 @@ are never re-cast:
    track; its function does not.
 4. **`MOTIF`** — one melodic cell, transformed (§6.4). New instruments state it;
    nobody gets new tunes.
-5. **The ambience bed** (D16/D20) — already per-biome, already crossfaded.
+5. **The ambience bed** (D16/D26) — already per-biome, already crossfaded.
 6. **The migrating pluck.** One organic pluck token appears in every track and
    slowly crosses stream space: **dry and gridded in the undergrowth → wetter
    each track → fully drowned and unmetered at the zenith.** §7.2 notes a pluck
@@ -248,7 +248,7 @@ every mechanism that turns brightness into gladness has been switched off.
 - **Characteristic 2 — the granular ghost of the set.** Feed *the break itself*
   into a granular cloud — half-speed, reversed, drowned, no skeleton under it.
   §3.4's timestretch artifact as weather, and the **audio sibling of the corpus
-  shrine** (D20): at the top of the set the piece plays back its own earlier
+  shrine** (D25): at the top of the set the piece plays back its own earlier
   material as ether. The set stops being four tracks and becomes an argument
   about one (§6.4).
 - **Migrating pluck here:** fully drowned. Unmetered, `room(0.95)`, `roomsize`

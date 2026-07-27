@@ -66,7 +66,7 @@ export const BAR_SECONDS = 1 / CPS;
 export const PHRASE_BARS = 4;                  // the rebuild/variation granule
 export const PHRASE_SECONDS = PHRASE_BARS * BAR_SECONDS;
 
-// Ambience loops are 32-bar field recordings (D20). They are NOT triggered as
+// Ambience loops are 32-bar field recordings (D26). They are NOT triggered as
 // 32-bar events: a track is 68 bars, which is not a multiple of 32, so a
 // slow(32) event would only start on cycles 0, 32, 64… and a biome change at
 // bar 68 would sit silent until bar 96 — and the seam's incoming-bed crossfade
@@ -212,7 +212,7 @@ export const TRACKS = [
       bowl: { fmh: 2.76, fmi: 1.6, oct: 2, attack: 2.5, release: 7, gain: 0.17 },
       // characteristic 2: the granular ghost of the set — the break itself,
       // half-speed, reversed, drowned, no skeleton under it (§3.4). The audio
-      // sibling of the corpus shrine (D20): at the top of the set the piece
+      // sibling of the corpus shrine (D25): at the top of the set the piece
       // plays back its own earlier material as ether.
       ghost: { grains: 5, speed: 0.5, reverse: 0.4, lpf: 2200, gain: 0.15 },
       // spent once: the silence — release phrase 0 keeps one sine and the bed

@@ -1,5 +1,5 @@
 {
-  "_doc": "Public-domain field recordings behind the biome ambience loops (D20). Every item is from archive.org's radio-aporee-maps collection under CC0 or the Public Domain Mark, so this file is both the build input and the attribution record. `start` = null lets tools/ingest_amb.py pick the best-looping window automatically; set it to a number of seconds to pin one. Run: python3 tools/ingest_amb.py",
+  "_doc": "Public-domain field recordings behind the biome ambience loops (D26). Every item is from archive.org's radio-aporee-maps collection under CC0 or the Public Domain Mark, so this file is both the build input and the attribution record. `start` = null lets tools/ingest_amb.py pick the best-looping window automatically; set it to a number of seconds to pin one. Run: python3 tools/ingest_amb.py",
   "bpm": 168,
   "bars": 32,
   "sources": {

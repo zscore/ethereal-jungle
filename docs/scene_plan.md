@@ -43,12 +43,12 @@ Two non-band elements share the whole stack: the **air** (altitude-graded
 background sphere) and the **mist** (additive card stack through the floor and
 lower canopy, the parallax the fog can't give).
 
-The last family landed as the **corpus shrine** (§3.5, D20): a flickering
+The last family landed as the **corpus shrine** (§3.5, D25): a flickering
 screen in the undergrowth playing back *this world's* own last bar, chopped by
 the break's own `permuteBreak` — the one figure-affording *place* in the world,
 and the only one that owns video. **Artifact operators** (§3.6) are a
 post-processing layer over any band, wired to wildness `w`, and now share the
-chain with the perform-rail twins and a ground-only depth of field (D19).
+chain with the perform-rail twins and a ground-only depth of field (D24).
 
 ## 3. How a transition actually plays out
 
@@ -116,7 +116,7 @@ Ordered; each step is independently shippable.
    ground only and the kick ducks its strength; the figure composites sharp.
 3. **Blooms on anchors** for the floor biome: growth's one legal relationship
    to rhythm — events on the *surface* (flowers on downbeats, at most).
-4. **The corpus shrine** in the undergrowth: ✅ *done (D20)* — a screen-object
+4. **The corpus shrine** in the undergrowth: ✅ *done (D25)* — a screen-object
    chopping the world's own recent frames with the same σ-permutation
    machinery as the break. Not "the formalism transfers verbatim": it is the
    same function, on a ring of render targets instead of drum slices, so the
@@ -145,7 +145,7 @@ Ordered; each step is independently shippable.
   whose brightness itself *falls* while tension rises — descending into the
   roots for the hardest section — which would move the camera downward through
   the world at the moment of maximum violence.
-- ~~**Camera path richness**~~ **answered (D19/I1)**: each band owns a lateral
+- ~~**Camera path richness**~~ **answered (D24/I1)**: each band owns a lateral
   orbit (radius + a near-coprime rate), tent-blended by altitude and
   superimposed on the 1/f sway rather than replacing it. Because every band
   keeps its own constant rate and phase, the path is continuous in altitude

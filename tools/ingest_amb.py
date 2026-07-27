@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn public-domain field recordings into the biome ambience loops (D20).
+"""Turn public-domain field recordings into the biome ambience loops (D26).
 
 Replaces the synthesized beds of D16 (tools/gen_samples.py) with real
 recordings. Sources are listed in tools/amb_sources.json — each entry names an
@@ -17,7 +17,7 @@ Pipeline per layer:
      the engine's gains mean the same thing across biomes, then crossfade the
      tail into the head so the 32-bar retrigger is seamless
   4. encode to Ogg Vorbis — the sources are already lossy, so storing WAV would
-     just make 8 MB files out of the same audio (see D20 in design_decisions)
+     just make 8 MB files out of the same audio (see D26 in design_decisions)
 
 Run: python3 tools/ingest_amb.py            # all layers
      python3 tools/ingest_amb.py ambrain    # just one

@@ -1,7 +1,7 @@
 # Visuals Expansion II — the fancy tier
 
 Status: **implemented** (F1, G1–G3, H1, I1–I2, J1–J2 all landed; see
-design_decisions D19/D20). Successor to
+design_decisions D24/D25). Successor to
 `visuals_expansion_proposal.md` (tiers A–E, all shipped except D1/D2), which
 stays the record of how the world got built. Same rules, same § references to
 the visualizer theory doc. Item letters continue at **F** so nothing collides.

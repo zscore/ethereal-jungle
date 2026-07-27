@@ -1,7 +1,7 @@
 # Visuals Expansion III — nature, and other kinds of picture
 
 Status: **implemented** (K1–K7, L1–L6, L8, M1–M2 all landed; see
-design_decisions D21). Successor to `visuals_fancy_proposal.md` (tiers F–J, all shipped), which
+design_decisions D27). Successor to `visuals_fancy_proposal.md` (tiers F–J, all shipped), which
 stays the record of how the optics and the perform twins got built. Same rules,
 same § references to the visualizer theory doc. Item letters continue at **K**.
 

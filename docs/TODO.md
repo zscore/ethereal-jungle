@@ -9,42 +9,25 @@ Status as of 2026-07-27, on `main` @ `e5d5f78`.
 
 ---
 
-## 1. The ADR log has duplicate numbers (from the branch merges)
+## 1. ~~The ADR log has duplicate numbers~~ ✅ resolved 2026-07-27
 
-`design_decisions.md` was appended to independently on two long-lived branches
-(`perform-fx` and the visuals/music line), and neither could see the other's
-numbering. Main now permanently carries:
+The four visuals-branch entries were renumbered into the next free slots —
+look module → **D24**, corpus shrine → **D25**, biome beds → **D26**, one
+atmosphere → **D27** — each keeping its original number in a note under the
+heading. The perform-branch D19–D21 were left alone, and D22/D23 were left
+alone too: renumbering those would have churned 55 references that were
+already correct and unambiguous, buying only monotonic ordering.
 
-| number | entries | file lines |
-|---|---|---|
-| **D19** | The master insert / The look module | 514, 676 |
-| **D20** | Two filter dials / The corpus shrine / The biome beds | 580, 738, 793 |
-| **D21** | Filter dials rotary / One atmosphere | 622, 849 |
+Two things this entry got wrong, recorded because the next audit will hit the
+same trap. The real count was **152 reference lines across 25 files**, not
+~19 — it omitted the docs and the knock-on cost of moving D22/D23. And its
+disambiguation table misattributed sites: `src/visuals/look.js:15,40` and
+`test/look.mjs:59` were listed as the corpus shrine, but all three actually
+read "the two filter dials" and needed no change. Every site was reclassified
+from its own text.
 
-This is not cosmetic — **~19 cross-references in code now resolve ambiguously.**
-`D20` alone means three different decisions depending on the file:
-
-    tools/ingest_amb.py:2,20     D20 = biome beds → field recordings
-    tools/gen_samples.py:389     D20 = biome beds
-    src/visuals/look.js:15,40    D20 = the corpus shrine
-    test/look.mjs:59             D20 = the corpus shrine
-    test/perform.mjs:61          D20 = two filter dials
-    test/osc.mjs:23              D20 = two filter dials
-
-**Suggested fix:** renumber the second (visuals/music) group so the log is
-monotonic and unique again — look module → D22, corpus shrine → D23, biome beds
-→ D24, one atmosphere → D25, then warmth → D26 and groove → D27. Keep each
-heading's original number in parentheses (`(was D20 on the visuals branch)`) so
-old references stay traceable, and update the ~19 call sites. Roughly a
-30-minute mechanical pass.
-
-**Alternative** if that feels like too much churn: leave the numbers alone and
-add a disambiguation table at the top of `design_decisions.md`. Cheaper, but
-every future reader pays the cost instead of paying it once.
-
-**Prevention:** assign the next `D` number *at merge time*, not on the branch.
-Nothing else stops this recurring — it's a structural consequence of long-lived
-parallel branches, not carelessness.
+The prevention note (assign the next `D` at merge time, not on the branch) has
+graduated to the header of `design_decisions.md`.
 
 ## 2. Two ADR statuses are stale
 
@@ -59,16 +42,19 @@ parallel branches, not carelessness.
   warmth + groove variation, which would let D13 stay closed on purpose rather
   than by default.
 
-## 3. There is no remote — nothing is backed up
+## 3. ~~There is no remote~~ — backed up; CI and deploy still open
 
-`git remote -v` is empty. The entire project, including all the design history
-in `docs/`, exists on one disk. Until this is fixed, "production" can't mean
-anything more than a local `dist/` (which is gitignored anyway).
+**Done 2026-07-27:** `origin` is `git@github.com:zscore/ethereal-jungle` (private,
+SSH). `main` and the `pre-d23-main` tag are pushed; full history including
+`docs/` now exists off-disk.
 
-This is the highest-value item on the list even though it's the least
-interesting. Suggested order: add a private remote → CI running the gate below
-on push → tags driving a static deploy (it's a plain Vite build, so any of
-Pages / Netlify / Vercel is a single config file).
+**Still open**, in order:
+
+- **CI running the gate on push** — `npm test && npm run build && npm run smoke`.
+  Blocked on §4: `smoke.mjs` is flaky, and a flaky gate is worse than no gate.
+- **Tags driving a static deploy** — plain Vite build, so Pages / Netlify /
+  Vercel is a single config file. Only then does "production" mean anything
+  more than a local `dist/`.
 
 ## 4. The smoke test is flaky, and it's the only real gate
 

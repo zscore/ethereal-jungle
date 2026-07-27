@@ -3,6 +3,19 @@
 Running ADR-style log. Each entry: what was decided, why, what was rejected,
 and what would trigger revisiting. Dates are decision dates.
 
+**Numbering.** Unique, but not ascending in file order — entries are in date
+order, and one renumbering crossed it. D19–D21 were each assigned twice, on
+two long-lived parallel branches (`perform-fx` and the visuals/music line)
+that could not see each other's numbering. The perform-branch entries kept
+D19–D21; the four visuals-branch entries were renumbered into the next free
+slots as **D24–D27**, each noting its original number under the heading so
+older references stay traceable. D22 and D23 were written after that merge and
+keep their numbers, which is why they sit last by date but below D24–D27.
+
+Assign the next `D` number **at merge time, not on the branch** — nothing else
+prevents this recurring, since it is a structural consequence of parallel
+branches rather than carelessness.
+
 ---
 
 ## D1 — Set timeline as authored tracks with one shared tension shape (2026-07-26)
@@ -673,7 +686,9 @@ panel was inspected, not just asserted on.
 
 ---
 
-## D19 — The look module: the renderer seam gets the perform rail's treatment (2026-07-26)
+## D24 — The look module: the renderer seam gets the perform rail's treatment (2026-07-26)
+
+*(was D19 on the visuals branch)*
 
 **Decision.** All mapping from bus state to post-chain state moves out of the
 frame loop into `src/visuals/look.js` — a pure module with no three.js import,
@@ -733,9 +748,11 @@ grew a rail sweep and both seam flavors, on both backends.
 
 **Revisit when** a music-side mischief layer (§8) lands — its events ride this
 same module — or if the DoF pass proves too expensive on some backend, in
-which case the governor's optics tier (D20) already knows how to drop it.
+which case the governor's optics tier (D25) already knows how to drop it.
 
-## D20 — The corpus shrine is self-corpus: the world films itself (2026-07-26)
+## D25 — The corpus shrine is self-corpus: the world films itself (2026-07-26)
+
+*(was D20 on the visuals branch)*
 
 **Decision.** The fifth visualizer family (§3.5) arrives as `shrine.js`: a
 screen in the undergrowth showing **this world's** recent past, chopped by
@@ -790,7 +807,9 @@ low `w` (a 32-slot two-bar ring is a one-line change), or if a curated CC0 pack
 ever arrives — the shrine takes a frame source, so found footage remains a
 drop-in behind the same interface.
 
-## D20 — The biome beds become field recordings (2026-07-26)
+## D26 — The biome beds become field recordings (2026-07-26)
+
+*(was D20 on the visuals branch)*
 
 **Decision.** The twelve synthesized ambience loops of D16 are replaced by
 twelve **public-domain field recordings**, 32 bars (45.7 s) long and in stereo:
@@ -846,7 +865,9 @@ noise-like material anyway, and Chromium is the documented target). Retuning the
 track length to a power of two so `slow(32)` would work — 68 bars is load-bearing
 structure (D9), and the sample layer is not the thing that gets to move it.
 
-## D21 — One atmosphere, and styles that are spent (2026-07-26)
+## D27 — One atmosphere, and styles that are spent (2026-07-26)
+
+*(was D21 on the visuals branch)*
 
 **The world was four systems, not one place.** Every biome breathed on its own
 private sine — the mist scrolled, the shafts flickered, the ether advected, the

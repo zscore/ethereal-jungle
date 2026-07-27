@@ -177,7 +177,7 @@ OSC-over-WebSocket (D10, `?osc=ws://host:port`); see
 
 1. The mischief layer (theory §8): master-bus jokes. The master bus itself is
    now an addressable target (D19's insert chain), and the visual twins are
-   free too — the perform rail's twins (D19) prove the mechanism and `look.js`
+   free too — the perform rail's twins (D24) prove the mechanism and `look.js`
    is where the events would land. What's left is authoring the jokes and
    deciding what fires them.
 2. Per-point shaders / TSL compute for roots and the canopy ether
