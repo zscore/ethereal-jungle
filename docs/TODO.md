@@ -59,20 +59,54 @@ SSH). `main` and the `pre-d23-main` tag are pushed; full history including
   Vercel is a single config file. Only then does "production" mean anything
   more than a local `dist/`.
 
-## 4. The smoke test is flaky, and it's the only real gate
+## 4. ~~The smoke test is flaky~~ ✅ rewritten 2026-07-27
 
-`smoke.mjs` failed 1 of 4 consecutive runs with a Playwright click race:
+**The diagnosis in this entry was wrong.** It read the `element was detached
+from the DOM` message as a click race during page load. Instrumenting the page
+showed no reload at all (`navigations: 1` every run) — instead the JS main
+thread was stalling for 8+ seconds at a time, continuously, for over a minute.
+`--use-gl=swiftshader` is a *software* rasterizer, so the renderer competes for
+CPU with everything else on the box. Under load, `DOMContentLoaded` arrived at
+15 s and Playwright simply could not get a thread slot.
 
-    locator('#overlay') — element was detached from the DOM, retrying
-    waiting for "http://localhost:5199/" navigation to finish...
-    TimeoutError
+So the real defect was that **every wait was a fixed sleep** — `waitForTimeout(2500)`
+then click, `waitForTimeout(25000)` then measure. Those are bets on machine
+speed, and they lose whenever the machine is busy. That is the "1 in 4".
 
-It recovered on retry, so it's a race during page load, not a product bug.
-Worth hardening (wait for a settled load state before clicking, or retry the
-click) **before** it becomes a release gate — a flaky gate trains you to ignore
-it.
+What the rewrite changed:
 
-Why it matters more than it looks: `npm test` asserts pattern-level design
+- **No step waits for a duration.** Boot waits for `window.jungle.bus`; sound
+  waits for the first `hap`. Deliberately not `load` or `networkidle` — the page
+  pulls ~7 MB of ogg and then keeps streaming, so neither ever settles cleanly.
+- **The click escalates.** A real click twice (it proves the overlay is visible
+  and hit-testable), then a dispatched click, which needs one main-thread slot
+  instead of many. The output records which one worked, because a run that
+  needed the fallback is telling you the machine was too loaded to trust.
+- **It asserts what it exists to prove.** The old script exited on console
+  errors alone and merely *printed* `overlayHidden` and the event counts — a
+  page that booted and made no sound passed the gate. It now fails on a silent
+  page.
+- **It counts cumulatively, not in a window.** This was a second real defect,
+  present in the old script too and worth understanding: `bus.js` publishes
+  "ahead of time", so the scheduler emits a burst per phrase and then goes
+  quiet. A fixed 5 s sample can land wholly inside a gap and report silence for
+  a perfectly healthy engine — observed on 3 of 3 runs, each with a logged
+  `first hap` proving sound was flowing. One persistent subscription from the
+  moment audio starts cannot miss a burst. The old 25 s pre-wait only ever
+  hid this by making a hit more likely.
+- **It prints the load average** and warns when the box is too busy, so the next
+  slow run diagnoses itself instead of looking like a product bug.
+
+Verified: **4 of 4 consecutive passes** at load averages 13.3, 18.1, 22.6 and
+31.8 on 10 CPUs — conditions well past those that produced the original 1-in-4
+failure, and where the previous script failed outright.
+
+**Note for CI:** a hosted runner is usually 2 vCPUs, which is *worse* than the
+loaded laptop this was fixed on. Expect a slow run there, and prefer a runner
+with 4+ cores. If it proves too slow, the honest fix is a way to boot the
+engine without the scene, not shorter timeouts.
+
+Why this mattered more than it looked: `npm test` asserts pattern-level design
 claims but never instantiates audio. `smoke.mjs` is the only check that proves
 the page boots and actually makes sound. For a generative audio piece those are
 genuinely different questions.
