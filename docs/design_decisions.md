@@ -915,6 +915,118 @@ ground stream (§2.1), so the physics is wrong on purpose. Ripple rings on kicks
 §2.2). Making the near field bokeh at rest, which would need a real resting
 aperture and contradicts F–J's "at rest, the frame is indistinguishable."
 
+## D22 — Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)
+
+**The mode ladder was doing two jobs.** `brightnessAt` walks monotonically
+upward across the set, so the zenith sits in ionian/lydian — the two *happiest*
+modes in the system. The set therefore had no way to end anywhere but glad, and
+"more ethereal than the canopy, and less happy" was not a setting the machine
+could express. Brightness was answering both *how bright* and *how glad*, and
+those are different questions.
+
+**Decision: split them.** `warmthAt(t)` is authored per track alongside
+brightness, blended across seams by the same smoothstep, and it decides how much
+gladness the arrangement extracts from whatever mode brightness chose: the third
+in the voicing (glad 6th / neutral 7th / third-less quartal), whether the chord
+is in tune, how hard the backbeat leans, how often the pads re-voice. It has
+**no knob** — unlike tension and brightness it is form, not performance, so it is
+read straight from the timeline rather than mixed with a manual value.
+
+    undergrowth   forest floor   canopy    zenith
+    b  0.10→0.30   0.30→0.55    0.55→0.80  0.80→1.00   (unchanged)
+    w  0.15        0.35         0.85       0.10
+
+The zenith is the one place the axes move **against** each other — brightness
+still climbing, warmth falling off a cliff. That is the move `scene_plan.md` §6
+flagged as unexplored, and it is what makes the last track read as awe rather
+than triumph: lydian, voiced quartal, in stretched tuning, with the floor
+removed. The emotion to aim at is altitude sickness, not grief.
+
+**And D12 finally lands.** Per-track `palette` and `tuning` objects on `TRACKS`
+are the rest of the identity — break costume, hat character, bass kind, pad
+width, plus two characteristic instruments and one spent-once gesture per track
+(design and rationale: `docs/track_identities.md`). Generators read the palette;
+their *shape* did not change. That is the whole discipline: variation by
+re-casting, not re-coding (§7.3). One thread deliberately crosses all four —
+**the migrating pluck**, a stream-ambiguous token (§7.2) that spends the set
+walking from dry/gridded/drum-orbit to drowned/unmetered/ether-orbit, which is
+the set's slowest-moving variable.
+
+**Tuning is one number.** `tuning.stretch` is cents per octave from the root,
+applied superlinearly: negative sags the stack (undergrowth), positive stretches
+it (zenith), and `tuning.just` blends toward 5-limit intervals for the canopy —
+**the only track in the set that is in tune**. Consonance is spent like every
+other resource. The alternative (a per-phrase downward pitch drift) needs
+modulation inside a held note, which the renderer cannot express.
+
+**Found while building it: the AudioWorklets were never loaded.** `engine.js`
+called `initAudioOnFirstClick()`, which registers a `mousedown` listener — but
+`initEngine` is itself called *from* the overlay click, so the listener was
+always installed one gesture too late and its promise never resolved. Nothing
+noticed because nothing in the project had used a worklet-backed effect yet.
+The D22 costumes use three (`crush`, `coarse`, `shape`), and they failed to
+construct, loudly. Now `initEngine` awaits `initAudio()` directly, which is the
+correct call from inside a user gesture anyway. Lesson recorded because it is a
+whole *class* of failure the pattern tests cannot see: the pattern was perfect
+and the sound was missing — hence `tools/cast_audit.mjs`, which walks every
+track × section in a real browser and fails on any console error.
+
+**Rejected.** A warmth knob on the perform rail (it is form; the rail is colour,
+D17). Key movement to make the zenith strange — D13 stays deferred on purpose,
+one variable at a time, and warmth turned out to be enough. superdough's
+`detune` on the pads (it only reaches the supersaw's `freqspread` and is
+silently ignored on a stock oscillator — the old `.detune(0.12)` on the pad was
+doing nothing, so width is now explicit voice-splitting) and its `noise` control
+on the breath voice (its `drywet` teardown disconnects an already-released
+oscillator: one console error per note, so the air is its own layer).
+
+## D23 — The groove was one bar, repeated (2026-07-27)
+
+**The complaint:** the bass and the break sound the same for the whole set.
+Measured against the compiled pattern, they did. Three constants sat underneath
+D22's re-casting, and D22 could not see them because it varies *who plays*, not
+*what is played*:
+
+1. **The skeleton never moved.** `s('bd ~ ~ ~')` and `s('~ ~ sd ~')` were
+   literal strings, identical across all four casts and all 68 phrases, with
+   only `.gain()` varying.
+2. **The bass talea was `euclid(k, 16, 2)`** — `rot` hardcoded, `k` per-track,
+   never re-rolled. Three of the four tracks share `k = 5`, so E(5,16) — a
+   near-isochronous dotted-quarter pulse — played for 51 of 68 phrases. The
+   colour walk was `ci += 1 or 2`, unsigned, so every bass line in the set was a
+   rising pentatonic run that wrapped: 51 distinct note sequences, one contour.
+3. **The permuter barely permuted** — 4.1 of 16 slices displaced on average,
+   always weak ones. `dissonance` returns a raw value spanning `[0.05, 0.278]`,
+   but the band tested against it (`0.15 + w*0.45`, ±0.18) was written as though
+   it spanned `[0, 1]`. The band was wider than the entire reachable range, so
+   the first candidate always passed and generate-and-test selected nothing.
+
+**Decision: vary the figures, keep the anchors.** §1.2's anchor rule is right —
+beat 1 and beat 3 are the metric reference and the break's 0/4/8/12 stay pinned.
+What was missing is that *nothing else* varied either.
+
+- **Skeleton.** The anchor kick and snare are untouched. Extra kicks and ghost
+  snares are drawn per phrase from a palette-weighted bag, with a four-bar
+  `/4` mask deciding which bars of the phrase get them — otherwise the fix
+  reproduces the bug one scale up. The extras deliberately **do not duck**: the
+  sidechain is the coupling constant between the two media (§3.3) and the visual
+  duck is on beat 1, so there stays one pump per bar in both worlds. Ghosts stay
+  off the dub rail — the 3/16 feedback answers one transient per bar, not six.
+- **Bass.** `k` breathes with tension (`kSpan` per track), the rotation is drawn
+  per phrase, and the drop and the landing rotate the figure back onto the
+  downbeat — the floor is restored *whole*. The walk is signed, leaps on the
+  strong slices, and has tonic gravity.
+- **Permuter.** `dissonance` is normalized against its real range so the band
+  means what it looks like it means; σ must displace at least one **pickup**
+  (the strong non-anchor slices, where a rearrangement is actually audible);
+  the move probabilities carry a floor, because a band can only reject, never
+  create movement the generator never proposed; and the search keeps its closest
+  near-miss instead of falling back to the identity, so σ is never the untouched
+  break. Result: ~5 slices displaced at rest, ~7 at the seam.
+
+`test/groove.mjs` measures all three against the compiled pattern rather than
+the source, and fails if the set collapses back to one bar repeated.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

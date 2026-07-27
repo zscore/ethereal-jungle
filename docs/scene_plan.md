@@ -134,11 +134,17 @@ Ordered; each step is independently shippable.
 
 ## 6. Open questions
 
-- **Should altitude ever move against the harmony?** The theory (§2.2) notes
-  brightness walks "with or against the tension arc — both signify." The
-  timeline currently walks brightness monotonically upward across the set;
-  a track whose brightness *falls* while tension rises (descending into the
-  roots for the hardest section) is unexplored and probably potent.
+- ~~**Should altitude ever move against the harmony?**~~ **partly answered
+  (D22)**. The theory (§2.2) notes brightness walks "with or against the tension
+  arc — both signify." Rather than bend the brightness walk — which is also the
+  camera's altitude, so bending it bends the world — a *second* axis was added:
+  `warmthAt(t)`, which decides how much gladness the arrangement takes from the
+  mode brightness chose. The zenith now climbs in brightness while warmth falls
+  off a cliff, and that opposition is what makes the top of the set read as awe
+  instead of triumph (`docs/track_identities.md`). Still unexplored: a track
+  whose brightness itself *falls* while tension rises — descending into the
+  roots for the hardest section — which would move the camera downward through
+  the world at the moment of maximum violence.
 - ~~**Camera path richness**~~ **answered (D19/I1)**: each band owns a lateral
   orbit (radius + a near-coprime rate), tent-blended by altitude and
   superimposed on the 1/f sway rather than replacing it. Because every band

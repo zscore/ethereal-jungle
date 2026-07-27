@@ -8,7 +8,7 @@ import { controls, stack, repl, Pattern } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
 import {
   getAudioContext,
-  initAudioOnFirstClick,
+  initAudio,
   webaudioOutput,
   registerSynthSounds,
   samples,
@@ -25,7 +25,14 @@ let masterChain = null;
 export async function initEngine() {
   miniAllStrings(); // let plain strings act as mini-notation inside s()/note()
 
-  initAudioOnFirstClick();
+  // initEngine is called FROM the overlay click, so we are already inside a
+  // user gesture: initialise directly and await it. (initAudioOnFirstClick
+  // registers its own mousedown listener, which is installed too late to catch
+  // the click that got us here — so its promise never resolved, superdough's
+  // AudioWorklets were never loaded, and every worklet-backed effect failed to
+  // construct. Nothing used one until the D22 costumes did: crush, coarse and
+  // shape are all worklets.)
+  await initAudio();
   const ctx = getAudioContext();
 
   await registerSynthSounds(); // sawtooth etc.

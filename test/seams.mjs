@@ -183,6 +183,9 @@ console.log('seam variants (D18) — every boundary is a landing or a dissolve')
   for (let i = 0; i < TRACKS.length; i++) {
     const into = TRACKS[i].name;
     const boundary = i === 0 ? SET_BARS : trackStartBar(i); // into track 0 = the loop point
+    // the riser belongs to the OUTGOING track, so it wears that track's hat
+    // costume (D22) — at the zenith that is a high-passed hiss, not an 'hh'
+    const hat = TRACKS[(i - 1 + TRACKS.length) % TRACKS.length].palette?.hats?.s ?? 'hh';
     const late0 = boundary - SEAM_LATE_BARS;
     const tB = boundary * BAR_SECONDS;
     // loudest snare per countdown bar: rising = promise kept, falling = withdrawn
@@ -192,7 +195,7 @@ console.log('seam variants (D18) — every boundary is a landing or a dissolve')
     const impacts = onsets(boundary, boundary + 1).filter((h) => h.value?.s === 'ambimpact');
     if (variants[i] === 'landing') {
       check(sdGains.every((g, j) => j === 0 || g > sdGains[j - 1]), `→${into}: countdown gains rise`);
-      check(soundsIn(late0, boundary).has('hh'), `→${into}: hat riser runs to the boundary`);
+      check(soundsIn(late0, boundary).has(hat), `→${into}: hat riser runs to the boundary`);
       check(impacts.length === 1 && impacts[0].whole.begin.equals(Fraction(boundary)),
         `→${into}: impact lands exactly on the downbeat`);
       check(orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: root pedal in the arrival phrase`);
@@ -202,7 +205,7 @@ console.log('seam variants (D18) — every boundary is a landing or a dissolve')
       check(bus.tensionAt(tB - 0.05) > 0.85, `→${into}: tension spikes into the boundary`);
     } else {
       check(sdGains.every((g, j) => j === 0 || g < sdGains[j - 1]), `→${into}: roll dissolves (gains fall)`);
-      check(!soundsIn(late0, boundary).has('hh'), `→${into}: hats leave with the promise`);
+      check(!soundsIn(late0, boundary).has(hat), `→${into}: hats leave with the promise`);
       check(impacts.length === 0, `→${into}: no impact on a dissolve arrival`);
       check(!orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: intro stays bass-free`);
       check(Math.abs(bus.tensionAt(tB - 0.05) - bus.tensionAt(tB + 0.05)) < 0.15,

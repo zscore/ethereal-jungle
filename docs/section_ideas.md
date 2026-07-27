@@ -6,6 +6,10 @@ it leans on (music doc §; design decisions D). Items marked **[done]** are
 implemented; everything else is fair game, roughly ordered by expected
 audibility-per-effort within each group.
 
+Per-*track* identity (as opposed to per-section) now lives in
+`track_identities.md` (D22): the warmth axis, the four casts, the tuning arc.
+Several items below were absorbed by it — noted inline.
+
 ## Global devices (work in any section)
 
 - **Layer presence cycling on coprime periods** (§7's Eno principle): give
@@ -21,7 +25,9 @@ audibility-per-effort within each group.
 - **Harmonic rhythm as intensity**: pads re-voice every 4 bars normally, every
   2 bars in peak, every 8 in intro/breakdown. Faster harmonic rhythm reads as
   drive without any new notes (§2's stasis stays intact — same mode, same
-  root, just re-voiced).
+  root, just re-voiced). **[done per TRACK, not per section, as D22]** — the
+  canopy re-voices every 2 bars because it is the glad track; making it a
+  section device too is still open.
 - **The global low-pass sweep** (§8): build2's last phrase sweeps a master
   filter down; the drop releases it. Scene-collapse as a camera move, and the
   release is a free drop. (Needs a master-bus filter in superdough — check
@@ -97,7 +103,10 @@ rule as the breaks, README §licensing).
   hats push against the grid the skeleton holds down (§1.2 applied to
   dynamics) **[done]**.
 - Lower base level and a density cap (k ≤ 6, was 7) **[done]**.
+- Hat *timbre* per track **[done as D22]** — damp and closed in the undergrowth,
+  open at the canopy, and at the zenith not a hat at all but a high-passed hiss
+  on the same euclid mask.
 - Still open: an open-hat variant sample on the last euclid onset of peak
-  phrases; hat *timbre* rotation per track (D12 territory); swing/humanize
+  phrases; swing/humanize
   micro-timing from `drift(t)` (§4 — wire the 1/f source into note-level
   nudge once superdough exposes per-event timing offsets).

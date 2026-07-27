@@ -32,15 +32,27 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
 
 - `bus.js` — the authored set timeline: tracks with tension breakpoints (one
   shared golden-ratio shape, rescaled per track), a brightness walk that drives
-  **both** the mode ladder and the camera's altitude, seam windows, 1/f drift,
-  seedable RNGs, event pub/sub. Everything is **a function of time**, so both
-  media can sample the future.
+  **both** the mode ladder and the camera's altitude, a **warmth** walk that
+  decides how much gladness the arrangement takes from that mode (D22), seam
+  windows, 1/f drift, seedable RNGs, event pub/sub. It also holds each track's
+  **cast** as data — `palette` and `tuning` (D12/D22) — because orchestration is
+  authoring, not machinery. Everything is **a function of time**, so both media
+  can sample the future.
 - `music/generators.js` — the machine room: break permuter with wildness knob +
   Barlow-weighted generate-and-test, anchor skeleton (kick carries the audio
   sidechain via `duckorbit`), Euclidean hats, isorhythmic bass (talea × color),
   tendency-free pads, contour-then-quantize lead over one set-wide motif
   (80/20 transform bag), and the seam operator (intensified exit → drums die →
   snare-roll countdown → clean drop). Pure functions: params in, pattern out.
+  Every layer wears the current track's costume; the shapes never change, only
+  who plays them — Reese and log-tap in the undergrowth, breath voice and dub
+  rail on the forest floor, FM bells and a vowel choir at the canopy, glass bowl
+  and a granular ghost of the set at the zenith.
+- `music/scales.js` — the two harmonic axes: the mode ladder (brightness) and
+  the voicing/tuning ladder (warmth). Where "bright but not glad" is actually
+  implemented — the third is present, added-6th glad, or absent entirely — plus
+  per-track temperament: the stack sags in the roots, **locks in just intonation
+  at the canopy** (the only in-tune track), and stretches at the zenith.
 - `music/engine.js` — Strudel scheduler + superdough boot; wraps the audio output
   so **every event is mirrored to the bus with its audio-clock deadline before it
   sounds** (the visualizer's clairvoyance); re-permutes each 4-bar phrase.
@@ -79,7 +91,10 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
 - `midi.js` — WebMIDI → `bus.params`, same single writable surface as the UI.
 
 Design rationale for all of the above: `docs/design_decisions.md`. How scenes
-are authored and transitioned: `docs/scene_plan.md`. What got built in the
+are authored and transitioned: `docs/scene_plan.md`. What each track is *for*,
+emotionally and instrumentally: `docs/track_identities.md` (D22 — the arc runs
+dark and close → wet and walking → high and joyful → bright, vast and unhappy).
+What got built in the
 "make it fancy" passes, with acceptance criteria: `docs/visuals_expansion_proposal.md`
 (tiers A–E), `docs/visuals_fancy_proposal.md` (F–J) and
 `docs/visuals_pizzaz_proposal.md` (K–M: the shared atmosphere, the living
