@@ -287,9 +287,17 @@ one place arrangement state lives). Sections expressed as Strudel `arrange()`
 **Revisit when** tracks earn bespoke forms — `SECTION_LAYOUT` is one shared
 shape like `SHAPE`; a per-track `layout` field is the natural extension.
 
-## D12 — Per-track instrumentation palette (planned, not yet implemented) (2026-07-26)
+## D12 — Per-track instrumentation palette (2026-07-26)
 
-**Decision (planned).** Give each track an identity by varying *sounds* over
+**Status: delivered, as part of D22 (2026-07-27).** `TRACKS[i].palette` in
+`bus.js` carries the break costume, hat character, bass kind, pad width and
+lead patch, and generators read it without their shapes changing. The palette's
+own licensing caveat is resolved too: every sound a palette names is either a
+superdough synth or a sample this repo ships, so the cast survives the remote
+pack being unavailable. Design and rationale: `docs/track_identities.md`. The
+deferral note below is kept as the record of why it waited.
+
+**Decision.** Give each track an identity by varying *sounds* over
 the fixed machinery (§7: "the half that keeps a twenty-minute generative set
 from feeling like one very long track"): a per-track palette object on
 `TRACKS[i]` — break sample (Think/Apache/etc. via the remote dirt-samples
@@ -318,6 +326,23 @@ scale" supports this without new machinery (a `root` field per track,
 threaded through scales.js). **Decision deferred** until D11 + D12 are
 audible: change one variable at a time, and key movement is the one that
 spends the thesis.
+
+**Update 2026-07-27 — unblocked, still open, and the case is weaker.** The gate
+has been passed: D11 (sections) and D12 (palette) both landed. But two further
+decisions have since attacked *the same complaint* from other directions —
+D22 gave each track a warmth value, a tuning and a cast, and D23 broke the
+one-bar groove. "Tracks blur together" was the motivation for this entry and
+for both of those.
+
+So the question is no longer "is mode color alone too subtle?" but "is anything
+still blurred once warmth, tuning, cast and groove are all per-track?" If the
+answer is no, D13 stays closed **on purpose** rather than by default — which is
+the better outcome, since the single tonal center is half the genre thesis and
+per-track roots are the one change that spends it.
+
+This needs ears, not analysis: listen through a full set before deciding. Until
+then the entry stays open with its option unchanged, and the founding
+commitment (`ROOT = 50`, D) stands.
 
 ## D14 — Per-stream post chain + artifact operators + roots per-point pulse (2026-07-26)
 

@@ -183,5 +183,7 @@ OSC-over-WebSocket (D10, `?osc=ws://host:port`); see
 2. Per-point shaders / TSL compute for roots and the canopy ether
    (`docs/scene_plan.md` roadmap 1) — the CPU advection is behind a stable
    interface, so this is a swap.
-3. Per-track instrumentation palette (D12) and key movement across tracks (D13),
-   both still open on the music side.
+3. Key movement across tracks (D13) — the last open music-side question, and
+   deliberately so: per-track roots are the one change that spends the
+   single-tonal-center thesis. Unblocked now that D11/D12 have landed, but
+   wanting a listen rather than an argument. (D12 itself shipped with D22.)

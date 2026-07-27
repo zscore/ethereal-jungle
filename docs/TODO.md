@@ -29,18 +29,21 @@ from its own text.
 The prevention note (assign the next `D` at merge time, not on the branch) has
 graduated to the header of `design_decisions.md`.
 
-## 2. Two ADR statuses are stale
+## 2. ~~Two ADR statuses are stale~~ ✅ statuses fixed; one listening call left
 
-- **D12** ("Per-track instrumentation palette") is still titled *"planned, not
-  yet implemented"*, but D22 explicitly says "And D12 finally lands." Update the
-  heading, or append a short entry marking it delivered.
-- **D13** ("Key movement across tracks") says **"Decision deferred until D11 +
-  D12 land."** Both have now landed. D13 is unblocked and worth revisiting —
-  especially since its motivation was listening feedback that *"tracks blur
-  together"*, which is the same complaint that produced D22 and D23. Worth
-  re-listening before deciding: the blur may now be sufficiently addressed by
-  warmth + groove variation, which would let D13 stay closed on purpose rather
-  than by default.
+- **D12** — retitled and marked delivered as part of D22. Verified against the
+  code first, not taken from D22's word: `TRACKS[i].palette` carries the break
+  costume, hat character, bass kind, pad width and lead patch, and the
+  licensing caveat D12 raised for itself is resolved (every sound a palette
+  names ships in this repo). `README.md` had also listed D12 as still open —
+  fixed.
+- **D13** — status corrected: the "deferred until D11 + D12 land" gate has been
+  passed, and the entry now records that D22 and D23 have since attacked the
+  same "tracks blur together" complaint from two other directions. **The
+  decision itself is still open, and deliberately needs ears rather than
+  analysis** — see §5, which wants the same listening pass. If nothing sounds
+  blurred once warmth, tuning, cast and groove are all per-track, D13 closes on
+  purpose instead of by default.
 
 ## 3. ~~There is no remote~~ — backed up; CI and deploy still open
 
