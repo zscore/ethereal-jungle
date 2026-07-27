@@ -106,3 +106,9 @@ settled.
 - Branch hygiene going forward: short-lived topic branches off `main`, merged
   and deleted promptly. `main` is staging; production is a tag that only ever
   moves forward to a commit that passed `npm test && npm run build && npm run smoke`.
+]
+7. the chords in the background are just constant for a lot of the time in the first couple section and need some effects
+and some motion between notes.
+8. that drum rolls filter is a bit overwhelming; maybe it needs probabilities of adding the rolls too?
+9. the butterfly visualization thing looks stupid and should be removed
+10. that fill going into the seam is very cheesy and should be a bit better
