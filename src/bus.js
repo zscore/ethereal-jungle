@@ -96,11 +96,129 @@ const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax
 // D16) — the first per-track palette field (D12's direction: orchestration as
 // data). ambience[0] is the always-on bed; the rest are accent layers that
 // drift in and out on slow presence walks (generators.js layerPresenceAt).
+//
+// D22 completes that direction: `warmth`, `tuning` and `palette` are the rest
+// of the per-track identity, and they are DATA — the generators' shape does not
+// change, only who is playing it (docs/track_identities.md, §7.3's
+// Klangfarbenmelodie: hold the pattern, swap the player).
+//
+//   brightness  chooses the mode                      (unchanged, §2.2)
+//   warmth      chooses how much gladness we take from it — the third in the
+//               voicing, whether the chord is in tune, how the drums affirm
+//   tuning      { stretch: cents/octave, just: 0..1 } — the arc is
+//               sag → plain → just → stretch, i.e. out-of-tune-and-dark,
+//               in-tune-and-glad, out-of-tune-and-bright
+//
+// Palette fields are read by generators.js; every sound named here is either a
+// superdough synth or a sample this repo ships (public/samples/strudel.json),
+// so the whole cast survives the remote pack being unavailable (README
+// §licensing — the caveat D12 raised about its own palette).
 export const TRACKS = [
-  { name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30], ambience: ['ambinsects', 'ambfrogs', 'ambrustle'] },
-  { name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55], ambience: ['ambrain', 'ambthunder', 'ambdrips'] },
-  { name: 'canopy',      bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80], ambience: ['ambbirds', 'ambcalls', 'ambleaves'] }, // set climax (~0.62 of set)
-  { name: 'zenith',      bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00], ambience: ['ambwind', 'ambshimmer', 'ambsparkle'] },
+  {
+    name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30],
+    ambience: ['ambinsects', 'ambfrogs', 'ambrustle'],
+    warmth: 0.15,                    // dark AND cold: the floor of both axes
+    tuning: { stretch: -4 },         // the sag — the stack leans downward
+    palette: {
+      // the most degraded break of the four: no top end, bit-reduced, close
+      break: { lpf: 3200, crush: 8, coarse: 2, room: 0.1, roomsize: 2 },
+      hats: { s: 'hh', lpf: 5500, gain: 0.85 },
+      // D23 — the skeleton's appetite. The undergrowth is the heaviest floor
+      // of the four: the second kick is almost always there, the ghosts are
+      // buried under it.
+      kick: { extras: 0.92, gain: 0.68 },
+      snare: { ghosts: 0.55, gain: 0.24 },
+      // the Reese (§7.2): two saws a few cents apart in the bass register —
+      // slow phase-cancellation sweep — split-banded with a clean mono sub
+      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: 8, sub: true, lpf: [130, 220], gain: 0.46 },
+      pad: { s: 'sawtooth', oct: 0, width: 6, lpf: [700, 2000], attack: 1.4, release: 4, gain: 0.32 },
+      lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8, roomsize: 6 },
+      // the migrating pluck at its near/dry extreme: wooden tuned percussion,
+      // struck on the break's non-anchor positions and locked to the grid
+      pluck: { fmh: 3.5, fmi: 2.4, oct: 0, k: 3, decay: 0.12, room: 0.05, roomsize: 2, offGrid: 0, gain: 0.3, orbit: 1 },
+    },
+  },
+  {
+    name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55],
+    ambience: ['ambrain', 'ambthunder', 'ambdrips'],
+    warmth: 0.35,
+    tuning: {},                      // plain 12-TET: the neutral middle of the arc
+    palette: {
+      break: { speed: 1.02, shape: 0.15, room: 0.18, roomsize: 3 }, // tight, tuned up, dry
+      hats: { s: 'hh', lpf: 9000, gain: 1 },
+      // the busiest skeleton in the set — this is the track that struts
+      kick: { extras: 0.95, gain: 0.6 },
+      snare: { ghosts: 0.9, gain: 0.34 },
+      bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42 }, // the floor walks
+      pad: { s: 'sawtooth', oct: 1, width: 9, lpf: [900, 2600], attack: 1.2, release: 4, gain: 0.32 },
+      lead: { s: 'triangle', lpf: [1200, 2400], room: 0.8, roomsize: 6 },
+      pluck: { fmh: 3.5, fmi: 2.2, oct: 0, k: 3, decay: 0.16, room: 0.4, roomsize: 4, offGrid: 0.33, gain: 0.28, orbit: 1 },
+      // characteristic 1: bamboo/duduk-ish breath — sine + noise, living pitch
+      breath: { vib: 4.5, vibmod: 0.18, noise: 0.32, oct: 1, lpf: [1600, 900], gain: 0.26 },
+      // characteristic 2: the dub rail — water made musical. A dotted-eighth
+      // (3/16) feedback delay on the SNARE and the LEAD only (§9.3)
+      dub: { send: 0.45, sync: 3 / 16, feedback: [0.34, 0.3] },
+    },
+  },
+  {
+    name: 'canopy', bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80], // set climax (~0.62 of set)
+    ambience: ['ambbirds', 'ambcalls', 'ambleaves'],
+    warmth: 0.85,                    // the one glad track: thirds, in tune, affirmed
+    tuning: { just: 1 },             // the only track that actually locks
+    palette: {
+      break: { room: 0.15, roomsize: 3 }, // full, open, top end intact
+      hats: { s: 'hh', lpf: 12000, gain: 1.12 },
+      // open and affirmed: fewer extra kicks than the floor, but the ghosts
+      // are audible — warmth leans into the backbeat, here and in `backbeat`
+      kick: { extras: 0.82, gain: 0.6 },
+      snare: { ghosts: 0.85, gain: 0.36 },
+      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5 },
+      pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2 },
+      lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7, roomsize: 6 },
+      pluck: { fmh: 3.5, fmi: 1.8, oct: 1, k: 3, decay: 0.35, room: 0.75, roomsize: 7, offGrid: 0.6, gain: 0.26, orbit: 4 },
+      // characteristic 1: FM bells doubling the lead an octave up — inharmonic
+      // partials over a glad chord read as light, not error (§7.2)
+      bells: { fmh: 3.0, fmi: 2.2, oct: 1, decay: 0.6, room: 0.55, roomsize: 5, gain: 0.19 },
+      // characteristic 2: the vowel choir. The voice is the strongest attractor
+      // in the mix, so it is spent once per set — here, at the golden ratio
+      choir: { gain: 0.2, lpf: 1500 },
+      // spent once: the hoover on the peak's drop bar. 1992, once, never again
+      hoover: { gain: 0.3, penv: -10 },
+    },
+  },
+  {
+    name: 'zenith', bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00],
+    ambience: ['ambwind', 'ambshimmer', 'ambsparkle'],
+    warmth: 0.10,                    // brightest AND coldest: the axes cross here
+    tuning: { stretch: 3 },          // stretched octaves — nothing ever settles
+    palette: {
+      // dematerialised: high-passed (the drums lose their body), drowned,
+      // thinned, slices reversed
+      break: { hpf: 700, room: 0.85, roomsize: 9, reverse: 0.35, thin: 0.25, gain: 0.7 },
+      // hats are gone; their euclid mask now drives a high-passed hiss, so
+      // rhythm survives as texture
+      hats: { s: 'white', hpf: 4500, release: 0.05, gain: 0.5 },
+      // the skeleton is dematerialising with everything else: the heartbeat is
+      // nearly bare, and what few ghosts there are barely register
+      kick: { extras: 0.3, gain: 0.45 },
+      snare: { ghosts: 0.3, gain: 0.2 },
+      // the floor is removed: bare sine, an octave up, absent for whole phrases
+      bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45 },
+      pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3 },
+      lead: { s: 'sine', lpf: [2000, 1500], room: 0.9, roomsize: 9 },
+      pluck: { fmh: 3.5, fmi: 1.4, oct: 1, k: 2, decay: 0.9, room: 0.95, roomsize: 12, offGrid: 1, gain: 0.22, orbit: 3, slow: 2 },
+      // characteristic 1: the glass bowl — a Chowning-ratio FM shimmer with
+      // nothing to resolve to, one strike every two phrases
+      bowl: { fmh: 2.76, fmi: 1.6, oct: 2, attack: 2.5, release: 7, gain: 0.17 },
+      // characteristic 2: the granular ghost of the set — the break itself,
+      // half-speed, reversed, drowned, no skeleton under it (§3.4). The audio
+      // sibling of the corpus shrine (D20): at the top of the set the piece
+      // plays back its own earlier material as ether.
+      ghost: { grains: 5, speed: 0.5, reverse: 0.4, lpf: 2200, gain: 0.15 },
+      // spent once: the silence — release phrase 0 keeps one sine and the bed
+      silence: true,
+    },
+  },
 ];
 for (const tr of TRACKS) tr.seconds = tr.bars * BAR_SECONDS; // ≈97 s per track
 
@@ -158,6 +276,26 @@ export function seamAt(t) {
     toIndex: (index + 1) % TRACKS.length,
     boundaryIn: remaining, // seconds until the downbeat of the next track
   };
+}
+
+/**
+ * D22 — warmth at set-time t: the second harmonic axis. Brightness picks the
+ * mode; warmth picks how much gladness the arrangement extracts from it. It is
+ * a pure function of the authored timeline (no knob, deliberately — this is
+ * form, not performance), blended across seams by the same smoothstep as
+ * brightness so the palette crossfades the way the ether already does.
+ *
+ * The zenith is the one place the two axes move AGAINST each other — brightness
+ * still climbing, warmth falling off a cliff — which is what makes the last
+ * track read as awe rather than triumph (scene_plan §6's unexplored move).
+ */
+export function warmthAt(t) {
+  const { track } = trackAt(t);
+  const w = track.warmth ?? 0.4;
+  const seam = seamAt(t);
+  if (!seam.active) return w;
+  const s = seam.progress * seam.progress * (3 - 2 * seam.progress);
+  return lerp(w, seam.to.warmth ?? 0.4, s);
 }
 
 /**
@@ -341,6 +479,10 @@ export const bus = {
     const p = this.params;
     return b * (1 - p.brightnessMix) + p.brightnessManual * p.brightnessMix;
   },
+
+  // D22 — the warmth axis, for symmetry with brightnessAt. (The identifier
+  // inside resolves to the module-scope function above, not to this property.)
+  warmthAt: (t) => warmthAt(t),
 
   /** Effective wildness: the knob, breathing with the tension curve. */
   wildnessAt(t) {

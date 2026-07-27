@@ -1,5 +1,5 @@
 /**
- * scales.js — the brightness axis (music doc §2.2).
+ * scales.js — the brightness axis (music doc §2.2) and the warmth axis (D22).
  *
  * The seven diatonic modes, totally ordered by brightness. Each adjacent step
  * changes exactly one degree by a semitone, so `modeBrightness` behaves as a
@@ -7,6 +7,11 @@
  *
  * Rule 2 of §2.1 is enforced structurally: these interval sets contain no
  * raised 7th in the dark modes — the subtonic, never the leading tone.
+ *
+ * D22 adds the second axis. Brightness picks the mode; **warmth** decides how
+ * much gladness the voicing extracts from it, and the per-track tuning decides
+ * whether the chord locks or shimmers. The two are what let the zenith be the
+ * brightest AND the least happy track in the set — see docs/track_identities.md.
  */
 
 export const MODES = [
@@ -33,18 +38,75 @@ export function degreeToMidi(degree, mode, octaveShift = 0) {
   return ROOT + mode.intervals[((d % 7) + 7) % 7] + 12 * oct;
 }
 
-/** The ethereal chord vocabulary: high lushness, zero tendency (§2.1 rule 3). */
-export function padVoicing(mode) {
-  // stack of degrees {1,3,5,7,9}, registered high (octaves 4-6 territory)
-  return [1, 3, 5, 7, 9].map((deg) => degreeToMidi(deg, mode, 1));
+// ---------- tuning: one number per track, and it tells the story (D22) ----------
+// 5-limit just deviations from 12-TET, in cents, indexed by semitones above the
+// root. Blending toward these makes a chord *lock* — beatless, and audibly glad.
+const JUST_CENTS = [0, 11.7, 3.9, 15.6, -13.7, -2.0, -9.8, 2.0, 13.7, -15.6, 17.6, -11.7];
+
+/**
+ * Retune one voice, returning a fractional MIDI note (superdough converts
+ * note→frequency, so cents are just decimals).
+ *
+ * `stretch` is cents per octave away from ROOT, applied slightly superlinearly
+ * (Railsback/gamelan-ish): **positive stretches the stack** — the zenith, where
+ * nothing ever settles — and **negative sags it** — the undergrowth, where the
+ * chord leans downward and the world sounds like it is subsiding. One parameter,
+ * opposite signs, opposite ends of the set.
+ *
+ * `just` ∈ [0,1] blends toward 5-limit just intervals over the root. The canopy
+ * is the only track that gets it: consonance is spent like everything else.
+ */
+export function tune(midi, tuning) {
+  if (!tuning) return midi;
+  const { stretch = 0, just = 0 } = tuning;
+  if (!stretch && !just) return midi;
+  const oct = (midi - ROOT) / 12;
+  let cents = stretch * oct * (1 + 0.2 * Math.abs(oct));
+  if (just) cents += just * JUST_CENTS[(((Math.round(midi) - ROOT) % 12) + 12) % 12];
+  return midi + cents / 100;
+}
+
+// ---------- voicings: the warmth axis (D22) ----------
+// Brightness chose the mode; these choose how much of its gladness we take.
+// The third is the switch: present and low in `glad`, present in `neutral`,
+// ABSENT in `hollow` — which is how a lydian chord can be maximally bright and
+// carry no joy at all (the zenith).
+export const PAD_DEGREES = {
+  glad:    [1, 3, 5, 6, 9], // warmth ≥ 0.6 — the added 6th, this idiom's glad chord
+  neutral: [1, 3, 5, 7, 9], // the standing voicing: lush, high, tendency-free
+  hollow:  [1, 2, 4, 5, 8], // warmth < 0.3 — quartal/sus, no third anywhere
+};
+
+export function padDegrees(warmth = 0.4) {
+  if (warmth >= 0.6) return PAD_DEGREES.glad;
+  if (warmth < 0.3) return PAD_DEGREES.hollow;
+  return PAD_DEGREES.neutral;
+}
+
+/**
+ * The ethereal chord vocabulary: high lushness, zero tendency (§2.1 rule 3),
+ * now warmth-gated and per-track tuned. `width` (cents) splits every voice into
+ * a beating pair — the pad's own chorus, and the reason the plain `detune`
+ * control is not used (superdough maps it to the supersaw's freqspread, which a
+ * stock oscillator does not have).
+ */
+export function padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0 } = {}) {
+  const voices = padDegrees(warmth).map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
+  if (!width) return voices;
+  return voices.flatMap((n) => [n - width / 200, n + width / 200]);
 }
 
 /** Pentatonic subset for the bass color loop (maximally even E(5,12) inside the mode). */
-export function bassNotes(mode) {
-  return [1, 2, 3, 5, 6].map((deg) => degreeToMidi(deg, mode, -1));
+export function bassNotes(mode, oct = -1, tuning) {
+  return [1, 2, 3, 5, 6].map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
 }
 
 /** Lead pitch set: one octave of the mode, registered high (§2.3: ether ≥ octave 4). */
-export function leadNotes(mode) {
-  return [1, 2, 3, 4, 5, 6, 7].map((deg) => degreeToMidi(deg, mode, 2));
+export function leadNotes(mode, oct = 2, tuning) {
+  return [1, 2, 3, 4, 5, 6, 7].map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
+}
+
+/** True if any voice sits a major third (mod octave) above the root — the joy test. */
+export function hasMajorThird(voices) {
+  return voices.some((n) => (((Math.round(n) - ROOT) % 12) + 12) % 12 === 4);
 }
