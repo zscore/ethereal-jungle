@@ -1873,11 +1873,6 @@ should say whether that is acceptable — today it says it is.
 
 ## D40 — The recurring form: a rule where the moth was (2026-07-28)
 
-> **Number provisional.** Written on `worktree-visuals-leftovers`; per the
-> header, the real `D` is assigned at merge. Renumber the heading and the four
-> references in `src/visuals/motif.js`, `src/visuals/figure.js`,
-> `test/motif.mjs` and `docs/TODO.md` if this lands after another D40.
-
 **The brief.** *"Implement the rest of the visual stuff — anything left over."*
 Everything in the three proposal docs (A–E, F–J, K–M) had shipped and D39 had
 just rebuilt the world as one forest, so the leftovers were a short and
@@ -1998,8 +1993,6 @@ clip-art, this goes the way of the moth and the slot opens again — which is th
 right outcome and the reason D28 was written as a price rather than a closure.
 
 ## D41 — The world gets an aperture, the flock gets a grid, and two lamps go (2026-07-28)
-
-> **Number provisional**, same as D40 — assigned at merge.
 
 Three leftovers from the same sweep. They are one entry because they are all
 the same shape: something the docs had already diagnosed and declined to fix.
