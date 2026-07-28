@@ -139,10 +139,39 @@ composition code. Keep renderer-specific tricks inside `engine.js` only.
   squawk — one call every two phrases, near its own pitch (D32; they were briefly
   a pitch-shifted tom kit, which is what the directory name remembers).
 
+## The generated reference
+
+`docs/api/index.html` — every module in `src/`, laid out next to the comments
+that explain it. Open the file directly, or hit `/docs/api/` while `npm run dev`
+is up.
+
+```sh
+npm run docs         # rebuild it
+npm run docs:watch   # …on every save, without the dev server
+npm run docs:check   # exit 1 if it is stale (for CI)
+```
+
+It is **generated, never authored** — `tools/gen_docs.mjs` reads each module's
+header block, the comment above each export, and the `// ---- banner ----` notes
+*inside* the long functions, which is where `buildArrangement` actually explains
+itself layer by layer. `D22` in a comment becomes a link into
+`design_decisions.md`; the signal-flow diagram is lifted out of this file at
+generation time so the two cannot drift apart; the Strudel/superdough vocabulary
+table is detected from the source rather than transcribed; and exports with no
+comment are listed under *Coverage* instead of being given an invented one.
+
+It regenerates on its own three ways — a `pre-commit` hook (shared across
+worktrees via `core.hooksPath`, installed by `npm install` or
+`npm run hooks:install`), the dev server, and `npm run build`. The generator has
+**no dependencies** on purpose: hooks fire in worktrees that have no
+`node_modules`, and a generator that needs one is a generator that quietly stops.
+Its output carries no timestamp, so an unchanged tree regenerates byte-identical
+and never shows up as a spurious diff. `test/docs.mjs` covers the scanner itself.
+
 ## Tests
 
 ```sh
-npm test           # seams, OSC, the perform rail, look + weather (no browser)
+npm test           # seams, OSC, the perform rail, look + weather, the doc scanner
 npm run smoke      # headless browser boot: audio + visuals + bus events
 node tools/visual_check.mjs                     # screenshot sweep, WebGL2
 node tools/visual_check.mjs --backend=webgpu    # …and the other backend

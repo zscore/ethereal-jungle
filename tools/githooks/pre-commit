@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# pre-commit — keep docs/api/index.html in step with the source it documents.
+#
+# Version-controlled and shared by every worktree via `core.hooksPath`
+# (see `npm run hooks:install`), because this repo is worked by several agents
+# at once and a hook living in one clone's .git/hooks would only ever fire for
+# whoever installed it.
+#
+# It runs only when the commit actually touches an input, regenerates, and
+# stages the result. The generator is dependency-free and writes only when the
+# bytes change, so a commit that leaves the docs identical costs one node
+# start-up and stages nothing.
+#
+# Known limitation, stated rather than hidden: the page is generated from the
+# WORKING TREE, not from the index. If you `git add -p` half of a file, the
+# committed docs describe the whole file. That is the right trade for a
+# generated artifact — the alternative is stashing on every commit — but it is
+# why `npm run docs:check` exists as the authoritative answer.
+#
+# To commit without it: `git commit --no-verify`.
+
+changed=$(git diff --cached --name-only --diff-filter=ACMR)
+
+echo "$changed" | grep -qE '^(src/.*\.js|README\.md|docs/design_decisions\.md)$' || exit 0
+
+command -v node >/dev/null 2>&1 || {
+  echo "pre-commit: node not on PATH — skipping doc regeneration" >&2
+  exit 0
+}
+
+root=$(git rev-parse --show-toplevel)
+
+if ! out=$(node "$root/tools/gen_docs.mjs" --quiet 2>&1); then
+  echo "pre-commit: doc generation failed, commit aborted" >&2
+  echo "$out" >&2
+  echo "  (commit anyway with --no-verify if this is blocking you)" >&2
+  exit 1
+fi
+
+if ! git diff --quiet -- docs/api/index.html 2>/dev/null; then
+  git add docs/api/index.html
+  echo "pre-commit: regenerated docs/api/index.html and added it to this commit"
+fi
+
+exit 0
