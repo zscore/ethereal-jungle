@@ -74,17 +74,32 @@ const shot = async (name, settleMs = 2500) => {
 };
 const setParams = (p) => page.evaluate((o) => Object.assign(window.jungle.bus.params, o), p);
 
-const stops = [['roots', 0.05], ['floor', 0.35], ['canopy', 0.65], ['sky', 0.95]];
+// The four storeys (DXX). These are the *middles* of the four tracks' authored
+// brightness spans, not evenly-spaced numbers: the crowns hang on the seams, so
+// a stop picked by eye would land on a boundary and photograph neither level.
+// (Renamed from roots/floor/canopy/sky when the bands became a forest.)
+const stops = [['undergrowth', 0.20], ['understory', 0.42], ['canopy', 0.68], ['openair', 0.98]];
+// These four shots are about the WORLD, so the style tier comes off for them.
+// They used to be taken at whatever section the set had reached, so one or two
+// would arrive wearing the ink style (L3 is bound to breakdowns) — a picture of
+// the ink pass, certifying nothing about the band. Seeking to `groove` first is
+// not enough: `inkAmt` is smoothed per frame against a dt clamped to 0.1, so on
+// a software rasterizer running at ~2 fps the fade takes upward of ten seconds
+// of wall clock. The styles have four dedicated shots of their own further
+// down; what is lost here is only the always-on optics (L1/L2/L8) riding with
+// them, and those have their own frames too.
+await page.evaluate(() => window.jungle.visuals.setStyles(false));
 for (const [name, a] of stops) {
   await page.evaluate((v) => {
     window.jungle.visuals.setAltitude(v, true);
     window.jungle.bus.params.brightnessMix = 1;    // brightness-keyed effects
-    window.jungle.bus.params.brightnessManual = v; // (aurora, shafts) show in-band
+    window.jungle.bus.params.brightnessManual = v; // (grade, god rays) show in-band
   }, a);
   await page.waitForTimeout(2500); // settle + let figures land in-band
   await page.screenshot({ path: `${outDir}${backend}-${name}.png` });
   console.log(`captured ${backend}-${name}.png`);
 }
+await page.evaluate(() => window.jungle.visuals.setStyles(null)); // back to the governor
 
 // (the peak-glyph shot lived here until D28 removed the glyph)
 
@@ -152,11 +167,34 @@ await page.evaluate(() => {
   window.jungle.visuals.setAltitude(0.08, true);
 });
 await shot('nature-undergrowth', 3500);
-for (const biome of ['fireflies', 'mycelium', 'nearfield', 'pool', 'rain']) {
+for (const biome of ['fireflies', 'mycelium', 'nearfield', 'pool', 'rain', 'forest']) {
   await page.evaluate((b) => window.jungle.visuals.isolate(b), biome);
   await shot(`biome-${biome}`, 1800);
 }
 await page.evaluate(() => window.jungle.visuals.isolate(null));
+
+// DXX — the two shots the forestscape has to survive: standing among the
+// trunks looking up at the shafts, and out over the crown sea from above. They
+// are the same world 40 units apart, and if either reads as a different piece
+// the ascent has not landed.
+await page.evaluate(() => {
+  window.jungle.visuals.setWeather({ mist: 0.85, rain: 0, wind: 0.4, storm: 0 });
+  window.jungle.visuals.setAltitude(0.40, true);
+  window.jungle.visuals.setLateral(0);
+  window.jungle.bus.params.brightnessMix = 1;
+  window.jungle.bus.params.brightnessManual = 0.40;
+});
+await shot('forest-understory', 3500);
+await page.evaluate(() => {
+  window.jungle.visuals.setWeather({ mist: 0.3, rain: 0, wind: 0.7, storm: 0 });
+  window.jungle.visuals.setAltitude(0.98, true);
+  window.jungle.bus.params.brightnessManual = 0.98;
+});
+await shot('forest-above', 3500);
+await page.evaluate(() => {
+  window.jungle.bus.params.brightnessMix = 0;
+  window.jungle.visuals.setLateral(null);
+});
 
 // L2 god rays live in the canopy band and nowhere else
 await page.evaluate(() => {

@@ -8,8 +8,12 @@ import {
   look, railSplit, orbitAt, seamPush, seamFlashes, seamExhale, seamFov,
   gradeAt, styleAt, BAND_ORBITS, BAND_GRADES, FOCAL_SHARP, POSTERIZE_STEPS,
   TINT_UNDER, TINT_THIN, INK_SECTIONS, HALFTONE_KNEE, FOV_BASE, FOV_DOLLY,
+  canopyLight, beamAt, pitchAt, BAND_PITCH,
+  CANOPY_BASE, CANOPY_TOP, FLOOR_LIGHT,
 } from '../src/visuals/look.js';
 import { PERFORM_DEFAULTS } from '../src/perform.js';
+import { BAND_COLORS, WORLD_TOP, CROWN_Y0, CROWN_Y1 } from '../src/visuals/biomes.js';
+import { TRACKS } from '../src/bus.js';
 
 let failures = 0;
 function check(cond, label) {
@@ -264,6 +268,139 @@ console.log('a style is SPENT, not sprinkled (L3/L4/L5)');
   // an ink section inside the fusion window, or the frame would wear two media
   check(styleAt({ section: 'breakdown', fusionAmt: 1 }, { crush: 1 }).ink === 1,
     'they are independent by construction — the exclusion is the set list, not the code');
+}
+
+// ---------------------------------------------------------------------------
+// DXX — the four levels are one forest, and the thing they share is the light.
+// ---------------------------------------------------------------------------
+
+/** The camera's altitude for a mode brightness b (scene.js: camY = 2 + b·54). */
+const altOf = (b) => (2 + b * (WORLD_TOP - 8)) / WORLD_TOP;
+
+console.log('the light budget is a measurement, not a mood (DXX)');
+{
+  check(Math.abs(canopyLight(0) - FLOOR_LIGHT) < 1e-9,
+    `the litter gets ${(FLOOR_LIGHT * 100).toFixed(0)}% of open-sky light — the number field studies report`);
+  check(canopyLight(1) === 1 && canopyLight(CANOPY_TOP) === 1,
+    'and above the last leaf there is nothing left to intercept it');
+
+  let monotone = true, maxJump = 0, prev = canopyLight(0);
+  for (let i = 1; i <= 4000; i++) {
+    const v = canopyLight(i / 4000);
+    if (v < prev - 1e-12) monotone = false;
+    maxJump = Math.max(maxJump, Math.abs(v - prev));
+    prev = v;
+  }
+  check(monotone, 'light only ever increases with height — no level is darker than the one below it');
+  check(maxJump < 0.01, `and the curve never steps (max ${maxJump.toFixed(5)}), so no seam can flicker the exposure`);
+
+  // the claim that makes it a CEILING rather than a gradient: nearly all of
+  // the light is lost inside the crown layer, not spread over the whole climb
+  const lostInCrowns = canopyLight(CANOPY_TOP) - canopyLight(CANOPY_BASE);
+  const lostTotal = canopyLight(1) - canopyLight(0);
+  check(lostInCrowns / lostTotal > 0.9,
+    `${((lostInCrowns / lostTotal) * 100).toFixed(0)}% of the whole climb's light arrives inside the crown layer — a ceiling, not a ramp`);
+  check(canopyLight(CANOPY_BASE) < 0.08,
+    'the understory under it is still single-digit percent (a few percent more than the litter, and no more)');
+}
+
+console.log('the crown layer is READ OUT of the timeline, not chosen (DXX)');
+{
+  // TRACKS[i].brightness drives camera altitude, so the set's own seams already
+  // say where the storeys are. The crowns are hung on two of them: below /
+  // inside / above, with two tracks under the canopy, one in it, one over it.
+  const seams = TRACKS.map((tr) => altOf(tr.brightness[1]));
+  check(TRACKS.length === 4, 'four tracks, four storeys');
+  check(Math.abs(CANOPY_BASE - seams[1]) < 0.01,
+    `the crowns' underside is the understory→canopy seam (${seams[1].toFixed(3)})`);
+  check(Math.abs(CANOPY_TOP - seams[2]) < 0.01,
+    `and their last leaf is the canopy→zenith seam (${seams[2].toFixed(3)})`);
+  check(altOf(TRACKS[0].brightness[1]) < CANOPY_BASE && altOf(TRACKS[1].brightness[0]) < CANOPY_BASE,
+    'the first two tracks play entirely under the canopy');
+  check(altOf(TRACKS[3].brightness[0]) >= CANOPY_TOP - 1e-9,
+    'and the last one entirely above it — the climb through the crowns is exactly one track long');
+  check(Math.abs(CROWN_Y0 - CANOPY_BASE * WORLD_TOP) < 1e-9 && Math.abs(CROWN_Y1 - CANOPY_TOP * WORLD_TOP) < 1e-9,
+    'the geometry and the light curve are the same two numbers, in two units');
+}
+
+console.log('every level is somewhere on that one curve');
+{
+  const at = (a, over = {}) => look(PERFORM_DEFAULTS, { ...ENV, alt: a, ...over });
+  const floor = at(altOf(0.10)), understory = at(altOf(0.42)), crowns = at(altOf(0.68)), open = at(altOf(1.0));
+
+  check(floor.exposure < understory.exposure && understory.exposure < crowns.exposure && crowns.exposure < open.exposure,
+    'exposure orders the four levels, in the order you climb them');
+  check(open.exposure / floor.exposure > 1.4, 'and the open air is materially brighter than the litter, not nominally');
+  check(open.exposure === 1, 'above the canopy the world is at full exposure — the climb has an end');
+
+  check(floor.fogDensity > open.fogDensity * 8,
+    `the air under the crowns is ${(floor.fogDensity / open.fogDensity).toFixed(1)}× thicker than the air over them`);
+  let fogMonotone = true, prevFog = at(0).fogDensity;
+  for (let i = 1; i <= 2000; i++) {
+    const v = at(i / 2000).fogDensity;
+    if (v > prevFog + 1e-12) fogMonotone = false;
+    prevFog = v;
+  }
+  check(fogMonotone, 'and it only ever clears as you climb — no band is hazier than the one below it');
+  check(look(PERFORM_DEFAULTS, { ...ENV, b: 0.5 }).fogDensity === look(PERFORM_DEFAULTS, { ...ENV, alt: 0.5 }).fogDensity,
+    'altitude defaults to the mode brightness when the caller has no camera to report');
+
+  // the shafts: as legible as the air around them is dark, and impossible above
+  check(beamAt(0) > beamAt(0.6) && beamAt(0.6) > beamAt(CANOPY_TOP - 0.01),
+    'a light shaft reads hardest where the forest is darkest');
+  check(beamAt(CANOPY_TOP) === 0 && beamAt(1) === 0,
+    'and not at all above the last leaf — there is nothing up there for it to be a hole in');
+  let beamJump = 0, prevBeam = beamAt(0);
+  for (let i = 1; i <= 4000; i++) { const v = beamAt(i / 4000); beamJump = Math.max(beamJump, Math.abs(v - prevBeam)); prevBeam = v; }
+  check(beamJump < 0.01, 'the shafts fade rather than switching off at the roofline');
+}
+
+console.log('the camera climbs like a body, not like a lift (DXX)');
+{
+  check(pitchAt(0) > 0, 'from the litter the gaze goes UP, toward the light it does not have');
+  check(pitchAt(1) < 0, 'and from over the crowns it goes DOWN, over the forest it just left');
+  check(Math.abs(pitchAt(1)) > Math.abs(pitchAt(0)),
+    'the look down from above is the bigger gesture — it is the payoff of the whole climb');
+  let pitchMonotone = true, maxPitchJump = 0, prev = pitchAt(0);
+  for (let i = 1; i <= 2000; i++) {
+    const v = pitchAt(i / 2000);
+    if (v > prev + 1e-9) pitchMonotone = false;
+    maxPitchJump = Math.max(maxPitchJump, Math.abs(v - prev));
+    prev = v;
+  }
+  check(pitchMonotone, 'the gaze only ever tips one way across the set — it never nods');
+  check(maxPitchJump < 0.02, `and never jumps (max ${maxPitchJump.toFixed(4)} world units) — no seam can snap the horizon`);
+  check(pitchAt(0) === BAND_PITCH[0] && pitchAt(1) === BAND_PITCH[3], 'the endpoints are the authored constants');
+
+  // flight: a camera only reads as flying if the ground moves under it
+  const r = BAND_ORBITS.map((o) => o.radius);
+  check(r[3] === Math.max(...r), 'the widest arc in the set belongs to the band that is flying');
+  check(BAND_ORBITS[3].rate === Math.min(...BAND_ORBITS.map((o) => o.rate)),
+    '…and the slowest, so the width reads as distance rather than as haste');
+  check(r[1] < r[2] && BAND_ORBITS[1].rate < BAND_ORBITS[0].rate,
+    'the understory is the slowest pass of all — the trunks need time to go by, or they are wallpaper');
+}
+
+console.log('the air brightens and blues as you climb; the LIGHT warms (DXX)');
+{
+  // two different physical facts, deliberately split across two modules: the
+  // WORLD's colour is aerial perspective (biomes.js BAND_COLORS), the PICTURE's
+  // grade is the sun (look.js BAND_GRADES). A forest shows you both at once.
+  const lum = BAND_COLORS.map((c) => c.r + c.g + c.b);
+  check(lum.every((v, i) => i === 0 || v > lum[i - 1]),
+    'the air itself is brighter at every level — the palette IS the extinction curve, drawn in colour');
+  const blueness = BAND_COLORS.map((c) => c.b - c.r);
+  const greenness = BAND_COLORS.map((c) => c.g - (c.r + c.b) / 2);
+  check(blueness[3] === Math.max(...blueness) && blueness[3] > blueness[2] + 0.2,
+    'the open air is the blue one, and by a margin — nothing else in the frame is, so it reads as distance');
+  check(greenness[1] > 0 && greenness[2] > 0 && greenness[1] > greenness[0] && greenness[2] > greenness[3],
+    'and the two levels under the crowns are the green ones: light that has been through a leaf comes out green');
+  const grades = BAND_GRADES.map((g) => g.gain[0] - g.gain[2]);
+  check(grades[3] === Math.max(...grades) && grades[0] === Math.min(...grades),
+    'while the grade walks the other way, coolest at the bottom and warmest under the open sky');
+  check(BAND_GRADES[1].gain[1] === Math.max(...BAND_GRADES.map((g) => g.gain[1])) ||
+        BAND_GRADES[1].gain[1] >= BAND_GRADES[0].gain[1] + 0.2,
+    'and the understory is the green one — leaves absorb red and blue and pass green, which is what a gloom is');
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall checks passed');

@@ -42,7 +42,7 @@ export function hash01(n) {
 // reads as a fade, while a gust that crosses the world at 16 units/s reads as
 // weather moving through a place. The two crest periods are mutually
 // irrational-ish so the gust pattern never quite repeats (the Eno theorem,
-// §7, one more time — the same argument the sky's shells and the ambience
+// §7, one more time — the same argument the high cloud deck and the ambience
 // beds already make).
 export const WIND = {
   turn: 0.017,     // rad/s the prevailing direction rotates

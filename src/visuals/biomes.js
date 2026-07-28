@@ -7,14 +7,40 @@
  * so every boundary is visually legal by construction, and the set is one
  * long shot.
  *
- * Band map (world y):        family (visual doc §3):
- *   roots    0–12            local-rule — a real Gray–Scott sim drives the pulse
- *   floor   10–24            growth — vines GROW over each track's arc; blooms on downbeats
- *   canopy  22–42            fields — flow-field ether; the kick makes it flinch
- *   sky     40–62            self-similar — nested shells + aurora, ascent without arrival
- * plus the air (altitude-graded background), canopy light shafts, and a mist
- * card stack through the floor/canopy bands (the cheapest real volume there
- * is — parallax the fog cannot give you).
+ * ONE FOREST, FOUR LEVELS (DXX). The bands are no longer four family demos
+ * stacked by altitude; they are the four storeys of a tropical rainforest, and
+ * what makes them one place is that every one of them sits on a single curve —
+ * `canopyLight(a)` in look.js, the fraction of open-sky light present at that
+ * height. The crowns intercept nearly all of it, so:
+ *
+ *   undergrowth  y  0–20   ~2% light   local-rule Gray–Scott + mycelium + pool
+ *   understory   y 10–31   ~5% light   growth — vines grow over each track's arc
+ *   canopy       y 31–45   2→100%      the CROWN LAYER: the world's ceiling,
+ *                                      plus the humid ether advecting through it
+ *   open air     y 45–62   100%        the canopy sea to the horizon, high cloud
+ *
+ * The two crown altitudes are read out of the timeline, not chosen: the four
+ * tracks' authored brightness spans put the seams at 0.29 / 0.51 / 0.73 of the
+ * world's height, so the crowns' underside is at 0.51 and their last leaf at
+ * 0.73 — two tracks below the canopy, one INSIDE it, one above. Climbing the
+ * set and climbing the forest are the same motion.
+ *
+ * Welding the levels together, in order of how much work each does:
+ *   TRUNKS   objects that span all four bands, so every altitude has something
+ *            in it that is also in the band above and below — §4.2's continuity
+ *            layer, stated in space instead of in time.
+ *   CROWNS   a ceiling, so the levels below are *under* something. They are
+ *            also the first geometry in this world that writes depth: until
+ *            them the frame was entirely additive glow with depthWrite off, so
+ *            nothing could ever be in front of anything, which is most of why
+ *            it read as a wash rather than as a place.
+ *   LIGHT    one extinction curve driving exposure, fog, the shafts and the
+ *            grade at once.
+ *
+ * plus the air (altitude-graded background), light shafts hanging from the
+ * crowns, and a mist card stack — thick through the understory, and a second
+ * shelf of it lying ON the canopy for the view from above (the cheapest real
+ * volume there is — parallax the fog cannot give you).
  *
  * plus the LIVING layer (pizzaz proposal K): fireflies flocking through the
  * floor and canopy, leaves on the growing branches, rain and a black pool, a
@@ -37,15 +63,29 @@
  * place*. Any new biome should sample the field rather than invent a clock.
  */
 import * as THREE from 'three';
+import { canopyLight, beamAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
 
 export const WORLD_TOP = 62;
 
-// per-band palette anchors: deep violet roots → mossy floor → blue-grey canopy → gold sky
+/** The crown layer, in world units — the same two numbers look.js reasons in. */
+export const CROWN_Y0 = CANOPY_BASE * WORLD_TOP; // ≈31.6
+export const CROWN_Y1 = CANOPY_TOP * WORLD_TOP;  // ≈45.3
+
+// Per-band palette anchors — the AIR at each level, which cools as it climbs.
+// Under the crowns the light has been through leaves, and leaves absorb red and
+// blue and pass green: the understory of every rainforest ever described is a
+// green gloom, and that is the one colour fact this palette has to get right.
+// Below that, on the litter, there is not enough light for colour at all — a
+// scotopic near-black that reads faintly blue (the Purkinje shift), which is
+// also where phrygian wanted to be. Above the crowns the air stops being
+// filtered foliage and becomes atmosphere, so it goes pale and blue with
+// distance. The warmth of the sun is NOT here; it is in BAND_GRADES (look.js),
+// because the sun and the air are different things.
 export const BAND_COLORS = [
-  new THREE.Color('#1b1030'), // roots
-  new THREE.Color('#16301f'), // floor
-  new THREE.Color('#20315e'), // canopy
-  new THREE.Color('#ffd9a0'), // sky
+  new THREE.Color('#101d22'), // undergrowth — wet litter, scotopic, near-black
+  new THREE.Color('#1d3a26'), // understory  — the green gloom
+  new THREE.Color('#4a6b34'), // canopy      — sunlit foliage
+  new THREE.Color('#a8c4e8'), // open air    — pale, blue, far
 ];
 
 /** Palette center of gravity at altitude a ∈ [0,1] — the continuity layer's slow axis. */
@@ -76,7 +116,7 @@ function glowCloud(positions, color, radius) {
   return mesh;
 }
 
-/** Soft vertical-gradient sprite texture for shafts/aurora (no external assets). */
+/** Soft vertical-gradient sprite texture for shafts/mist/cloud (no external assets). */
 function gradientTexture(stops, w = 4, h = 128) {
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
@@ -149,6 +189,48 @@ function frondTexture() {
       g.fill();
       g.restore();
     }
+  });
+}
+
+/**
+ * One tree crown, as an alpha mask (DXX). Drawn by a RULE rather than as a
+ * shape: a lobe, then a ring of lobes around it, then a ring around each of
+ * those, three levels deep at a constant ratio. D28's first constraint on
+ * anything recurring in this world is that it has to read at 2.5× and at 9×,
+ * and the reason a hand-drawn silhouette never does is that it has one scale in
+ * it; a self-similar mask has whatever scale you look at it with. It is also
+ * the honest home for §3.4's self-similar family now that the nested shells are
+ * gone: a canopy IS the fractal, and it is one this world can be made of.
+ *
+ * White, like the frond, because it is used as an `alphaMap` — see the note
+ * there about the colour-space gauntlet.
+ */
+function crownTexture() {
+  return sprite('crown', 256, (g, s) => {
+    g.clearRect(0, 0, s, s);
+    g.fillStyle = '#ffffff';
+    let seed = 20260728;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const lobe = (x, y, r, squash) => {
+      g.save();
+      g.translate(x, y);
+      g.rotate(rnd() * Math.PI);
+      g.scale(1, squash);
+      g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
+      g.restore();
+    };
+    const c = s / 2;
+    const build = (x, y, r, depth) => {
+      lobe(x, y, r, 0.78 + rnd() * 0.3);
+      if (depth === 0) return;
+      const n = 5 + ((rnd() * 3) | 0);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + rnd() * 0.8;
+        const rr = r * (0.85 + rnd() * 0.5);
+        build(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.72, r * 0.46, depth - 1);
+      }
+    };
+    build(c, c * 1.06, s * 0.115, 2);
   });
 }
 
@@ -237,7 +319,7 @@ function makeRoots(rng) {
   }
 
   return {
-    name: 'roots',
+    name: 'undergrowth',
     group: mesh,
     update(dt, env) {
       // species walks with brightness: solitons at the dark end, worms toward the light
@@ -328,8 +410,8 @@ function makeFloor(rng) {
   // ---- K4: leaves, on a phyllotaxis spiral ----
   // The floor was a wireframe of branches; leaves make it a forest. Each tip
   // carries a few blades placed at the golden angle (137.507°) — the same
-  // constant the sky's shells use for their radii, which is not a coincidence
-  // so much as the reason both look organic. They unfold over the LAST stretch
+  // constant the crown mask's lobes fan out on, which is not a coincidence so
+  // much as the reason both look organic. They unfold over the LAST stretch
   // of the track's growth (a branch exists before its leaves do) and they
   // flutter on the shared wind, never on a clock of their own.
   const leaves = (() => {
@@ -385,7 +467,7 @@ function makeFloor(rng) {
   })();
 
   return {
-    name: 'floor',
+    name: 'understory',
     group,
     onDownbeat() {
       if (grownSegs < segs.length * 0.15) return; // nothing to bloom on yet
@@ -421,6 +503,224 @@ function makeFloor(rng) {
   };
 }
 
+// ---------- the forest itself: trunks and crowns (DXX) ----------
+// The two pieces the world was missing, and they answer the same complaint from
+// opposite ends.
+//
+// TRUNKS are the vertical weld. §4.2 ranks the continuity layers across a
+// boundary and puts the camera's motion signature top because it is the one
+// thing that can survive a total change of world. That argument is about time;
+// a vertical journey needs its spatial twin, and the twin is an object that is
+// in two bands at once. A trunk is in all four. It is the reason the
+// undergrowth is *underneath* the understory rather than merely below it on a
+// list, and it is what the camera passes on the way up.
+//
+// CROWNS are the ceiling. Without them nothing in the world is under anything:
+// the shafts fell out of an empty sky, "above the canopy" was indistinguishable
+// from "higher up in the same fog", and the extinction curve had no visible
+// cause. They are also the first geometry here that writes depth — everything
+// else is additive glow with `depthWrite: false`, so until now no object could
+// be *in front of* another one, which is most of why the frame read as a wash.
+// Cutout foliage (`alphaTest`, opaque queue) buys correct occlusion for the
+// whole additive world behind it and costs one draw call.
+function makeForest(rng) {
+  const group = new THREE.Group();
+
+  // ---- layout: an annulus around the camera's path, biased near ----
+  const TRUNKS = 26;
+  const trees = [];
+  for (let i = 0; i < TRUNKS; i++) {
+    let x, z;
+    do {
+      const a = rng() * Math.PI * 2;
+      const r = 6 + Math.pow(rng(), 0.75) * 56;
+      x = Math.cos(a) * r; z = Math.sin(a) * r;
+    } while (Math.hypot(x, z - 12) < 4.5); // the camera lives at (0, 12)
+    // one in four is an emergent: it breaks the crown layer, which is what
+    // makes the roof read as a surface with things standing out of it when you
+    // are finally above it
+    const emergent = rng() < 0.27;
+    const h = emergent ? CROWN_Y1 + 1 + rng() * 7
+      : CROWN_Y0 + rng() * (CROWN_Y1 - CROWN_Y0) * 0.85;
+    trees.push({
+      x, z, h, emergent,
+      rad: (emergent ? 0.75 : 0.4) + rng() * 0.6,
+      lean: (rng() - 0.5) * 0.05, tilt: rng() * Math.PI * 2,
+    });
+  }
+
+  // ---- trunks: one instanced tapered column, lit by the extinction curve ----
+  // The vertical gradient is baked into the geometry's vertex colours, so the
+  // trunk is dark at the litter and bright where it enters the crowns without
+  // costing a shader or a second draw. That gradient IS canopyLight, drawn on
+  // an object: the clearest statement in the world of where the light is.
+  const trunkGeo = new THREE.CylinderGeometry(0.55, 1, 1, 7, 4, true);
+  {
+    const pa = trunkGeo.attributes.position;
+    const cols = new Float32Array(pa.count * 3);
+    for (let i = 0; i < pa.count; i++) {
+      const u = pa.getY(i) + 0.5;                 // 0 at the base, 1 at the crown
+      const k = 0.14 + 0.86 * Math.pow(u, 1.45);
+      cols.set([k, k, k], i * 3);
+    }
+    trunkGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  }
+  const trunkMesh = new THREE.InstancedMesh(
+    trunkGeo,
+    // opaque, depth-writing, fogged: distant trunks haze out into the air
+    // rather than staying crisp, which is aerial perspective and is the only
+    // depth cue that works at 60 units in a frame with no sun in it
+    new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
+    TRUNKS,
+  );
+  {
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const p = new THREE.Vector3();
+    const s = new THREE.Vector3();
+    const c = new THREE.Color();
+    trees.forEach((tr, i) => {
+      e.set(Math.sin(tr.tilt) * tr.lean, 0, Math.cos(tr.tilt) * tr.lean);
+      q.setFromEuler(e);
+      p.set(tr.x, tr.h * 0.5, tr.z);
+      s.set(tr.rad, tr.h, tr.rad);
+      m4.compose(p, q, s);
+      trunkMesh.setMatrixAt(i, m4);
+      // a little variety in bark value, and emergents run paler because they
+      // are the only trunks with unfiltered light on them
+      const k = (tr.emergent ? 1.35 : 1) * (0.75 + rng() * 0.5);
+      trunkMesh.setColorAt(i, c.setScalar(k));
+    });
+  }
+  group.add(trunkMesh);
+
+  // ---- crowns: the ceiling, and the canopy sea beyond it ----
+  // A canopy has to be CLOSED, and the first cut of this was not: five small
+  // blobs on top of each trunk gave a stand of lollipops with sky between them,
+  // which is a savanna. What closes it is that most of a rainforest's canopy
+  // does not belong to a tree you can see — the emergents are the ones with
+  // trunks under them and everything else is the layer filling in between. So
+  // the crowns come in three populations: on the trunks, filling between them,
+  // and the sea beyond.
+  const NEAR_PER_TREE = 5;
+  const FILL = 70;
+  const FAR = 130;
+  const crowns = [];
+  const add = (x, y, z, r, k, far) => crowns.push({ x, y, z, r, k, far });
+  for (const tr of trees) {
+    for (let j = 0; j < NEAR_PER_TREE; j++) {
+      const a = rng() * Math.PI * 2, rr = Math.pow(rng(), 0.7) * 7;
+      add(
+        tr.x + Math.cos(a) * rr,
+        // the cluster reaches the top of its trunk and hangs BELOW it — a bare
+        // stem sticking out of a crown is the tell that gave the lollipops away
+        tr.h - rr * 0.5 - rng() * 4,
+        tr.z + Math.sin(a) * rr,
+        (tr.emergent ? 9 : 7) + rng() * 5,
+        0.7 + rng() * 0.55, false,
+      );
+    }
+  }
+  for (let i = 0; i < FILL; i++) {
+    let x, z;
+    do {
+      const a = rng() * Math.PI * 2;
+      const r = 10 + Math.pow(rng(), 0.55) * 52;
+      x = Math.cos(a) * r; z = Math.sin(a) * r;
+      // …except directly over the camera's path. The canopy track spends its
+      // whole length climbing through this layer, and a gap is the honest way
+      // to let it: it is a light gap, which is also where the shafts are.
+    } while (Math.hypot(x, z - 12) < 9);
+    add(x, CROWN_Y0 + 2 + rng() * (CROWN_Y1 - CROWN_Y0 - 4), z,
+      8 + rng() * 6, 0.6 + rng() * 0.5, false);
+  }
+  // the canopy sea: crowns all the way out, at the roof's own height. From
+  // above this is the payoff of the whole climb — a forest with a horizon —
+  // and from below it is invisible, because the fog under the crowns is ten
+  // times thicker than the air over them.
+  for (let i = 0; i < FAR; i++) {
+    const a = rng() * Math.PI * 2;
+    const r = 60 + Math.pow(rng(), 0.55) * 130;
+    add(Math.cos(a) * r, CROWN_Y1 - 3 - rng() * 8, Math.sin(a) * r,
+      13 + rng() * 12, 0.55 + rng() * 0.5, true);
+  }
+  const crownMesh = new THREE.InstancedMesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      alphaMap: crownTexture(), color: 0x101a10,
+      transparent: false, alphaTest: 0.42, depthWrite: true, side: THREE.DoubleSide,
+    }),
+    crowns.length,
+  );
+  crownMesh.frustumCulled = false;
+  {
+    const c = new THREE.Color();
+    crowns.forEach((cr, i) => crownMesh.setColorAt(i, c.setScalar(cr.k)));
+  }
+  group.add(crownMesh);
+
+  const SHADE = new THREE.Color('#0b140e');  // a crown from underneath is a hole in the sky
+  // …and from above it is the only lit thing here. Leaf green, not lime: the
+  // first value here was a stop and a half brighter and the canopy sea came
+  // back blown, because the sky band's grade lifts warm AND the bloom is on top
+  // of it. A surface that is already the brightest thing in the frame does not
+  // also need to be the most saturated.
+  const SUNLIT = new THREE.Color('#4e7538');
+  const m4 = new THREE.Matrix4();
+  const pos = new THREE.Vector3();
+  const eye = new THREE.Vector3();
+  const scl = new THREE.Vector3();
+  const UP = new THREE.Vector3(0, 1, 0);
+  const tint = new THREE.Color();
+
+  return {
+    name: 'forest',
+    group,
+    update(dt, env) {
+      const camY = env.cam?.y ?? 0;
+      const alt = camY / WORLD_TOP;
+      const q = env.quality ?? 1;
+      // the far sea is the governor's cheapest sale here: it is the horizon,
+      // and a horizon can be shorter without becoming a different picture
+      const drawn = crowns.length - Math.round(FAR * (1 - q) * 0.7);
+      if (crownMesh.count !== drawn) crownMesh.count = drawn;
+
+      // above/below is the whole lighting model: a crown is a silhouette from
+      // underneath and a lit surface from over the top, and there is nothing in
+      // between except the few seconds the canopy track spends passing through
+      const above = Math.min(1, Math.max(0, (camY - (CROWN_Y1 - 4)) / 9));
+      crownMesh.material.color.copy(SHADE).lerp(SUNLIT, above);
+      // Trunks are lit by whatever got down to THEM, which is not much — and
+      // crucially not by whatever is falling on the CAMERA. Keying this to the
+      // camera's altitude made the trunks brighten as you climbed, so from over
+      // the crowns you looked down through the gaps at a stand of glowing white
+      // sticks. A trunk lives under the canopy no matter where you are standing,
+      // so the light it gets is capped at the crowns' underside.
+      const lit = canopyLight(Math.min(alt, CANOPY_BASE));
+      tint.copy(paletteAt(Math.min(0.7, alt * 0.5 + 0.18))).multiplyScalar(0.35 + 1.1 * lit);
+      trunkMesh.material.color.copy(tint);
+
+      // K1: the crowns ride the shared wind. They are the highest solid thing
+      // in the world, so they get the most of it, and the sway agrees with the
+      // leaves 20 units below them because it comes off the same field.
+      const wind = windAtOr(env, 0, CROWN_Y1, 0);
+      eye.copy(env.cam ?? UP);
+      for (let i = 0; i < drawn; i++) {
+        const cr = crowns[i];
+        const sway = cr.far ? 0.35 : 1;
+        pos.set(cr.x + wind.x * 2.2 * sway, cr.y + wind.y * 1.1 * sway, cr.z + wind.z * 2.2 * sway);
+        m4.lookAt(pos, eye, UP);
+        scl.set(cr.r * 2, cr.r * 2, 1);
+        m4.scale(scl);
+        m4.setPosition(pos);
+        crownMesh.setMatrixAt(i, m4);
+      }
+      crownMesh.instanceMatrix.needsUpdate = true;
+    },
+  };
+}
+
 // ---------- canopy: a flow field, not a rotating object (§3.2) ----------
 // Particles advected through a divergence-free-ish analytic swirl whose slow
 // component is drift(t) and whose speed breathes with T. The kick's duck is a
@@ -441,7 +741,7 @@ function makeCanopy() {
   let heat = 0; // stream-fusion afterglow (§5's one climax rule)
 
   return {
-    name: 'canopy',
+    name: 'ether',
     group: mesh,
     ignite() { heat = 1; },
     update(dt, env) {
@@ -482,84 +782,88 @@ function makeCanopy() {
   };
 }
 
-// ---------- sky: self-similar geometry (§3.4) + aurora (proposal C3) ----------
-function makeSky() {
+// ---------- open air: the weather deck above the crowns (DXX) ----------
+// This band used to be four nested wireframe icosahedra — the self-similar
+// family's canonical demo, and a geodesic dome is what it looked like. It is
+// gone (see the ADR). What replaces it is not another generator: the band's
+// content is now the FOREST, seen from over the top — the canopy sea in
+// makeForest, receding into air that is finally clear enough to have a horizon
+// in it. The self-similar argument survives in a better place, because a
+// canopy is a real fractal and the crown mask is built from a rule.
+//
+// What is left up here is the sky's own furniture: two banks of high cloud,
+// scrolling at near-coprime rates so the deck never quite repeats (the Eno
+// theorem, for the eye — the same argument the wind's two gust periods make).
+// Lightning inherits them, which is where it wanted to be all along: a strike
+// lights cloud from inside, and it was only ever lighting the shells because
+// the shells were the only thing above the trees.
+function makeUpperAir() {
   const group = new THREE.Group();
-  const shells = [];
-  for (let i = 0; i < 4; i++) {
-    const r = 6 * Math.pow(1.618, i); // golden-ratio scaling between levels
-    const mesh = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(r, 1),
-      new THREE.MeshBasicMaterial({
-        color: BAND_COLORS[3], wireframe: true, transparent: true,
-        opacity: 0.14 - i * 0.02, blending: THREE.AdditiveBlending, depthWrite: false,
-      }),
-    );
-    group.add(mesh);
-    shells.push(mesh);
-  }
-  group.position.y = 52;
 
-  // aurora: two ribbons scrolling at near-coprime rates — never quite recurs
-  const auroraTex = gradientTexture([
-    [0, 'rgba(0,0,0,0)'], [0.35, 'rgba(140,255,210,0.55)'],
-    [0.55, 'rgba(255,230,170,0.5)'], [0.75, 'rgba(190,140,255,0.4)'], [1, 'rgba(0,0,0,0)'],
+  const cloudTex = gradientTexture([
+    [0, 'rgba(0,0,0,0)'], [0.3, 'rgba(120,148,186,0.22)'],
+    [0.52, 'rgba(226,234,246,0.40)'], [0.72, 'rgba(140,164,196,0.20)'], [1, 'rgba(0,0,0,0)'],
   ]);
-  const ribbons = [];
-  for (const [scroll, y, tilt] of [[0.011, 8, 0.12], [0.017, 11, -0.09]]) {
-    const g = new THREE.PlaneGeometry(200, 16, 64, 1);
+  const banks = [];
+  for (const [scroll, y, tilt, size] of [[0.010, 16, 0.07, 34], [0.016, 26, -0.05, 26]]) {
+    const g = new THREE.PlaneGeometry(340, size, 64, 1);
     const pa = g.attributes.position;
-    for (let i = 0; i < pa.count; i++) pa.setZ(i, Math.sin(pa.getX(i) * 0.045) * 12); // curved sheet
-    const tex = auroraTex.clone();
+    // a slow undulation across the sheet, so the deck has weather in it rather
+    // than being a card seen edge-on
+    for (let i = 0; i < pa.count; i++) pa.setZ(i, Math.sin(pa.getX(i) * 0.021) * 14);
+    const tex = cloudTex.clone();
     tex.needsUpdate = true;
     const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
       map: tex, transparent: true, opacity: 0, side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending, depthWrite: false,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
     }));
     m.position.y = y;
     m.rotation.x = tilt;
     group.add(m);
-    ribbons.push({ mesh: m, scroll, tex });
+    banks.push({ mesh: m, scroll, tex });
   }
+  group.position.y = 56;
 
   return {
-    name: 'sky',
+    name: 'upperair',
     group,
     update(dt, env) {
-      shells.forEach((m, i) => {
-        // coprime-ish rates: the nest never quite recurs (the Eno theorem, for the eye)
-        m.rotation.y += dt * 0.05 * (i % 2 ? 1 : -1) * (1 + i * 0.618) * (0.5 + env.T);
-        m.rotation.x += dt * 0.02 * (1 + i * 0.382);
-        m.material.opacity = (0.1 + 0.1 * env.b) * (1 - i * 0.15) * (1 - env.duck * 0.3);
-      });
-      // the aurora is the highest thing in the world, so it gets the most wind
+      // the deck is the highest thing in the world, so it gets the most wind
       const wind = windAtOr(env, 0, WORLD_TOP, 0);
-      for (const r of ribbons) {
+      const alt = (env.cam?.y ?? 0) / WORLD_TOP;
+      // visible once the crowns stop being overhead: from under the canopy
+      // there is no sky to see, which is the point of the canopy
+      const open = Math.max(0, Math.min(1, (alt - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE)));
+      for (const r of banks) {
         r.tex.offset.x += dt * r.scroll * (1 + env.drift * 0.4 + wind.gust * 1.5);
-        r.mesh.material.opacity = Math.max(0, env.b - 0.55) * (0.9 + 0.5 * env.T);
-        r.mesh.rotation.z = wind.x * 0.04;
+        r.mesh.material.opacity = open * (0.35 + 0.4 * env.T) + (env.flash ?? 0) * 0.55;
+        r.mesh.rotation.z = wind.x * 0.03;
       }
-      // K7: a strike lights the shells from inside — the sky is the first
-      // thing lightning touches, and the only thing that keeps glowing after
-      if (env.flash) for (const m of shells) m.material.opacity += env.flash * 0.5;
     },
   };
 }
 
 // ---------- the air: altitude-graded atmosphere (proposal C2) ----------
-// A vast inverted vertex-colored sphere: violet haze at the floor, near-black
-// mid, warm glow at the top — each biome gets its own air behind the fog.
+// A vast inverted vertex-colored sphere. Retuned for the forest (DXX): the
+// bottom of the sphere is the black-green of a floor with 2% of the light on
+// it, the middle is the gloom you look sideways into, and the TOP is now a sky
+// rather than a warm smear — because in the last band there is one, and a band
+// whose whole content is "you are above the trees" needs something above it
+// that is not more trees. The horizon ring between them is lifted, which is
+// what an atmosphere does when you look along it rather than up through it.
 function makeAir() {
   const geo = new THREE.SphereGeometry(170, 24, 16);
   const colors = new Float32Array(geo.attributes.position.count * 3);
-  const bottom = new THREE.Color('#0d0618');
-  const mid = new THREE.Color('#030507');
-  const top = new THREE.Color('#241605');
+  const bottom = new THREE.Color('#050b08');   // the litter: no light gets here
+  const mid = new THREE.Color('#0a1410');      // the gloom, looked into sideways
+  const horizon = new THREE.Color('#1d3040');  // the lift along the tangent
+  const top = new THREE.Color('#2f4a72');      // open sky
   const c = new THREE.Color();
   for (let i = 0; i < geo.attributes.position.count; i++) {
     const y = geo.attributes.position.getY(i) / 170; // -1..1
     if (y < 0) c.copy(mid).lerp(bottom, -y);
-    else c.copy(mid).lerp(top, y);
+    else if (y < 0.3) c.copy(mid).lerp(horizon, y / 0.3);
+    else c.copy(horizon).lerp(top, (y - 0.3) / 0.7);
     colors.set([c.r, c.g, c.b], i * 3);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -567,17 +871,30 @@ function makeAir() {
     vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = 24;
   mesh.renderOrder = -1;
   return {
     name: 'air',
     group: mesh,
     update(dt, env) {
-      mesh.position.y = 20 + env.b * 10;  // the warm top nears as you climb
+      // DXX — the sphere no longer rides the brightness walk. It is 170 units
+      // across and the camera never leaves the middle of it, so what a vertex's
+      // height actually selects is the *elevation of the view direction*, not
+      // the altitude of the viewer: it is a sky, and a sky looks the same from
+      // everywhere. Moving it up as you climbed was therefore doing nothing you
+      // could name. What makes the floor dark is not a darker sky, it is a
+      // canopy in front of one — which the world now has.
+      //
+      // What altitude legitimately does own is how much of that sky survives
+      // the haze between you and it: from the litter you are looking through
+      // forty metres of saturated air, so the glimpse through the crowns is a
+      // dim grey rather than a blue.
+      const alt = (env.cam?.y ?? 0) / WORLD_TOP;
       // K7: lightning is *behind* everything — it lights the air itself, which
       // is what makes the canopy read as a silhouette for the length of a
       // frame. The multiplier rides the vertex colors, so the flash inherits
       // the altitude gradient instead of flattening it to white.
-      mat.color.setScalar(1 + (env.flash ?? 0) * 9);
+      mat.color.setScalar((0.22 + 0.78 * canopyLight(alt)) * (1 + (env.flash ?? 0) * 9));
     },
   };
 }
@@ -595,19 +912,26 @@ function makeMist(rng) {
     [0.6, 'rgba(190,220,255,0.30)'], [1, 'rgba(0,0,0,0)'],
   ]);
   const cards = [];
-  const COUNT = 14;
+  const COUNT = 15, SEA = 4;   // …of which the top SEA cards lie ON the canopy
   for (let i = 0; i < COUNT; i++) {
+    const sea = i >= COUNT - SEA;
     const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(150, 22),
+      new THREE.PlaneGeometry(sea ? 300 : 150, sea ? 14 : 22),
       new THREE.MeshBasicMaterial({
         map: tex.clone(), transparent: true, opacity: 0, side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending, depthWrite: false,
       }),
     );
     m.material.map.needsUpdate = true;
-    const y = 8 + (i / COUNT) * 26 + rng() * 2;
+    // DXX — the profile is bimodal, because a rainforest's is. Most of the
+    // stack is the saturated air under the crowns, where it is thickest just
+    // off the ground; the last few cards are the mist that lies ON the canopy
+    // at dawn, which is the one thing that tells you the roof is a surface when
+    // you are finally over it.
+    const y = sea ? CROWN_Y1 + 1.5 + (i - (COUNT - SEA)) * 2.6 + rng() * 1.5
+      : 4 + ((i / (COUNT - SEA)) ** 1.25) * 26 + rng() * 2;
     const x = (rng() - 0.5) * 20;
-    m.position.set(x, y, -30 + (i / COUNT) * 55);
+    m.position.set(x, y, sea ? -20 + (i - (COUNT - SEA)) * 22 : -30 + (i / COUNT) * 55);
     m.rotation.z = (rng() - 0.5) * 0.05;
     group.add(m);
     cards.push({ mesh: m, x0: x, y0: y, shear: 0, rate: 0.004 + rng() * 0.01, phase: rng() * 9 });
@@ -622,7 +946,10 @@ function makeMist(rng) {
       const base = (0.5 - 0.25 * env.T) * (1 - env.duck * 0.5) * q * (0.45 + 0.9 * wet);
       for (const c of cards) {
         const wind = windAtOr(env, c.mesh.position.x, c.y0, c.mesh.position.z);
-        const near = 1 - Math.min(1, Math.abs(c.y0 - (env.cam?.y ?? 0)) / 20); // the band you are in
+        // the band you are in. Tightened from 20 to 14 by DXX: with the crowns
+        // in the frame, half the stack visible at once reads as a stack of
+        // grey quadrilaterals rather than as air.
+        const near = 1 - Math.min(1, Math.abs(c.y0 - (env.cam?.y ?? 0)) / 14);
         c.mesh.material.opacity = base * near * (0.35 + 0.3 * Math.sin(env.t * 0.13 + c.phase));
         // K1: a gust tears the sheet sideways and thins it as it goes — the
         // scroll rate and the shear come off the same sample, so the mist
@@ -637,26 +964,38 @@ function makeMist(rng) {
   };
 }
 
-// ---------- canopy light shafts (proposal C1) ----------
-// Billboard blades of light falling through the canopy band; density breathes
-// with T, warmth with brightness. Y-axis billboarding only, so they stay
-// vertical — light falls DOWN.
+// ---------- light shafts through the crowns (proposal C1, re-hung by DXX) ----------
+// Billboard blades of light. Two things changed when the forest got a ceiling.
+//
+// They HANG FROM THE CROWNS now — they used to float at y=30 in an empty band,
+// which is why they read as decoration: a shaft is a hole in something, and
+// there was nothing for it to be a hole in. They fall from CROWN_Y1 down into
+// the understory, which is the picture everyone has of a rainforest.
+//
+// And their strength is `beamAt` (look.js) rather than mode brightness. A beam
+// carries roughly full sun wherever it is; what varies with height is the air
+// AROUND it, so a shaft is exactly as legible as its surroundings are dark —
+// brightest on the floor, gone the moment you are above the last leaf. Keying
+// them to brightness had them at their strongest in the open sky, which is the
+// one place on earth you cannot see a light shaft. They also need something to
+// scatter in, so the track's mist is a factor: no mist, no beam.
 function makeShafts(rng) {
   const group = new THREE.Group();
   const tex = gradientTexture([
     [0, 'rgba(255,244,214,0.55)'], [0.5, 'rgba(255,244,214,0.18)'], [1, 'rgba(255,244,214,0)'],
   ]);
+  const HEIGHT = 34;
   const blades = [];
   for (let i = 0; i < 9; i++) {
     const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.6 + rng() * 2.5, 30),
+      new THREE.PlaneGeometry(1.6 + rng() * 2.5, HEIGHT),
       new THREE.MeshBasicMaterial({
         map: tex, transparent: true, opacity: 0,
         blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
       }),
     );
-    const a = rng() * Math.PI * 2, rad = 10 + rng() * 26;
-    m.position.set(Math.cos(a) * rad, 30, Math.sin(a) * rad);
+    const a = rng() * Math.PI * 2, rad = 8 + rng() * 30;
+    m.position.set(Math.cos(a) * rad, CROWN_Y1 - HEIGHT * 0.5, Math.sin(a) * rad);
     m.userData.tilt = (rng() - 0.5) * 0.12; // slight slant, never perfectly plumb
     m.rotation.z = m.userData.tilt;
     group.add(m);
@@ -666,7 +1005,9 @@ function makeShafts(rng) {
     name: 'shafts',
     group,
     update(dt, env) {
-      const strength = (0.06 + 0.22 * env.T) * Math.min(1, Math.max(0, env.b * 1.6));
+      const alt = (env.cam?.y ?? 0) / WORLD_TOP;
+      const wet = env.weather?.mist ?? 0.6;
+      const strength = beamAt(alt) * (0.10 + 0.30 * env.T) * (0.35 + 0.9 * wet);
       for (const m of blades) {
         const wind = windAtOr(env, m.position.x, 30, m.position.z);
         m.material.opacity = strength * (0.7 + 0.3 * Math.sin(env.t * 0.21 + m.position.x));
@@ -1071,12 +1412,14 @@ function makeNearField(rng, camera) {
       fronds.push({ mesh: m, rot0: l.rot, phase: rng() * 9 });
     }
   }
+  let frondsWanted = true; // the isolation switch, kept apart from the altitude gate
 
   return {
     name: 'nearfield',
     group,
     update(dt, env) {
       const cam = env.cam ?? { x: 0, y: 0, z: 0 };
+      const alt = cam.y / WORLD_TOP;
       const wind = windAtOr(env, cam.x, cam.y, cam.z);
       const drawn = Math.max(70, Math.floor(N * (env.quality ?? 1)));
       if (motes.count !== drawn) motes.count = drawn;
@@ -1106,23 +1449,31 @@ function makeNearField(rng, camera) {
       motes.instanceMatrix.needsUpdate = true;
       if (motes.instanceColor) motes.instanceColor.needsUpdate = true;
 
+      // DXX — the near field is a function of altitude, and it is the cheapest
+      // altitude cue in the whole world: leaves at the lens down among the
+      // trunks, and nothing at all at the lens once you are over the crowns.
+      // "What is near you" is the difference between being in a forest and
+      // being above one, and it costs one number.
+      const nearness = 1 - Math.min(1, Math.max(0, (alt - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE)));
       for (const f of fronds) {
+        f.mesh.visible = frondsWanted && nearness > 0.02;
         // the same gust that bends the grove moves the leaf at the lens —
         // that agreement across 40 units of depth is the whole illusion
         f.mesh.rotation.z = f.rot0 + wind.x * 0.09 + Math.sin(env.t * 1.1 + f.phase) * 0.02 * (1 + wind.gust * 3);
-        f.mesh.material.opacity = 0.9 * (1 - env.duck * 0.15);
+        f.mesh.material.opacity = 0.9 * nearness * (1 - env.duck * 0.15);
       }
     },
     /** The fronds live on the camera, so isolation has to reach them too. */
-    setVisible(v) { for (const f of fronds) f.mesh.visible = v; },
+    setVisible(v) { frondsWanted = v; for (const f of fronds) f.mesh.visible = v; },
   };
 }
 
 /** Build the whole world into `scene`; returns per-frame updaters + hooks. */
 export function buildWorld(scene, rng, camera) {
   const biomes = [
+    // built bottom-up, which is also the order the set climbs them
     makeAir(), makeRoots(rng), makeMycelium(rng), makePool(rng), makeFloor(rng),
-    makeCanopy(), makeSky(), makeShafts(rng), makeMist(rng),
+    makeForest(rng), makeCanopy(), makeUpperAir(), makeShafts(rng), makeMist(rng),
     makeFireflies(rng), makeRain(rng), makeNearField(rng, camera),
   ];
   for (const b of biomes) scene.add(b.group);

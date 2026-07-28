@@ -1533,6 +1533,240 @@ that its material comes from its world — D25, D31). Making the whole layer
 quiet instead of filtered: quiet-and-full-range still muddies a floor that
 already has insects, frogs and leaves in it.
 
+## DXX — The four biomes become one forest: an ascent up an extinction curve (2026-07-28)
+
+*(Number deliberately unassigned — the header of this file says the next `D`
+is taken at merge time, and another branch is live. Every `DXX` in
+`src/visuals/*` and `test/look.mjs` refers to this entry.)*
+
+**The brief.** *"Make a coherent forestscape tropical rainforest style from
+undergrowth, understory, canopy, and then flying above."* Four names for four
+tracks, and the ask underneath them is that the set stop being four scenes
+played in sequence and become one climb. `TRACKS` is `undergrowth`,
+`forest floor`, `canopy`, `zenith`, so the mapping is positional and only the
+second name moves: **the user's "understory" is `forest floor`**, which is the
+track that occupies the second altitude band — a name this project has been
+warned about before (the same track was once called "the ground floor" and
+meant the one below it).
+
+**The diagnosis, and it is D5's own bill coming due.** §4.4's one-world
+solution assigns a *visualizer family* to each altitude region, and D5 adopted
+it. What actually got built was each family's canonical demo, stacked: a
+reaction–diffusion lattice, a branching wireframe, a particle swirl, four
+nested icosahedra. That is a taxonomy with a y-axis, and the screenshots say
+so — at 0.65 altitude the frame is grey wireframe triangles and at 0.95 it is
+nothing else. Three specific things were missing, and they are the same thing
+three times:
+
+1. **Nothing was under anything.** There was no canopy — there was a *band
+   called canopy* containing advected particles. So the light shafts fell out
+   of an empty sky, "above the canopy" was indistinguishable from "higher up in
+   the same fog", and the undergrowth was dark by fiat rather than by cause.
+2. **Nothing spanned two bands.** Every object lived inside one band and faded
+   at its edges. §4.2 ranks the continuity layers across a *temporal* boundary
+   and puts the camera's motion signature top; a *vertical* journey needs the
+   spatial twin of that argument, and it had none.
+3. **Nothing wrote depth.** Every material in the world was additive with
+   `depthWrite: false`. No object could ever be in front of another one, which
+   is most of why the frame read as a wash rather than as a place.
+
+**Decision: the four levels share one curve, and the curve is light.**
+`canopyLight(a)` in `look.js` — Beer–Lambert through a two-layer leaf-area
+profile, pure and tested. The number is not invented: field measurements of
+understory PAR put a tropical forest floor at **1–2% of open sky**, so
+`FLOOR_LIGHT = 0.02` and 97% of the whole climb's light arrives inside the
+crown layer. That is what makes it a *ceiling* rather than a ramp, and it is
+now the single input to exposure, fog density, fog colour, the shafts, the air
+sphere and the trunks' own shading. Climbing the set is climbing out of shade.
+
+**Decision: the crown layer's two altitudes are read out of the timeline.**
+Camera altitude is `camY / WORLD_TOP` and `camY = 2 + b·54`, so the four
+tracks' authored brightness spans (`bus.js`, untouched) already put the seams
+at 0.29 / 0.511 / 0.729 of the world's height. `CANOPY_BASE` and `CANOPY_TOP`
+are those last two numbers. The consequence is the whole entry in one line:
+**two tracks play under the canopy, one plays inside it, one plays above it**,
+and the seams and the storeys are the same boundaries. The forest's structure
+was already written into the set; this reads it out rather than inventing a
+second one to sit beside it. `test/look.mjs` asserts the coincidence against
+the real `TRACKS`, so a future edit to the timeline fails the test instead of
+silently detuning the forest.
+
+**Decision: trunks are the continuity layer, stated in space.** Twenty-two
+tapered columns from the litter into the crowns, a quarter of them emergents
+that break through. They are the only objects in the world that are in all four
+bands at once, and they are what the camera passes on the way up: the reason
+the undergrowth is *underneath* the understory rather than merely below it on a
+list. Their vertical shading is `canopyLight` baked into the geometry's vertex
+colours — the extinction curve drawn on an object.
+
+**Decision: crowns, and they are the first geometry here that writes depth.**
+Cutout foliage (`alphaTest`, opaque queue) buys correct occlusion for the
+entire additive world behind it at the cost of one draw call, and it is what
+makes the floor dark *because something is in the way*. The crown mask is built
+by a rule — a lobe, a ring of lobes around it, a ring around each of those —
+rather than drawn, which is D28's first constraint on anything recurring in
+this world (it must read at 2.5× and at 9×; a hand-placed silhouette has one
+scale in it, a self-similar mask has whatever scale you look at it with). Near
+crowns sit on the trunks; a further 150 make a canopy sea out to 190 units,
+which is the content of the last band.
+
+**Decision: aerial perspective, which is what the last band was missing.**
+Under the crowns the air is saturated and the sightline is metres; over them it
+clears by an order of magnitude. `fogDensity` now carries that ratio (9.5×,
+measured in the test), and the fog *colour* carries the other half: what you
+cannot see is black under the canopy, because there is no light out there to
+scatter, and a pale luminous haze above it, because there is nothing but light
+out there. Together they are the reason the top band has a horizon and the
+first three do not — which is the difference between flying and floating.
+
+**Decision: the shafts are re-hung and re-keyed.** They now fall from the
+crowns into the understory instead of floating at y=30, and their strength is
+`beamAt(a) = 1 − canopyLight(a)` instead of mode brightness. The argument: a
+beam carries roughly full sun wherever it is, so what varies with height is the
+air *around* it — a shaft is exactly as legible as its surroundings are dark.
+Which is why the darkest forest on earth is the one famous for its beams of
+light, and why keying them to brightness had them at their strongest in the
+open sky, the one place you cannot see one. They also need something to scatter
+in, so the track's `weather.mist` is a factor.
+
+**Decision: the camera has a gait per storey, and its pitch inverts.**
+`BAND_ORBITS` was retuned into a profile — a tight restless crawl on the
+litter, the slowest and straightest pass of the set through the trunks (they
+need time to go by or they are wallpaper), a wider rise through the crowns, and
+then the **widest and slowest arc in the set** on top, because a camera only
+reads as flying if the ground moves under it and the old table shrank the top
+band to a radius of 2. `pitchAt` replaces the old linear `−3 + 6·b`: the eye
+goes to what it does not have, so the gaze climbs toward the light gaps from
+below and tips back down over the canopy from above. Both are per-band tables
+blended by the same tent window as the grades and orbits, so both are provably
+continuous — no seam can snap the horizon.
+
+**Decision: the air cools and the light warms, and they live in different
+modules.** `BAND_COLORS` (the world's air) walks black-green → the understory's
+green gloom → sunlit foliage → pale blue, because light that has passed through
+a leaf comes out green and light that has passed through air comes out blue.
+`BAND_GRADES` (the picture) walks the other way and ends warmest, because the
+thing you are climbing toward is the sun. Aerial perspective and sunlight are
+two different facts and a forest shows you both at once; splitting them across
+`biomes.js` and `look.js` is what lets the top band be a blue distance under a
+golden light instead of one or the other. The undergrowth's violet went with
+this: it was phrygian's colour, not a forest's, and the harmonic claim is
+carried by the grade, which stays cool and contrasty.
+
+**The polyhedra are removed, and this is what they were carrying.** Four nested
+wireframe icosahedra at golden-ratio radii — §3.4's self-similar family, D5's
+sky region, "ascent without arrival". They looked like a geodesic dome, which
+is the D28 verdict again: *it looked bad, and that is a sufficient reason.*
+Three jobs went with them, and each has a named heir:
+
+- **The self-similar family's region.** Inherited by the crowns. A canopy is a
+  real fractal, the crown mask is generated from a rule at three scales, and
+  the canopy sea is that same rule at a second scale forty units further out.
+  This is a better home than the shells were: D5 accepted as a cost that "the
+  sky shells will never be as engulfing as a full raymarched fractal", and the
+  reason was that they were a *diagram* of self-similarity rather than a thing
+  the world is made of.
+- **Lightning's ceiling (K7).** Inherited by the high cloud deck. A strike
+  lighting cloud from inside is what lightning does; it was only ever lighting
+  the shells because the shells were the only thing above the trees.
+- **An altitude cue** — their opacity rose with brightness, so "there is more
+  geometry up here" was one of the few signals that you had climbed. It is
+  replaced several times over: the crowns pass from silhouette to lit surface,
+  the near-field fronds leave the lens, the fog thins and lifts, and the
+  horizon appears.
+
+They carried **no synch point** (they never touched an event) and they were
+**not** the recurring-form slot D28 left open — that slot is still empty, and
+this entry does not fill it. The crowns are ground stream and articulate
+nothing; a motif has to be figure by edge, and it is still owed.
+
+**Also here: the aurora becomes a cloud deck.** Not asked for, and worth
+flagging as the one judgement call in the entry that is not forced by the
+brief. An aurora is a polar phenomenon and this piece is a jungle; over a
+tropical canopy it read as a light show rather than as sky. The geometry, the
+two near-coprime scroll rates and the never-quite-repeating argument all
+survive — only the gradient and the height changed, so reverting it is one
+`gradientTexture` call.
+
+**Rejected.**
+- *A canopy modelled as a surface (a displaced plane or a mesh roof).* It gives
+  you a ceiling from below and a floor from above and nothing in between, and
+  the canopy track spends its whole ninety-seven seconds *inside* the layer,
+  where a surface has no interior. Crowns are volumetric by being many.
+- *Real light and shadow.* Every material in this world is `MeshBasicMaterial`,
+  so the scene's `DirectionalLight` and `AmbientLight` have never lit anything
+  — they are decoration (noted separately; not fixed here). Adding a lit
+  material path to cast the canopy's shadow would be a renderer project, and
+  the extinction curve says the same thing analytically for the cost of a
+  `Math.exp`.
+- *Keying the forest to `b` (mode brightness) rather than to camera altitude.*
+  They differ by the 8 units the camera does not travel, and the whole
+  derivation above depends on the camera's number. `look()` takes `alt` and
+  falls back to `b` when the caller has no camera, which is how the existing
+  tests keep meaning what they meant.
+- *A literal 2% frame.* The photometry is right and the picture is black. The
+  transmittance is compressed through a cube root before it reaches exposure;
+  what has to survive is the *order* of the four levels, not the stops.
+- *The true fog ratio (17×).* At it the undergrowth fogs out inside eight units
+  and never shows you the trunks it is supposed to be full of. Bounded to ~10×
+  by sightline, which is a composition decision and is recorded as one.
+- *Deleting the ether, the Gray–Scott lattice, the mycelium or the pool.* They
+  are all legible as forest — humid air in the crowns, root chemistry, a
+  signalling network, a black pool with caustics on it — and D5's family
+  argument still holds. The complaint was never that the biomes were wrong; it
+  was that they were not in the same place.
+
+**Three things only looking could have told us, recorded so they are not
+relearned.** (1) The first canopy was five small blobs on top of each trunk,
+and it photographed as a **savanna** — a stand of lollipops with sky between
+them. What closes a canopy is that most of it does not belong to a tree you can
+see, so two thirds of the crowns now belong to no trunk at all. (2) The trunks
+were shaded by `canopyLight(camera altitude)`, which is the wrong argument: a
+trunk is under the canopy no matter where *you* are standing, so climbing above
+the crowns lit the trunks and you looked down through the gaps at a stand of
+glowing white sticks. The light a trunk gets is capped at the crowns' underside.
+(3) The sunlit crown colour was a stop and a half too bright and came back
+blown lime, because the top band's grade lifts warm and the bloom sits on top of
+that — a surface that is already the brightest thing in the frame does not also
+need to be the most saturated. All three were invisible in the numbers and
+obvious in a PNG, which is D31's lesson arriving in the other medium.
+
+**Verification.** `npm test` and `npm run build` pass. `test/look.mjs` grew
+five sections asserting this entry's claims rather than its code paths: the
+litter is at the reported 2% and 97% of the climb's light arrives in the crown
+layer; the crown altitudes coincide with the real `TRACKS`' seams to within
+0.01, and the first two tracks are provably under the canopy and the last
+provably above it; exposure orders the four levels and fog only ever clears as
+you climb; a shaft reads hardest where the forest is darkest and not at all
+above the last leaf; the pitch tips one way across the set and never jumps; the
+air brightens and blues while the grade warms. `tools/visual_check.mjs` renamed
+its four band stops to the storeys, added a `forest` isolation shot and two
+new frames — **forest-understory** (standing among the trunks, looking up) and
+**forest-above** (out over the crown sea) — which are the two pictures the
+whole entry has to survive. Every frame in this entry was looked at on the
+WebGL2 (swiftshader) pass, the run reports no console errors, and the quality
+governor settles at the same tier (0.8) it settled at on the pre-change
+baseline, so the forest is not bought out of the frame budget.
+
+**A harness bug this turned up.** The four band shots were taken at whatever
+section the transport had reached, so one or two of them arrived wearing the
+**ink** style and were pictures of the ink pass. Seeking to `groove` first does
+not fix it: `inkAmt` is smoothed per frame against a `dt` clamped to 0.1, so at
+the ~2 fps a software rasterizer manages the fade takes upward of ten seconds of
+wall clock. The band shots now pin the style tier off, since they are about the
+world and the styles have four dedicated frames of their own. The underlying
+frame-rate dependence of that smoothing is real but harmless on a GPU and is
+left alone. Biome names moved with the storeys, so `?biome=roots|floor|sky` are
+now `undergrowth|understory|upperair`, `canopy` is the ether that advects
+through the crowns, and `forest` is the trunks and crowns themselves.
+
+**Revisit when** it has been seen at speed rather than in stills: the numbers
+most likely to be wrong are the crown density (a canopy that is too closed
+makes the middle two tracks featureless) and the exposure compression. Both are
+single constants. And if the frame-time governor turns out to shed the far
+canopy sea on real hardware, the horizon is the first thing sold and the entry
+should say whether that is acceptable — today it says it is.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

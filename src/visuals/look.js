@@ -65,6 +65,83 @@ export const TINT_THIN = [0.62, 0.67, 0.78];
 export const FOCAL_SHARP = 1200;
 export const POSTERIZE_STEPS = 64; // "off" for an 8-bit-ish frame
 
+// ---------- the light budget: the forest as one extinction curve (DXX) ----------
+// What makes a tropical rainforest one place rather than four stacked scenes is
+// not that the same plants grow at every height — it is that every height is
+// somewhere on ONE curve, and the curve is light. The crowns intercept nearly
+// all of it: field measurements of understory PAR put the litter at ~1–2% of
+// open sky, the understory proper at a few percent more. So the ascent the set
+// is making is literally an ascent out of shade, and the number is known.
+//
+// Beer–Lambert through a leaf-area profile. Two layers: a thin understory of
+// shrubs and saplings below the crowns, and the crown layer itself, whose leaf
+// area is concentrated toward its top (which is why a canopy has a *sharp*
+// underside and a soft top).
+//
+// The two altitudes are NOT chosen for looks. Altitude is `camY / WORLD_TOP`
+// and `camY = 2 + b·54`, so the four tracks' authored brightness spans
+// (0.10→0.30, 0.30→0.55, 0.55→0.80, 0.80→1.00 in bus.js) land at
+// 0.12→0.29, 0.29→0.51, 0.51→0.73, 0.73→0.90. Putting the crowns' underside at
+// 0.51 and their last leaf at 0.73 makes the seams and the layers the same
+// boundaries: two tracks below the canopy, one *inside* it, one above. The
+// forest's structure was already written in the timeline; this reads it out.
+export const CANOPY_BASE = 0.5113;    // altitude of the crowns' underside = altOf(0.55)
+export const CANOPY_TOP = 0.7290;     // …and of the last emergent leaf  = altOf(0.80)
+export const FLOOR_LIGHT = 0.02;      // 2% of open-sky light reaches the litter
+export const UNDERSTORY_DEPTH = 0.22; // share of the optical depth below the crowns
+
+const smooth = (x) => x * x * (3 - 2 * x);
+
+/**
+ * Fraction of open-sky light present at altitude a ∈ [0,1]. 1 above the
+ * canopy, FLOOR_LIGHT on the litter, and the whole fall happens in the crown
+ * layer — which is what a ceiling *is*.
+ */
+export function canopyLight(a) {
+  const x = clamp01(a);
+  if (x >= CANOPY_TOP) return 1;
+  const depth = x <= CANOPY_BASE
+    ? (1 - UNDERSTORY_DEPTH) + UNDERSTORY_DEPTH * (1 - x / CANOPY_BASE)
+    : (1 - UNDERSTORY_DEPTH) * (1 - smooth((x - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE)));
+  return Math.exp(Math.log(FLOOR_LIGHT) * depth);
+}
+
+/**
+ * How strongly a light shaft reads at altitude a — the visibility of the beam,
+ * not its brightness. A shaft that comes down through a gap carries roughly
+ * full sunlight wherever it is; what changes with height is the air *around*
+ * it, so a beam is exactly as legible as its surroundings are dark. Hence the
+ * one-line form: `1 − canopyLight(a)`, and zero above the last leaf, where
+ * there is no longer anything overhead to shaft through.
+ *
+ * This is why the darkest forest on earth is the one famous for its beams of
+ * light, and it is the reason the shafts belong to the understory rather than
+ * to the sky they used to be keyed to.
+ */
+export function beamAt(a) {
+  const x = clamp01(a);
+  if (x >= CANOPY_TOP) return 0;
+  return 1 - canopyLight(x);
+}
+
+/**
+ * Where the camera looks, per level, as a world-unit offset from its own
+ * altitude. Deliberately not a straight line from down to up: the eye goes to
+ * what it does not have. On the litter the light is the unreachable thing, so
+ * the gaze climbs toward the gaps; among the trunks it levels off and looks
+ * along them; above the crowns the *ground* is what you no longer have, so it
+ * tilts back down over the canopy — which is also the only way the last band
+ * can read as flying over a forest rather than floating in a sky.
+ */
+export const BAND_PITCH = [5.0, 1.5, -1.0, -8.0];
+
+export function pitchAt(a) {
+  const n = BAND_PITCH.length;
+  let p = 0;
+  for (let i = 0; i < n; i++) p += tentWeight(i, a, n) * BAND_PITCH[i];
+  return p;
+}
+
 /**
  * The whole post chain in one place.
  *
@@ -93,6 +170,11 @@ export function look(params = {}, env = {}) {
   const fusion = env.fusion ? 1 : 0;
   const flash = clamp01(env.flash ?? 0);
   const b = env.b ?? 0.5;
+  // where the CAMERA is (camY / WORLD_TOP), which is not quite the mode
+  // brightness — the world is 62 units tall and the camera's travel is 54 of
+  // them. Everything about the forest's structure keys on this; the mode
+  // brightness keeps the things that are about harmony.
+  const alt = env.alt ?? b;
 
   // ---- artifact operators (§3.6): wildness, plus the rail's frame-level jokes
   const bloom = Math.max(0,
@@ -125,8 +207,30 @@ export function look(params = {}, env = {}) {
 
   // ---- atmosphere: fog IS distance (§2). Reverb thickens it, the HP kill
   // thins it to nothing, and a dissolving seam opens it (I2).
+  //
+  // …and altitude now dominates all three of those, because in a rainforest it
+  // does. Under the crowns the air is saturated and the sightline is metres:
+  // that is what "close" means down there, and it is why the undergrowth has
+  // never needed a horizon. Above them the air clears by more than an order of
+  // magnitude and the frame acquires a distance for the first time — which is
+  // the entire content of "flying above". `aerial` is that ratio (≈10×), and
+  // it is the single number that makes the top band a different KIND of
+  // picture rather than the same picture higher up. Bounded below by a real
+  // sightline rather than by the physics: at the true ratio the undergrowth
+  // fogs out inside 8 units and the trunks it is supposed to be full of are
+  // never seen at all.
+  const aerial = 0.12 + 1.05 * (1 - canopyLight(alt));
   const fogDensity = Math.max(0,
-    (0.075 - 0.04 * T) * (1 + 0.6 * lp + 0.5 * space) * (1 - 0.4 * hp) * (1 - 0.5 * exhale));
+    (0.075 - 0.04 * T) * aerial * (1 + 0.6 * lp + 0.5 * space) * (1 - 0.4 * hp) * (1 - 0.5 * exhale));
+
+  // ---- exposure: the forest floor gets almost none of the light.
+  // Kept apart from `dim` (the HP kill's subtraction) so the rail's
+  // idle-is-identity property survives — this is the world's own exposure, not
+  // a knob's, and the renderer multiplies the two. Compressed hard (a cube
+  // root of the transmittance) because a literal 2% frame is a black frame:
+  // the eye adapts, and what has to survive is the *order* of the four levels,
+  // not the photometry.
+  const exposure = 0.45 + 0.55 * Math.pow(canopyLight(alt), 0.3);
 
   // ---- L1: anamorphic streak. The bloom says "bright"; the streak says
   // "bright *through a lens*", which is the entire difference between a glow
@@ -142,7 +246,9 @@ export function look(params = {}, env = {}) {
   // in the canopy band, and is gone among the roots (nothing above to shaft
   // through) and at the zenith (nothing below to shaft onto). The one effect
   // here that is a function of *place* rather than of time.
-  const canopyBand = Math.max(0, 1 - Math.abs(b - 0.62) * 3.4);
+  // (0.62 is the middle of the crown layer, CANOPY_BASE…CANOPY_TOP — it was
+  // guessed here before the layer existed and turned out to be exactly it.)
+  const canopyBand = Math.max(0, 1 - Math.abs(alt - 0.62) * 3.4);
   const godrays = Math.max(0, canopyBand * (0.25 + 0.5 * T) * (1 - lp * 0.7) + flash * 0.5);
 
   // ---- L8: heat shimmer. Refraction is the air itself becoming visible, so
@@ -152,7 +258,7 @@ export function look(params = {}, env = {}) {
 
   return {
     bloom, smear, shift, grain, sat, steps, tint, tintAmt, dim, vignette,
-    focal, bokeh, focus, fogDensity, streak, godrays, shimmer,
+    focal, bokeh, focus, fogDensity, exposure, streak, godrays, shimmer,
   };
 }
 
@@ -163,11 +269,18 @@ export function look(params = {}, env = {}) {
 // construction as BAND_ORBITS: constants per band, blended by a tent window
 // over altitude, so it is continuous by the same argument (§4.2's motion
 // signature, applied to colour) and can never cut at a boundary.
+// The world's colour COOLS as you climb (BAND_COLORS in biomes.js: the air
+// scatters blue and the far distance goes pale). The picture's grade does the
+// opposite — it WARMS, because the light source you are climbing toward is the
+// sun. Aerial perspective and sunlight are two different things and a forest
+// shows you both at once; splitting them across the two modules is what lets
+// the top band be a blue distance under a golden light instead of one or the
+// other.
 export const BAND_GRADES = [
-  { lift: [0.010, 0.000, 0.030], gain: [0.92, 0.84, 1.22], gamma: 1.12 }, // roots: violet, contrasty, crushed blacks
-  { lift: [0.000, 0.012, 0.006], gain: [0.88, 1.12, 0.94], gamma: 1.02 }, // floor: green, neutral
-  { lift: [0.000, 0.008, 0.026], gain: [0.90, 1.00, 1.18], gamma: 0.96 }, // canopy: cool, open
-  { lift: [0.030, 0.016, 0.000], gain: [1.18, 1.06, 0.86], gamma: 0.88 }, // sky: warm, lifted, soft
+  { lift: [0.010, 0.000, 0.030], gain: [0.92, 0.84, 1.22], gamma: 1.12 }, // undergrowth: scotopic, contrasty, crushed blacks
+  { lift: [0.000, 0.012, 0.006], gain: [0.86, 1.14, 0.94], gamma: 1.02 }, // understory: the green gloom — leaves transmit green
+  { lift: [0.000, 0.010, 0.006], gain: [1.02, 1.10, 0.92], gamma: 0.94 }, // canopy: sunlit foliage, open
+  { lift: [0.030, 0.016, 0.000], gain: [1.18, 1.06, 0.86], gamma: 0.88 }, // open air: warm, lifted, soft
 ];
 
 /** The grade at altitude a ∈ [0,1]: {lift:[3], gain:[3], gamma}. */
@@ -226,11 +339,21 @@ export function styleAt(env = {}, params = {}) {
 // its OWN constant rate and phase, so the path is continuous in altitude *and*
 // in time — no boundary can produce a jump, which is what keeps the motion
 // signature (§4.2's strongest continuity element) intact across every seam.
+//
+// Retuned for the ascent (DXX). The old table shrank the top band to a radius
+// of 2 — the camera hovered up there. But the last track is the one the brief
+// calls *flying above*, and a camera only reads as flying if the ground moves
+// underneath it; a small orbit over a distant canopy reads as hanging. So the
+// widest arc in the set is now the highest one, and it is also the slowest, so
+// nothing about the gesture is hurried. Below it the profile is a gait: a
+// crawl among the litter (tight, quick, restless), the slowest and straightest
+// pass of all through the trunks (a walk — the trunks have to have time to go
+// by, or they are wallpaper), then a wider rise through the crowns.
 export const BAND_ORBITS = [
-  { radius: 1.4, rate: 0.031, phase: 0.0 },  // roots
-  { radius: 3.1, rate: 0.019, phase: 1.7 },  // floor
-  { radius: 4.6, rate: 0.013, phase: 3.1 },  // canopy
-  { radius: 2.0, rate: 0.008, phase: 4.9 },  // sky
+  { radius: 1.2, rate: 0.037, phase: 0.0 },  // undergrowth: a crawl, tight and close
+  { radius: 2.6, rate: 0.011, phase: 1.7 },  // understory:  a walk between trunks
+  { radius: 5.2, rate: 0.021, phase: 3.1 },  // canopy:      the climb through the crowns
+  { radius: 9.0, rate: 0.006, phase: 4.9 },  // open air:    flight — the widest arc in the set
 ];
 
 /**
