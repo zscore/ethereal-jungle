@@ -2,7 +2,7 @@
  * visual_check.mjs — screenshot harness (visuals proposal E3, extended by J2).
  *
  * Boots the app headless, wakes the audio engine, then captures every biome
- * band, the glyph, the climax, the corpus shrine, a full perform-rail sweep
+ * band, the climax, the corpus shrine, a full perform-rail sweep
  * (each knob's visual twin, H1) and both seam flavors (I2), into
  * shots/<backend>-<name>.png. Exists because the WebGPU point-size bug
  * survived as long as it did by us only ever looking at one backend — run it
@@ -86,16 +86,7 @@ for (const [name, a] of stops) {
   console.log(`captured ${backend}-${name}.png`);
 }
 
-// glyph shot: jump the transport to a peak section (skip buttons, bus D15)
-await page.evaluate(() => {
-  window.jungle.visuals.setAltitude(null);
-  window.jungle.bus.params.brightnessMix = 0;
-});
-await page.click('button:has-text("canopy")').catch(() => {});
-await page.click('button:has-text("peak")').catch(() => {});
-await page.waitForTimeout(5000);
-await page.screenshot({ path: `${outDir}${backend}-peak-glyph.png` });
-console.log(`captured ${backend}-peak-glyph.png`);
+// (the peak-glyph shot lived here until D28 removed the glyph)
 
 // high-tension shot: manual override pushes the whole system toward the climax
 await page.evaluate(() => {

@@ -142,7 +142,7 @@ node tools/visual_check.mjs                     # screenshot sweep, WebGL2
 node tools/visual_check.mjs --backend=webgpu    # …and the other backend
 ```
 
-The screenshot sweep captures every biome band, the glyph, the climax, the
+The screenshot sweep captures every biome band, the climax, the
 corpus shrine, one shot per perform-rail knob, both seam flavors, the weather
 (rain, a held lightning strike), each new nature biome in isolation, and each
 style tier, into `shots/<backend>-<name>.png`. Run it on **both** backends

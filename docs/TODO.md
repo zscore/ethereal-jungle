@@ -94,12 +94,21 @@ What the rewrite changed:
   `first hap` proving sound was flowing. One persistent subscription from the
   moment audio starts cannot miss a burst. The old 25 s pre-wait only ever
   hid this by making a hit more likely.
+- **It survives a mid-run reload.** Vite re-optimizes its dependency cache when
+  the config changes and does a full page reload to pick it up — which wipes the
+  in-page accumulator and stops the audio. The first version of this rewrite
+  guarded the *click* against that and then crashed on the *measurement*
+  (`Cannot read properties of undefined`). Start-and-measure is now one
+  retryable unit, and the sound predicate also resolves on the accumulator
+  vanishing, so a reload is caught in seconds rather than burning the full
+  120 s timeout.
 - **It prints the load average** and warns when the box is too busy, so the next
   slow run diagnoses itself instead of looking like a product bug.
 
-Verified: **4 of 4 consecutive passes** at load averages 13.3, 18.1, 22.6 and
-31.8 on 10 CPUs — conditions well past those that produced the original 1-in-4
-failure, and where the previous script failed outright.
+Verified: **7 of 7 consecutive passes** at load averages from 8.3 to 31.8 on 10
+CPUs — conditions well past those that produced the original 1-in-4 failure, and
+where the previous script failed outright. Runtime scales with the machine:
+~26 s when it is merely busy, ~160–240 s when a game is eating three cores.
 
 **Note for CI:** a hosted runner is usually 2 vCPUs, which is *worse* than the
 loaded laptop this was fixed on. Expect a slow run there, and prefer a runner
@@ -125,7 +134,16 @@ settled.
 ## 6. Housekeeping
 
 - Tag `pre-d23-main` (at `4d711e5`) is the pre-merge safety net for the D22/D23
-  merge. Delete it once you're confident in `e5d5f78`: `git tag -d pre-d23-main`.
+  merge. **Safe to delete now** — `4d711e5` is an ancestor of `main`, so the tag
+  is only a pointer and no commits depend on it. It is also pushed, so it exists
+  in two places. Confidence criteria are met: `npm test`, `npm run build` and
+  `npm run smoke` all pass well past `e5d5f78`. Needs a hand to run, since
+  deleting a remote tag is destructive:
+
+      git tag -d pre-d23-main
+      git push origin :refs/tags/pre-d23-main
+
+  To restore either one: `git tag pre-d23-main 4d711e5`.
 - Branch hygiene going forward: short-lived topic branches off `main`, merged
   and deleted promptly. `main` is staging; production is a tag that only ever
   moves forward to a commit that passed `npm test && npm run build && npm run smoke`.
@@ -133,5 +151,16 @@ settled.
 7. the chords in the background are just constant for a lot of the time in the first couple section and need some effects
 and some motion between notes.
 8. that drum rolls filter is a bit overwhelming; maybe it needs probabilities of adding the rolls too?
-9. the butterfly visualization thing looks stupid and should be removed
+9. ~~the butterfly visualization thing looks stupid and should be removed~~
+   ✅ **done 2026-07-27 — it was a moth, and it is gone.** The "butterfly" was
+   the recurring glyph (proposal B2) in `src/visuals/figure.js`: a long-tailed
+   moth drawn as hand-placed line segments, shown in each track's `peak`
+   section. Removed along with its `scene.js` call and its `visual_check.mjs`
+   screenshot. The rest of the figure stream (kick rings, snare shards) is
+   untouched — that is B1, and it is what carries rhythm.
+   Recorded as **D28**, not deleted silently, because `visualizer_theory.md` §5
+   argues the *slot* is load-bearing: the set's single melodic cell wants a
+   visual sibling. The slot is now empty and stays open. D28 lists the three
+   constraints a replacement has to clear, the first being that it must read at
+   both 2.5× and 9× — which a literal creature outline never did.
 10. that fill going into the seam is very cheesy and should be a bit better

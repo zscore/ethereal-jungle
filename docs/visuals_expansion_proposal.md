@@ -68,7 +68,7 @@ white-hot and unbloomed (figure pass).
 *Accept:* drums are watchable with the sound off; nothing fires on break
 interior hits.
 
-### B2. The recurring glyph (M)
+### B2. The recurring glyph (M) — shipped, then removed (D28)
 §5's repetition budget: ONE silhouette — proposal: a long-tailed moth/bird
 line-figure, drawn as a few dozen line segments so it reads at any scale —
 that appears only in each track's `peak` section (the bus now knows sections,

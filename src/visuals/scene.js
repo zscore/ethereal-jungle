@@ -5,8 +5,8 @@
  *            altitude, soft, slow, continuous. The camera's height IS the mode
  *            brightness — the set's harmonic story rendered as a journey
  *            upward or downward through the jungle (§4.4).
- *   FIGURE — figure.js: kick shockwave rings, snare shard scatters, and the
- *            recurring glyph (peak sections only). Sharp, near, discrete.
+ *   FIGURE — figure.js: kick shockwave rings and snare shard scatters.
+ *            Sharp, near, discrete.
  *            Spent ONLY on anchor-priced positions (synch-point economy §2.2).
  *            Plus shrine.js: the corpus family (§3.5), figure confined to one
  *            place — the undergrowth — chopping this world's own past with the
@@ -89,7 +89,7 @@ export async function initScene(canvas) {
   scene.add(light);
   scene.add(new THREE.AmbientLight(0x223344, 0.6));
 
-  // ---- FIGURE: rings, shards, the glyph, and the shrine ----
+  // ---- FIGURE: rings, shards, and the shrine ----
   const figure = initFigure(scene, FIGURE_LAYER);
   let shrine = null;
   if (qp.get('shrine') !== '0') {
@@ -521,7 +521,6 @@ export async function initScene(canvas) {
     };
     world.update(dt, env);
     figure.update(dt);
-    figure.updateGlyph(dt, env, camera.position.x, camY, section === 'peak');
 
     // palette center of gravity + fog: the continuity layer (§4.2)
     const col = paletteAt(camY / WORLD_TOP);

@@ -127,6 +127,8 @@ Ordered; each step is independently shippable.
 6. **The recurring glyph** (§5, repetition legitimizes): one silhouette that
    appears at each track's climax, transformed — the visual sibling of the
    set's single melodic cell (already in the music: `MOTIF` in generators.js).
+   ⚠️ *Built as a moth line-figure (B2), then **removed** — see D28. The slot
+   is still open and still worth filling; the moth is not the way to fill it.*
 7. **Stream fusion at the set climax**, spent once: at canopy-track climax
    (the set's golden-ratio point), let figure flashes ignite the ether —
    particles burst from flash positions; forbidden everywhere else, which is

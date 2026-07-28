@@ -9,42 +9,11 @@
  * hard-edged shards, one-frame attack, fast decay. Both stay white-hot and
  * live on the figure render layer (no bloom, no softness).
  *
- * The glyph (proposal B2, §5 "repetition legitimizes"): ONE silhouette — a
- * long-tailed moth drawn in line segments — appearing only in each track's
- * peak section, transformed per track: small and violet among the roots, vast
- * and slow at the canopy climax, a constellation outline in zenith. Three
- * appearances make it an institution; it is the visual sibling of the music's
- * single melodic cell.
+ * There was a third member here — the recurring glyph (proposal B2), a moth
+ * silhouette in each track's peak section. It was removed in D28: the concept
+ * survives, the moth did not. See design_decisions.md before adding a new one.
  */
 import * as THREE from 'three';
-
-// per-track glyph costume: scale, vertical offset from camera, color
-const GLYPH_COSTUME = [
-  { scale: 2.5, dy: -3, color: '#c9a8ff' }, // undergrowth: small, violet, below
-  { scale: 4.5, dy: -1, color: '#a8ffc9' }, // forest floor: mid, mossy
-  { scale: 9,   dy: 3,  color: '#dce8ff' }, // canopy: vast and slow overhead
-  { scale: 6.5, dy: 6,  color: '#ffe9b8' }, // zenith: a constellation outline
-];
-
-function mothWing(sign) {
-  // one wing outline as a line strip (authored once — THE silhouette)
-  const pts = [
-    [0, 0], [1.2, 0.9], [2.2, 1.4], [3.0, 1.2], [3.3, 0.6], [2.6, 0.1],
-    [3.1, -0.6], [2.3, -1.1], [1.2, -1.0], [0, -0.3],
-  ].map(([x, y]) => new THREE.Vector3(sign * x, y, 0));
-  return new THREE.BufferGeometry().setFromPoints(pts);
-}
-
-function mothBody() {
-  const pts = [
-    [0, -0.6, 0], [0, 0.8, 0],            // body
-    [0, 0.8, 0], [0.4, 1.4, 0],           // antennae
-    [0, 0.8, 0], [-0.4, 1.4, 0],
-    [0, -0.6, 0], [0.5, -2.4, 0],         // tail streamers
-    [0, -0.6, 0], [-0.5, -2.4, 0],
-  ].map(([x, y, z]) => new THREE.Vector3(x, y, z));
-  return new THREE.BufferGeometry().setFromPoints(pts);
-}
 
 export function initFigure(scene, layer) {
   // ---- kick rings ----
@@ -82,22 +51,6 @@ export function initFigure(scene, layer) {
   const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
   for (let i = 0; i < BURSTS * PER; i++) shardMesh.setMatrixAt(i, ZERO);
 
-  // ---- the glyph ----
-  const glyph = new THREE.Group();
-  const glyphMat = new THREE.LineBasicMaterial({
-    color: '#ffffff', transparent: true, opacity: 0,
-    blending: THREE.AdditiveBlending, depthWrite: false, // reads against the fusion glow
-    fog: false, // figure stream: sharp and near, never atmospheric
-  });
-  const wingL = new THREE.Line(mothWing(-1), glyphMat);
-  const wingR = new THREE.Line(mothWing(1), glyphMat);
-  const body = new THREE.LineSegments(mothBody(), glyphMat);
-  glyph.add(wingL, wingR, body);
-  glyph.traverse((o) => o.layers?.set(layer));
-  glyph.visible = false;
-  scene.add(glyph);
-  let glyphOpacity = 0;
-
   return {
     /** Kick: shockwave ring at altitude y. During fusion it runs gold. */
     kick(x, y, z, gain, fusion) {
@@ -123,25 +76,6 @@ export function initFigure(scene, layer) {
         shardVel[j * 3 + 1] = up * sp * 0.7;
         shardVel[j * 3 + 2] = Math.sin(th) * sp;
       }
-    },
-
-    /**
-     * The glyph appears only during `peak` sections; costume by track.
-     * Motion is slow and drift-driven — it is figure by edge, not by rhythm.
-     */
-    updateGlyph(dt, env, camX, camY, active) {
-      const c = GLYPH_COSTUME[env.trackIndex % GLYPH_COSTUME.length];
-      glyphOpacity += ((active ? 0.85 : 0) - glyphOpacity) * Math.min(1, dt * 0.8);
-      glyph.visible = glyphOpacity > 0.01;
-      if (!glyph.visible) return;
-      glyphMat.opacity = glyphOpacity;
-      glyphMat.color.set(c.color);
-      glyph.scale.setScalar(c.scale);
-      // distance grows with costume scale: vast reads as far, never engulfing
-      glyph.position.set(camX + env.drift * 4, camY + c.dy + Math.sin(env.t * 0.23) * 1.5, -14 - c.scale * 4);
-      const flap = 0.35 + 0.3 * Math.sin(env.t * (env.trackIndex === 2 ? 0.6 : 1.7)); // vast = slow
-      wingL.rotation.y = flap;
-      wingR.rotation.y = -flap;
     },
 
     update(dt) {

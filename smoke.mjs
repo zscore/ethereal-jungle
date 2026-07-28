@@ -86,9 +86,6 @@ await page.goto(URL, { waitUntil: 'commit', timeout: BOOT_TIMEOUT });
 await waitForBoot();
 console.log(`booted at ${at()}`);
 
-// Start audio. The click handler hides the overlay synchronously, so a hidden
-// overlay proves the click landed on a live listener rather than on an element
-// that a reload was about to replace.
 // A real click is the better assertion — it proves the overlay is visible and
 // hit-testable, not merely present. But Playwright's actionability checks need
 // many main-thread slots, and a starved thread cannot supply them. So: try the
@@ -98,77 +95,111 @@ console.log(`booted at ${at()}`);
 const overlayHidden = () =>
   page.evaluate(() => document.getElementById('overlay').style.display === 'none');
 
-const strategies = [
-  ['click', () => page.locator('#overlay').click({ timeout: CLICK_TIMEOUT })],
-  ['click (retry)', () => page.locator('#overlay').click({ timeout: CLICK_TIMEOUT })],
-  ['dispatched click', () => page.evaluate(() => document.getElementById('overlay').click())],
-];
+/** Click the overlay to wake audio. Returns the strategy that worked, or null. */
+async function startAudio() {
+  const strategies = [
+    ['click', () => page.locator('#overlay').click({ timeout: CLICK_TIMEOUT })],
+    ['click (retry)', () => page.locator('#overlay').click({ timeout: CLICK_TIMEOUT })],
+    ['dispatched click', () => page.evaluate(() => document.getElementById('overlay').click())],
+  ];
+  for (const [name, fire] of strategies) {
+    try {
+      await fire();
+      // The handler hides the overlay synchronously, so a hidden overlay proves
+      // the click reached a live listener rather than a doomed element.
+      if (await overlayHidden()) return name;
+    } catch (err) {
+      console.log(`${name} threw at ${at()}: ${err.message.split('\n')[0]}`);
+    }
+    console.log(`${name} did not take at ${at()} — resettling`);
+    await waitForBoot().catch(() => {});
+  }
+  return null;
+}
+
+/**
+ * ONE persistent subscription, accumulating from the moment audio starts.
+ *
+ * Not a sampling window: bus.js publishes "ahead of time", i.e. the scheduler
+ * emits a burst per phrase and then goes quiet. A fixed 5 s window can land
+ * wholly inside a gap and report silence for an engine that is running fine —
+ * which it did, on 3 of 3 runs. Counting cumulatively cannot miss a burst.
+ */
+const installCounter = () => page.evaluate(() => {
+  window.__smoke = { haps: 0, counts: {} };
+  window.jungle.bus.subscribe((e) => {
+    const k = e.type === 'hap' ? `hap:${e.sound}` : e.type;
+    window.__smoke.counts[k] = (window.__smoke.counts[k] ?? 0) + 1;
+    if (e.type === 'hap') window.__smoke.haps += 1;
+  });
+});
+
+/**
+ * Wait for sound, then sample. Returns null if the page reloaded underneath us,
+ * which wipes `window.__smoke` and stops the audio — Vite re-optimizing its
+ * dependency cache mid-run does exactly this. The predicate therefore also
+ * resolves on the accumulator vanishing, so a reload is detected in seconds
+ * instead of burning the full sound timeout.
+ */
+async function waitForSoundAndSample() {
+  await page.waitForFunction(
+    () => !window.__smoke || window.__smoke.haps > 0,
+    null,
+    { timeout: SOUND_TIMEOUT },
+  );
+  if (!(await page.evaluate(() => Boolean(window.__smoke)))) return null;
+  console.log(`first hap at ${at()}`);
+
+  // Let the engine run past the first burst so the breakdown describes a running
+  // engine rather than the very first event. This sleep is a sampling choice,
+  // not a readiness bet: nothing is asserted on what lands inside it, only on
+  // the cumulative total.
+  return page.evaluate(async (ms) => {
+    await new Promise((r) => setTimeout(r, ms));
+    if (!window.__smoke) return null; // reloaded during the sample window
+    return {
+      overlayHidden: document.getElementById('overlay').style.display === 'none',
+      readout: document.getElementById('readout')?.textContent ?? '',
+      counts: window.__smoke.counts,
+    };
+  }, COUNT_WINDOW);
+}
 
 let started = false;
 let startedVia = null;
-for (const [name, fire] of strategies) {
+let state = null;
+for (let attempt = 1; attempt <= 2 && !state; attempt += 1) {
+  startedVia = await startAudio();
+  started = Boolean(startedVia);
+  if (!started) break;
+  console.log(`audio started at ${at()} via ${startedVia}`);
+
+  await installCounter();
   try {
-    await fire();
-    started = await overlayHidden();
+    state = await waitForSoundAndSample();
   } catch (err) {
-    console.log(`${name} threw at ${at()}: ${err.message.split('\n')[0]}`);
+    console.log(`measurement failed at ${at()}: ${err.message.split('\n')[0]}`);
+    break;
   }
-  if (started) { startedVia = name; break; }
-  console.log(`${name} did not take at ${at()} — resettling`);
-  await waitForBoot().catch(() => {});
-}
-if (!started) errors.push('[smoke] every strategy failed to start audio');
-if (started) console.log(`audio started at ${at()} via ${startedVia}`);
-
-// Subscribe before waiting, so nothing between the click and the count window
-// goes unseen.
-if (started) {
-  // ONE persistent subscription, accumulating from the moment audio starts.
-  //
-  // Not a sampling window: bus.js publishes "ahead of time", i.e. the scheduler
-  // emits a burst per phrase and then goes quiet. A fixed 5 s window can land
-  // wholly inside a gap and report silence for an engine that is running fine —
-  // which it did, on 3 of 3 runs. Counting cumulatively cannot miss a burst.
-  await page.evaluate(() => {
-    window.__smoke = { haps: 0, counts: {} };
-    window.jungle.bus.subscribe((e) => {
-      const k = e.type === 'hap' ? `hap:${e.sound}` : e.type;
-      window.__smoke.counts[k] = (window.__smoke.counts[k] ?? 0) + 1;
-      if (e.type === 'hap') window.__smoke.haps += 1;
-    });
-  });
-
-  // Wait for the FIRST hap rather than sleeping through sample loading. On a
-  // fast machine this returns in a second or two; on a loaded one it takes as
-  // long as it takes, instead of failing at a hardcoded 25 s.
-  await page
-    .waitForFunction(() => window.__smoke.haps > 0, null, { timeout: SOUND_TIMEOUT })
-    .then(() => console.log(`first hap at ${at()}`))
-    .catch(() => errors.push(`[smoke] no audio events within ${SOUND_TIMEOUT / 1000}s of starting`));
+  if (!state) {
+    console.log(`page reloaded mid-measurement at ${at()} — restarting (attempt ${attempt} of 2)`);
+    started = false;
+    startedVia = null;
+    await waitForBoot().catch(() => {});
+  }
 }
 
-// Let the engine run a little past the first burst so the breakdown describes a
-// running engine rather than the very first event, then read the accumulator.
-// This sleep is a sampling choice, not a readiness bet: nothing is asserted on
-// what arrives within it, only on the cumulative total.
-const state = started
-  ? await page.evaluate(async (ms) => {
-      await new Promise((r) => setTimeout(r, ms));
-      return {
-        overlayHidden: document.getElementById('overlay').style.display === 'none',
-        readout: document.getElementById('readout')?.textContent ?? '',
-        counts: window.__smoke.counts,
-      };
-    }, COUNT_WINDOW)
-  : { overlayHidden: false, readout: '', counts: {} };
+const measured = Boolean(state);
+state ??= { overlayHidden: false, readout: '', counts: {} };
 
 const haps = Object.entries(state.counts).filter(([k]) => k.startsWith('hap:'));
 const hapTotal = haps.reduce((n, [, v]) => n + v, 0);
 
 // ---- the assertions this file exists to make ----
 if (!started) errors.push('[smoke] audio never started — the overlay never hid');
+else if (!measured) errors.push('[smoke] never got a clean measurement — the page kept reloading');
 else if (!state.overlayHidden) errors.push('[smoke] overlay came back — the engine reported a failure');
-if (started && hapTotal === 0) errors.push('[smoke] no sound: zero hap events since audio started');
+else if (hapTotal === 0) errors.push('[smoke] no sound: zero hap events since audio started');
 
 console.log('--- SMOKE RESULT ---');
 console.log('elapsed:', at(), '| load avg at start:', load1.toFixed(2), `| navigations: ${navigations}`);
