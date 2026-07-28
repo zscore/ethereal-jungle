@@ -22,6 +22,8 @@ npm-debug.log*
 .env
 .env.local
 shots/
+# …and the before/after set a visual change is compared against
+shots-baseline/
 
 # Field-recording download cache (rebuilt by tools/ingest_amb.py)
 tools/.amb_cache/

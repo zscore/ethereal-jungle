@@ -40,6 +40,12 @@ mkdirSync(outDir, { recursive: true });
 
 const server = await createServer({ root: new URL('..', import.meta.url).pathname, server: { port: 5198 } });
 await server.listen();
+// 5198 is a preference, not a promise: vite silently moves to the next free
+// port when something else already holds it (another project's dev server will
+// do), and the hardcoded goto below then pointed at that stranger's page. The
+// symptom is a 30 s timeout waiting for `#overlay`, which reads like a broken
+// app. Ask the server where it actually landed.
+const origin = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5198';
 
 const browser = await chromium.launch({
   ...(existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {}),
@@ -53,7 +59,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(`[pageerror] ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${m.text()}`); });
 
-await page.goto('http://localhost:5198', { waitUntil: 'load' });
+console.log(`serving: ${origin}`);
+await page.goto(origin, { waitUntil: 'load' });
 await page.waitForTimeout(2500);
 await page.click('#overlay');
 await page.waitForTimeout(9000); // samples load, engine schedules, figures fire
