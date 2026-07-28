@@ -25,7 +25,7 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
                    ▼                  ▼
         music/ = M(S, seed_m)   visuals/ = V(S, seed_v)     — never V(audio)
         generators.js → engine.js     scene.js + biomes.js
-        (Strudel patterns             (one-world jungle: biome per family,
+        (Strudel patterns             (one forest, four storeys,
          → superdough orbits,          camera altitude = brightness walk,
          kick ducks the far orbits)    figure flashes, ducked ether)
 ```
@@ -57,9 +57,15 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
 - `music/engine.js` — Strudel scheduler + superdough boot; wraps the audio output
   so **every event is mirrored to the bus with its audio-clock deadline before it
   sounds** (the visualizer's clairvoyance); re-permutes each 4-bar phrase.
-- `visuals/biomes.js` + `visuals/scene.js` — the one-world solution: local-rule
-  roots, growth-vine floor, particle-ether canopy, self-similar sky, mist and
-  graded air, stacked in altitude; track transitions are camera traversals
+- `visuals/biomes.js` + `visuals/scene.js` — the one-world solution, and since
+  D39 one **forest**: four storeys (undergrowth / understory / canopy / open
+  air) welded by trunks that span all of them, a crown layer that is the world's
+  ceiling, and one extinction curve (`canopyLight`, ~2% of open-sky light on the
+  litter) driving exposure, fog, the light shafts and the grade together. The
+  crowns' two altitudes are read out of `TRACKS[i].brightness`, so two tracks
+  play under the canopy, one inside it and one above it. Local-rule roots,
+  growth-vine understory, particle ether and mist all still live in it; track
+  transitions are camera traversals
   (brightness sampled 4 s ahead) with a per-band lateral orbit that keeps the
   motion signature continuous. Figure flashes spent only on kicks/snares; the
   kick ducks the ether. Plus the living layer: flocking fireflies, phyllotaxis
@@ -192,7 +198,8 @@ into a recording, and the analyser now counts those and warns rather than
 letting a starved run read as a musical decision. It is a diagnostic, not a
 gate — `npm test` is the gate.
 
-The screenshot sweep captures every biome band, the climax, the
+The screenshot sweep captures the four storeys, the two forestscape frames
+(among the trunks, and out over the crown sea), the climax, the
 corpus shrine, one shot per perform-rail knob, both seam flavors, the weather
 (rain, a held lightning strike), each new nature biome in isolation, and each
 style tier, into `shots/<backend>-<name>.png`. Run it on **both** backends
@@ -204,7 +211,7 @@ PNGs come out black, and the run *does* print errors. It certifies that the
 chain compiles and the world boots on that backend, and nothing more —
 appearance and frame rate there need a real browser window.
 
-Escape hatches while looking: `?altitude=0.6`, `?biome=canopy`, `?shrine=0`,
+Escape hatches while looking: `?altitude=0.6`, `?biome=forest`, `?shrine=0`,
 `?dof=0`, `?style=0`, `?weather={"rain":1}`, and `window.jungle.visuals` in the
 console — `setAltitude(a, snap)`, `setLateral(x)` (pins the sway + band orbit so
 a shot repeats), `isolate(biome)`, `shrine(true|false|null)`,

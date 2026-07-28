@@ -55,7 +55,8 @@ import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
 import { initFigure } from './figure.js';
 import { initShrine } from './shrine.js';
 import {
-  look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt, FOV_BASE,
+  look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt,
+  pitchAt, canopyLight, FOV_BASE,
 } from './look.js';
 import { windAt, weatherAt, lightningAt } from './weather.js';
 
@@ -495,9 +496,12 @@ export async function initScene(canvas) {
     camera.position.x = lateral;
     camera.position.y = camY - duck * 0.18;           // the kick shoves the camera
     camera.position.z = 12 + (lateralOverride == null ? orbit.z : 0) - 4.5 * flourish;
-    // pitch follows altitude: gaze down into the roots at the bottom of the
-    // world, up toward the light near the top — the register is where you look
-    const lookAt = new THREE.Vector3(lateral * 0.5, camY + (-3 + 6 * b), 0);
+    // Pitch follows altitude, but not monotonically — `pitchAt` (look.js) is a
+    // per-band table and the argument for its shape is there. Short version:
+    // the eye goes to what it does not have, so the gaze climbs toward the
+    // light gaps from the litter and tips back down over the canopy from above.
+    const alt = camY / WORLD_TOP;
+    const lookAt = new THREE.Vector3(lateral * 0.5, camY + pitchAt(alt), 0);
     camera.lookAt(lookAt);
     camera.rotateZ(0.1 * flourish);
 
@@ -514,7 +518,7 @@ export async function initScene(canvas) {
 
     // ---- world + figure state: bus signals only ----
     const env = {
-      t, T, Tf, b, drift, duck, w, quality,
+      t, T, Tf, b, alt, drift, duck, w, quality,
       trackPhase: trackInfo.phase, trackIndex: trackInfo.index,
       cam: camera.position,
       wind, weather, flash,   // the shared atmosphere (K1/K7/M2)
@@ -523,7 +527,7 @@ export async function initScene(canvas) {
     figure.update(dt);
 
     // palette center of gravity + fog: the continuity layer (§4.2)
-    const col = paletteAt(camY / WORLD_TOP);
+    const col = paletteAt(alt);
     light.color = col;
     light.position.set(0, 5 + b * 25, 5);             // phrygian roots … lydian sky
     // K7: a strike is a second light source, from a bearing the storm chose —
@@ -539,15 +543,21 @@ export async function initScene(canvas) {
     // the whole look, from one pure function (G2): bus params + env in,
     // uniforms out. Nothing here decides anything; it only assigns.
     const L = look(bus.params, {
-      T, Tf, b, duck, w, fusion: fusionNow, arrival, exhale, flash, fusionAmt,
+      T, Tf, b, alt, duck, w, fusion: fusionNow, arrival, exhale, flash, fusionAmt,
       focusDist: camera.position.distanceTo(lookAt),
     });
     const style = styleAt({ section, fusionAmt }, bus.params);
     // the one style that must not snap: a section boundary is a hard edge, and
     // a medium that changes on a frame reads as a dropped frame (§9.1)
     inkAmt += (style.ink - inkAmt) * Math.min(1, dt * 0.9);
-    const grade = gradeAt(camY / WORLD_TOP);
-    scene.fog.color.copy(col.clone().multiplyScalar(0.12));
+    const grade = gradeAt(alt);
+    // Fog is not just a density, it is a COLOUR, and in a forest the colour is
+    // the story: under the crowns what you cannot see is black, because there
+    // is no light out there to scatter; over them it is a pale luminous haze,
+    // because there is nothing but light out there. The same curve that thins
+    // the fog therefore also lifts it — which is aerial perspective, and it is
+    // the reason the last band has a horizon and the first three do not.
+    scene.fog.color.copy(col).multiplyScalar(0.05 + 0.5 * canopyLight(alt));
     scene.fog.density = L.fogDensity;
 
     if (post) {
@@ -568,7 +578,12 @@ export async function initScene(canvas) {
       fx.steps.value = L.steps;
       fx.tint.value.set(L.tint[0], L.tint[1], L.tint[2]);
       fx.tintAmt.value = L.tintAmt;
-      fx.dim.value = L.dim;
+      // two exposures, multiplied: `dim` is the HP kill subtracting picture (a
+      // knob), `exposure` is how much light this height of the forest actually
+      // has (the world). Keeping them separate is what lets the rail keep its
+      // idle-is-identity property while the world walks from 0.62 on the litter
+      // to 1.0 over the crowns — the 5.6-stop real difference, compressed.
+      fx.dim.value = L.dim * L.exposure;
       fx.vignette.value = L.vignette;
       fx.focus.value = L.focus;
       fx.focal.value = L.focal;
