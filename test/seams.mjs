@@ -11,7 +11,9 @@ import {
   bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS, BAR_SECONDS,
   AMB_CHUNKS, sectionSpans, seamVariant, trackStartBar,
 } from '../src/bus.js';
-import { makeSetPattern } from '../src/music/generators.js';
+import {
+  makeSetPattern, SEAM_FILLS, FILL_VOICES, seamFillFor, seamFillSound,
+} from '../src/music/generators.js';
 
 miniAllStrings();
 
@@ -31,6 +33,15 @@ function onsets(begin, end) {
 }
 const soundsIn = (b, e) => new Set(onsets(b, e).map((h) => h.value?.s));
 const orbitsIn = (b, e) => new Set(onsets(b, e).map((h) => h.value?.orbit ?? 0));
+
+// D38 — the fill is no longer always a snare, so nothing below may assume `sd`.
+// The exiting track supplies the costume, the boundary picks the material, and
+// `seamFillSound` is the single source of truth for what to listen for.
+const exitingTrack = (intoIndex) => TRACKS[(intoIndex - 1 + TRACKS.length) % TRACKS.length];
+const fillSoundInto = (intoIndex) =>
+  seamFillSound(seamFillFor(intoIndex, bus.params.seed), exitingTrack(intoIndex));
+/** Onsets belonging to the seam fill in [b, e). */
+const fillIn = (b, e, snd) => onsets(b, e).filter((h) => h.value?.s === snd);
 
 // Timeline geometry: track 0 is `bars` long; the seam window is its last
 // SEAM_BARS bars, the late phase its last SEAM_LATE_BARS bars.
@@ -79,9 +90,16 @@ console.log('early seam phrase (D36 — the exit winds down)');
 
 console.log('late seam phrase (drums die, the figure lets go)');
 {
-  const s = soundsIn(lateStart, T0);
-  check(!s.has('jbreak'), 'break gone');
-  check(!s.has('bd'), 'kick gone');
+  const fillSnd = fillSoundInto(1);
+  const hatSnd = TRACKS[0].palette?.hats?.s ?? 'hh';
+  // D38 — "the drums are gone" can no longer be spelled `!has('jbreak')`,
+  // because the fill itself may BE the break, dragging to a halt. The claim is
+  // the same one it always was, said about the stream instead of the sample:
+  // by the die-line the near orbit is down to the fill and the ebbing hat.
+  const drumStream = new Set(onsets(lateStart, T0)
+    .filter((h) => (h.value?.orbit ?? 0) === 1).map((h) => h.value?.s));
+  check([...drumStream].every((x) => x === fillSnd || x === hatSnd),
+    `the drum stream is down to the fill and the hat (${[...drumStream].join(', ')})`);
   check(!orbitsIn(lateStart, T0).has(2), 'bass gone');
   check(!orbitsIn(lateStart, T0).has(4), 'lead gone');
   const padHaps = pattern.queryArc(lateStart, T0).filter((h) => (h.value?.orbit ?? 0) === 3);
@@ -91,8 +109,7 @@ console.log('late seam phrase (drums die, the figure lets go)');
   // level and filter fall away, and both have to end up quieter and darker than
   // they started or the seam is still a build wearing new figures.
   const perBar = (f) => Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
-    Math.max(0, ...onsets(lateStart + j, lateStart + j + 1)
-      .filter((h) => h.value?.s === 'sd').map(f)));
+    Math.max(0, ...fillIn(lateStart + j, lateStart + j + 1, fillSnd).map(f)));
   const gains = perBar((h) => h.value?.gain ?? 0);
   const cutoffs = perBar((h) => h.value?.cutoff ?? 0);
   check(gains.every((g, j) => j === 0 || g < gains[j - 1]),
@@ -100,24 +117,30 @@ console.log('late seam phrase (drums die, the figure lets go)');
   check(cutoffs.every((c, j) => j === 0 || c < cutoffs[j - 1]),
     `and closes with it (${cutoffs.join(' → ')} Hz)`);
   const rollCounts = Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
-    onsets(lateStart + j, lateStart + j + 1).filter((h) => h.value?.s === 'sd').length);
+    fillIn(lateStart + j, lateStart + j + 1, fillSnd).length);
   check(!/^1,2,4,8$/.test(rollCounts.join(',')),
     `and it is still not a power-of-two doubling (got ${rollCounts.join(',')})`);
   // the hole: the last 16th before the new downbeat is empty, so the boundary
-  // lands into space rather than into a wall of snare
-  const lastSixteenth = onsets(T0 - 1 / 16, T0).filter((h) => h.value?.s === 'sd').length;
-  check(lastSixteenth === 0, 'the fill leaves a hole on the last 16th before the downbeat');
+  // lands into space rather than into a wall of whatever the fill is made of
+  check(fillIn(T0 - 1 / 16, T0, fillSnd).length === 0,
+    'the fill leaves a hole on the last 16th before the downbeat');
 }
 
 console.log('bar-exactness at the phase edges');
 {
-  // no kick/break onset leaks past the lateStart bar line…
+  // nothing but the fill and the ebbing hat crosses the die-line. Stated over
+  // the near orbit rather than over sample names (D38): the arrangement's
+  // materials and the fill's are now the same set, so only the stream separates
+  // "the break is still playing" from "the fill is made of the break".
+  const fillSnd = fillSoundInto(1);
+  const hatSnd = TRACKS[0].palette?.hats?.s ?? 'hh';
   const leaked = onsets(lateStart - 1, lateStart + 1).filter(
-    (h) => (h.value?.s === 'bd' || h.value?.s === 'jbreak') && h.whole.begin.gte(Fraction(lateStart)));
-  check(leaked.length === 0, 'no drum onset at/after the die-line');
-  // …and the countdown's first snare lands exactly ON it
-  const first = onsets(lateStart, lateStart + 1).find((h) => h.value?.s === 'sd');
-  check(first && first.whole.begin.equals(Fraction(lateStart)), 'countdown starts exactly on the bar line');
+    (h) => (h.value?.orbit ?? 0) === 1 && h.whole.begin.gte(Fraction(lateStart)) &&
+      h.value?.s !== fillSnd && h.value?.s !== hatSnd);
+  check(leaked.length === 0, 'no arrangement onset at/after the die-line');
+  // …and the fill's first hit lands exactly ON it
+  const first = fillIn(lateStart, lateStart + 1, fillSnd)[0];
+  check(first && first.whole.begin.equals(Fraction(lateStart)), 'the fill starts exactly on the bar line');
   // the boundary (D11): the incoming track opens with its intro — the kick
   // heartbeat lands exactly on the downbeat, the break waits for the build
   const drop = onsets(T0, T0 + 1);
@@ -219,10 +242,10 @@ console.log('seam variants (D18) — every boundary is a landing or a dissolve')
     const hat = TRACKS[(i - 1 + TRACKS.length) % TRACKS.length].palette?.hats?.s ?? 'hh';
     const late0 = boundary - SEAM_LATE_BARS;
     const tB = boundary * BAR_SECONDS;
-    // loudest snare per countdown bar: rising = promise kept, falling = withdrawn
+    // loudest fill hit per countdown bar: rising = promise kept, falling = withdrawn
+    const fillSnd = fillSoundInto(i);
     const sdGains = Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
-      Math.max(...onsets(late0 + j, late0 + j + 1)
-        .filter((h) => h.value?.s === 'sd').map((h) => h.value?.gain ?? 0)));
+      Math.max(...fillIn(late0 + j, late0 + j + 1, fillSnd).map((h) => h.value?.gain ?? 0)));
     const impacts = onsets(boundary, boundary + 1).filter((h) => h.value?.s === 'ambimpact');
     // D36 — BOTH flavors wind down now; what still separates them is how the
     // boundary is met. A landing arrives on something (a soft impact, a root
@@ -245,6 +268,83 @@ console.log('seam variants (D18) — every boundary is a landing or a dissolve')
       check(impacts.length === 0, `→${into}: no impact on a dissolve arrival`);
       check(!orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: intro stays bass-free`);
     }
+  }
+}
+
+console.log('D38 — the fill bag is materials, not four spellings of a snare roll');
+{
+  const seed = bus.params.seed;
+  const dealt = TRACKS.map((_, i) => seamFillFor(i, seed));
+  console.log(`        (seed ${seed}: ${dealt.map((f, i) =>
+    `→${TRACKS[i].name}: ${f.name} [${f.voice}] on ${seamFillSound(f, exitingTrack(i))}`).join(', ')})`);
+
+  // the bag itself
+  check(new Set(SEAM_FILLS.map((f) => f.voice)).size === FILL_VOICES.length,
+    `every material class is represented in the bag (${FILL_VOICES.join(', ')})`);
+  check(SEAM_FILLS.filter((f) => f.voice !== 'snare').length >= 3,
+    'at least three fills are not a snare at all');
+  check(SEAM_FILLS.every((f) => f.gain.length === 4 && f.lpf.length === 4),
+    'every fill automates one gain and one cutoff per bar');
+  check(SEAM_FILLS.every((f) => f.gain.every((g, j) => j === 0 || g < f.gain[j - 1])),
+    'every fill in the bag falls, whatever it is made of');
+  check(SEAM_FILLS.every((f) => f.lpf.every((c, j) => j === 0 || c < f.lpf[j - 1])),
+    'and closes as it falls');
+  // the hole is a property of the figure, so it can be read straight off the
+  // notation: split into top-level groups (one per bar) and the fourth must
+  // either be a rest outright or end on one
+  const barGroups = (fig) => {
+    const out = [];
+    let depth = 0, cur = '';
+    for (const ch of fig.trim()) {
+      if (ch === '[') depth++;
+      if (ch === ']') depth--;
+      if (/\s/.test(ch) && depth === 0) { if (cur) out.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
+  check(SEAM_FILLS.every((f) => barGroups(f.fig).length === 4), 'every figure is exactly four bars');
+  check(SEAM_FILLS.every((f) => {
+    const last = barGroups(f.fig)[3];
+    return last === '~' || /~\]$/.test(last);
+  }), 'every figure leaves the last 16th of its last bar empty');
+
+  // the deal: rotation, not a flat draw. This is the assertion that would have
+  // caught the first cut, where the default seed dealt snare rolls to three of
+  // the four boundaries and the new material was effectively unreachable.
+  check(new Set(dealt.map((f) => f.voice)).size === Math.min(TRACKS.length, FILL_VOICES.length),
+    'no two boundaries in a set are made of the same material');
+  for (const s2 of [1, 2, 7, 99, 12345]) {
+    const v = TRACKS.map((_, i) => seamFillFor(i, s2).voice);
+    check(new Set(v).size === Math.min(TRACKS.length, FILL_VOICES.length),
+      `and that holds on seed ${s2} too (${v.join(', ')})`);
+  }
+  check(TRACKS.every((_, i) => seamFillFor(i, seed).name === dealt[i].name), 'the deal is deterministic');
+  check(new Set([0, 1, 2, 3, 4, 5, 6, 7].map((s2) =>
+    TRACKS.map((_, i) => seamFillFor(i, s2).voice).join(','))).size > 1,
+    'and a reroll moves the rotation (the seed still decides who gets what)');
+
+  // both flavors draw from the one bag — the dissolve is a treatment now, so a
+  // dissolve boundary is as likely to get the tape stop as a landing is
+  const flavors = TRACKS.map((_, i) => seamVariant(i, seed));
+  const nonSnareOnDissolve = TRACKS.some((_, i) =>
+    flavors[i] === 'dissolve' && dealt[i].voice !== 'snare');
+  const nonSnareOnLanding = TRACKS.some((_, i) =>
+    flavors[i] === 'landing' && dealt[i].voice !== 'snare');
+  check(nonSnareOnDissolve || nonSnareOnLanding, 'the new material reaches real boundaries on this seed');
+  // and the dissolve deepens whatever it drew, rather than replacing it
+  for (let i = 0; i < TRACKS.length; i++) {
+    if (flavors[i] !== 'dissolve') continue;
+    const boundary = i === 0 ? SET_BARS : trackStartBar(i);
+    const late0 = boundary - SEAM_LATE_BARS;
+    const snd = fillSoundInto(i);
+    const first = fillIn(late0, late0 + 1, snd)[0];
+    const fill = dealt[i];
+    check(first && Math.abs((first.value?.gain ?? 0) - fill.gain[0] * 0.82) < 5e-3,
+      `→${TRACKS[i].name}: the dissolve deepens ${fill.name} rather than replacing it`);
+    check(first && (first.value?.room ?? 0) > 0.18,
+      `→${TRACKS[i].name}: and drowns it further than a landing would`);
   }
 }
 

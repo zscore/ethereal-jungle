@@ -1533,6 +1533,115 @@ that its material comes from its world — D25, D31). Making the whole layer
 quiet instead of filtered: quiet-and-full-range still muddies a floor that
 already has insects, frogs and leaves in it.
 
+## D38 — The seam fill is a material, not a figure (2026-07-28)
+
+**Decision.** `SEAM_FILLS` grows from four snare figures to seven fills in four
+**material classes** — `snare`, `break`, `pitch`, `weather` — and the class is
+**rotated** across the set rather than drawn. `seamFillFor(toIndex, seed)` walks
+`toIndex` through the classes from a seed-chosen offset and only then draws a
+figure inside the class, so a four-track set hears each material exactly once.
+`DISSOLVE_FILL` is gone: both flavors now draw from the one bag, and the
+dissolve is a *treatment* applied at render time (gain ×0.82, cutoff ×0.55, and
+the growing room send D18 gave it).
+
+The three new materials:
+
+- **the tape stop** — the outgoing track's own break, decelerating. Slice
+  indices under a per-bar `speed` falling 1 → 0.38, so by the last bar the loop
+  is five semitones down and two and a half times too slow. Nothing else in the
+  set automates `speed` over time, which is exactly why it reads as an ending
+  rather than as a quieter drummer. It wears the costume's texture (crush,
+  coarse, shape, hpf) but not its speed, filter or room — the figure automates
+  all three itself. Its first bar is **all sixteen slices**, which is not a
+  stylistic choice: a slice of a one-bar recording is 1/16 of a bar, so 16 steps
+  is the only density at which the break is continuous, and the first cut of
+  this figure used four slices a bar and read as a broken loop rather than a
+  running one. You cannot hear a machine slow down if it was never up to speed.
+  Hits then go 16 → 7 → 3 → 1 while the slots stay 1/16, so each slice starts
+  overrunning the next — 0.089 s of audio in an 0.089 s slot at bar 1, 0.235 s
+  of it by bar 4. The smear is the drag; the thinning is what keeps it out of
+  the hole (the last hit ends 1.0 s before the downbeat).
+- **the descent** — pitched. Degrees of the mode falling to the root, at octave
+  0, which is the register between the bass and the pad that the late seam has
+  just emptied. Four notes, two, one, one: the rhythm decelerates with the
+  pitch. The only fill that says where the set is going harmonically instead of
+  only that it is leaving.
+- **the downpour** — the outgoing biome's texture, chopped onto the grid and
+  then let go. `begin` moves per bar, so the four bars are four different
+  moments of the recording rather than one 200 ms stutter.
+
+**Why.** D10 rewrote the fill because it doubled cleanly, ran solid into the
+downbeat, and never varied. D36 turned it around because it built. All three
+fixes were about the *figure*, and they left the thing nobody had questioned:
+every fill was a snare roll. Four rhythms on one drum is one gesture with four
+spellings, and by the third boundary the ear has stopped hearing the figure and
+started hearing the instrument. The variety was real and inaudible.
+
+**Why rotation, and not a bigger bag.** The first cut of this entry just added
+three fills and kept the flat draw. On the default seed that dealt snare rolls
+to three of the four boundaries — the complaint arriving again by luck, with the
+new material effectively unreachable. Rotating the class makes the guarantee
+structural: no two boundaries in a set are made of the same thing, on any seed.
+The seed still chooses where the rotation starts and which snare figure it is,
+so a reroll still re-deals. `test/seams.mjs` asserts the guarantee across six
+seeds, which is the assertion that would have caught the first cut.
+
+**Why one bag for both flavors.** D18 gave the dissolve a private figure, but
+D36 had already taken the figure-level difference away when it made both flavors
+wind down: what separates a landing from a dissolve is how the boundary is *met*
+— an impact and a root pedal, versus nothing at all — not which snare roll got
+there. Two bags would have meant half the boundaries in a set never hearing the
+new material. The old dissolve figure survives in the bag as *the withdrawal*,
+with its levels written at landing strength so the dissolve's deepening puts
+them back exactly where D18 had them (0.7 → 0.26, 2600 → 480 Hz).
+
+**Why the weather fill chops the biome's *last* ambience layer.** In all four
+biomes the last layer is the texture and the middle ones are the creatures —
+glint, drips, leaves, sparkle against frogs, thunder, the piha, the shimmer.
+D31 is the standing lesson: gating an animal onto a 16th grid turns a recording
+of a bird into a sampler playing a bird, and the verdict on that was
+"horrendous". Textures survive being cut up; creatures do not. Not the bed
+either, which is already foregrounded through the late seam — chopping it would
+double what is there, where an accent that had been resting arrives as a
+gesture.
+
+**One bug found on the way.** The fill was keyed to `p.seed` inside
+`buildArrangement`, which is the *mixed* seed (base + phrase·101 + track·7919).
+Harmless for a flat draw; fatal for a rotation, because the offset would have
+been re-rolled at every boundary and the four-materials guarantee would have
+silently stopped holding. It now keys to `voice.baseSeed`, for the same reason
+D18's seam flavors do.
+
+**What the tests had to give up.** Three assertions in `test/seams.mjs` were
+spelled in terms of the sample `sd`, and one — "no drum onset at/after the
+die-line" — is now *false as written*, because the tape stop's fill **is** the
+break, still playing after the die-line. The claims are the same claims, said
+about the stream instead of the sample: by the die-line the near orbit is down
+to the fill and the ebbing hat, and `seamFillSound()` is exported as the single
+source of truth for what to listen for. `test/palette.mjs`'s D37 check is now
+scoped to the ether orbit, since `ambglint` is both an ambience layer and the
+undergrowth's fill material and averaging the two read a deliberate gesture as
+a mixing error.
+
+**Rejected.** A kick-only fill (a different drum, but still a drum roll — the
+complaint was about the class, not the sample). Toms from the toucan, again
+(D31/D32; the material is a bird and it does not want to be a drum kit). A
+downward noise sweep (that is a stock downlifter, and this bag exists because
+the last stock gesture was replaced). Making the material part of the cast, per
+track, rather than rotating per boundary — the seam belongs to the *boundary*,
+not to either track, and a per-track material would mean the undergrowth's exit
+sounded the same every time the set looped.
+
+**Revisit when.** These figures are chosen from idiom, exactly as §5's groove
+bags were, and they have been measured but not auditioned end to end. The probe
+settles the shape — both probed boundaries fall continuously, −12.6 → −15.7 dB
+into the undergrowth (the descent) and −9.4 → −16.1 dB into the zenith (the tape
+stop, with the corrected 16-step first bar), no cliff — but its
+frames are 0.5 s and the hole is a 16th, so **the probe structurally cannot
+answer the question the tape stop raises**. Whether 0.235 s slices at bar 4 read
+as a machine winding down or as mud is a question for ears, and the arithmetic
+above is an argument that it should be the former, not evidence that it is.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

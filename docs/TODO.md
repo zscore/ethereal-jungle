@@ -377,3 +377,43 @@ multi-second holes of digital silence into a recording — the analyser now coun
 those and says so, since a starved recording reads exactly like an arrangement
 that stopped.
   
+17. ~~can you make three more unique seam variations? don't make them all those
+    snare drum things~~
+    🎧 **candidates landed — needs your ear. D38.** The three are not snares,
+    and the point of the entry is that they are not even *drums*: the bag went
+    from four figures to four **materials**, one of which happens to be a snare.
+    - **the tape stop** — the track's own break, decelerating. Per-bar `speed`
+      falls 1 → 0.38, so the last bar is five semitones down and two and a half
+      times too slow: a machine being switched off rather than a drummer playing
+      quieter. Nothing else in the set automates `speed` over time.
+    - **the descent** — pitched. A line falling through the mode to the root, in
+      the register between the bass and the pad that the late seam has just
+      emptied. Four notes, two, one, one — the rhythm decelerates with it.
+    - **the downpour** — the outgoing biome's own texture, chopped onto the grid
+      and let go, so the undergrowth leaves through its drips and the zenith
+      through its sparkle. It takes each biome's *last* ambience layer on
+      purpose: in all four that is the texture and the middle ones are the
+      creatures, and D31 already proved what gating a bird onto a 16th grid
+      sounds like.
+    - **The deal rotates rather than draws**, which matters more than the
+      figures. The first cut just added three fills to the bag, and on the
+      default seed that dealt snare rolls to three of the four boundaries — your
+      complaint arriving again by luck. Now `toIndex` walks the four material
+      classes from a seed-chosen offset, so **no two boundaries in a set are
+      made of the same thing, on any seed**; the seed still decides where the
+      rotation starts and which snare figure it is.
+    - **The dissolve lost its private figure** (a change you should veto if you
+      disagree): both flavors draw from the one bag now and the dissolve is a
+      *treatment* on top — quieter, darker, drowning further. D36 had already
+      made both flavors wind down, so the figure was no longer what separated
+      them. With two bags, half the boundaries would never have heard any of
+      this. The old dissolve figure is still in the bag as *the withdrawal*, at
+      levels that put it back exactly where D18 had it.
+    - **Measured, not auditioned.** `--seam=3` (the descent) falls −12.6 →
+      −15.7 dB and `--seam=2` (the tape stop) −9.4 → −16.1 dB, both continuous,
+      no cliff. But the probe's frames are 0.5 s and the hole is a 16th, so it
+      *structurally cannot* tell you whether the tape stop smears — at 0.38× a
+      slice plays 0.235 s, and the arithmetic says the last one ends a full
+      second before the downbeat, which is an argument rather than evidence.
+      That one is for your ears. Jump to it with the transport: track 3, then
+      the `seam` section button.

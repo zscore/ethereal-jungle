@@ -228,41 +228,218 @@ const SKEL_MASKS = [
 // cleanly, and the last 16th before the downbeat is empty — but the energy runs
 // the other way: dense first bar, thinning bars after it, gains falling,
 // filters closing. The figure is a hand coming off the fader, not onto it.
-const SEAM_FILLS = [
+// D38 — and then a fourth thing was wrong, which no amount of re-figuring a
+// snare roll could fix: **every one of them was a snare roll.** Four different
+// rhythms played on the same drum for the whole set is one gesture with four
+// spellings, and by the third boundary the ear has stopped hearing the figure
+// and started hearing the instrument. So the bag is no longer a set of figures;
+// it is a set of *materials*, and the three added here are not percussion:
+//
+//   - **the tape stop** — the break itself, decelerating. The loudest thing in
+//     the arrangement is the thing that dies, and it dies by slowing down
+//     rather than by thinning out. Nothing else in the set changes `speed` over
+//     time, which is exactly why it reads as an ending.
+//   - **the descent** — pitched. A line falling through the mode to the root,
+//     in the drums' own near room. The one fill that says where we are going
+//     harmonically instead of only that we are leaving.
+//   - **the downpour** — the biome's own texture, chopped. The band walks off
+//     and the *place* is what is left holding the rhythm; it is the outgoing
+//     track's ambience accent (§3.4's weather promoted to figure for four
+//     bars), so the undergrowth leaves through its leaf rustle and the zenith
+//     through its sparkle.
+//
+// Each entry declares its `voice`, and `seamFillLayer` knows how to dress it.
+// The rules the earlier rewrites established still bind every entry, whatever
+// it is made of: nothing doubles cleanly, the last 16th before the downbeat is
+// empty, and gains and filters fall bar by bar.
+//
+// `fig` is four top-level groups — one per bar under `.slow(4)` — so the figure
+// stays bar-exact into the new downbeat (D9). `x` is a hit; for the pitched
+// voice the integers are degrees of the mode, high to low.
+export const SEAM_FILLS = [
   {
-    name: 'the outbreath',
-    fig: '[sd [sd sd] sd [sd sd]] [sd ~ [sd sd] sd] [~ sd ~ [sd ~]] [sd ~ ~ ~]',
-    gain: '[0.86 0.66 0.48 0.3]',
-    lpf: '[4000 2800 1800 1000]',
+    name: 'the outbreath', voice: 'snare',
+    fig: '[x [x x] x [x x]] [x ~ [x x] x] [~ x ~ [x ~]] [x ~ ~ ~]',
+    gain: [0.86, 0.66, 0.48, 0.3],
+    lpf: [4000, 2800, 1800, 1000],
   },
   {
-    name: 'the stagger',
-    fig: '[[sd sd sd] ~ [sd sd] sd] [~ sd [sd sd] ~] [sd ~ ~ sd] [~ ~ sd ~]',
-    gain: '[0.8 0.62 0.46 0.28]',
-    lpf: '[3600 2500 1600 900]',
+    name: 'the stagger', voice: 'snare',
+    fig: '[[x x x] ~ [x x] x] [~ x [x x] ~] [x ~ ~ x] [~ ~ x ~]',
+    gain: [0.8, 0.62, 0.46, 0.28],
+    lpf: [3600, 2500, 1600, 900],
   },
   {
-    name: 'letting go',
-    fig: '[sd [sd sd] [sd sd sd] ~] [sd ~ sd ~] [~ ~ [sd sd] ~] ~',
-    gain: '[0.82 0.58 0.36 0.2]',
-    lpf: '[3400 2200 1300 700]',
+    name: 'letting go', voice: 'snare',
+    fig: '[x [x x] [x x x] ~] [x ~ x ~] [~ ~ [x x] ~] ~',
+    gain: [0.82, 0.58, 0.36, 0.2],
+    lpf: [3400, 2200, 1300, 700],
+  },
+  {
+    // was DISSOLVE_FILL — see `seamFillFor`. Its levels are written here at
+    // landing strength; the dissolve's own deepening puts them back where D18
+    // had them (0.7 → 0.26, 2600 → 480 Hz).
+    name: 'the withdrawal', voice: 'snare',
+    fig: '[x ~ x ~] [x ~ [x x] ~] [[x x] ~ [x x x] ~] [[x x x] ~ ~ ~]',
+    gain: [0.85, 0.67, 0.49, 0.32],
+    lpf: [4700, 2700, 1550, 870],
+  },
+  {
+    // Slice indices into the outgoing track's own break costume. The figure
+    // thins AND the transport drags: by the last bar the loop is playing at
+    // 0.38× — five semitones down and two and a half times too slow — which is
+    // a machine being switched off, not a drummer playing quieter.
+    //
+    // Bar 1 is all sixteen slices because that is the only density at which the
+    // break is CONTINUOUS: a slice of a one-bar recording is 1/16 of a bar, so
+    // at speed 1 a 16-step bar plays gapless and anything sparser is isolated
+    // stabs with silence between them. The first cut of this figure was four
+    // slices a bar and read as a broken loop rather than a running one — you
+    // cannot hear a machine slow down if it was never up to speed. Hits then
+    // go 16 → 7 → 3 → 1 (no clean doubling), and because the slots stay 1/16
+    // while `speed` falls, each slice starts overrunning the next: 0.089 s of
+    // audio in an 0.089 s slot at bar 1, 0.235 s of it by bar 4. The smear IS
+    // the drag, and the thinning is what keeps it out of the hole.
+    name: 'the tape stop', voice: 'break',
+    fig: '[0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15] '
+       + '[0 ~ 2 3 ~ 5 ~ ~ 8 9 ~ ~ 12 ~ ~ ~] '
+       + '[0 ~ ~ ~ ~ 5 ~ ~ ~ ~ ~ 11 ~ ~ ~ ~] '
+       + '[2 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~]',
+    speed: [1, 0.82, 0.6, 0.38],
+    gain: [0.8, 0.62, 0.44, 0.26],
+    lpf: [5200, 3300, 1900, 950],
+  },
+  {
+    // Degrees of the mode (indices into leadNotes at octave 0 — between the
+    // bass and the pad, so it occupies a register the seam has just emptied),
+    // walking down to the root and arriving on it in the last bar. The rhythm
+    // decelerates with the pitch: four notes, two, one, one.
+    name: 'the descent', voice: 'pitch',
+    fig: '[6 5 ~ 4] [~ 3 ~ 2] [~ ~ 1 ~] [0 ~ ~ ~]',
+    gain: [0.5, 0.4, 0.32, 0.24],
+    lpf: [2400, 1500, 900, 520],
+  },
+  {
+    // Grains of the outgoing biome's accent recording, gated onto the grid and
+    // then let go. `begin` moves per bar so the four bars are four different
+    // moments of the field recording rather than one 200 ms stutter.
+    name: 'the downpour', voice: 'weather',
+    fig: '[x ~ [x x] x] [x ~ ~ x] [~ x ~ ~] [x ~ ~ ~]',
+    begin: [0.07, 0.61, 0.29, 0.83],
+    gain: [0.62, 0.46, 0.32, 0.18],
+    lpf: [6000, 3400, 1900, 1000],
   },
 ];
 
+/** Per-bar automation under `.slow(4)`: one value per bar of the fill. */
+const perBar = (arr) => `[${arr.join(' ')}]`;
+
+/** Dress a figure's hits in a sound. */
+const hits = (fig, snd) => fig.replaceAll('x', snd);
+
 /**
- * The dissolve's figure (D18): the same unevenness, taken further down. Now
- * that both flavors wind down this is the more extreme of the two — it closes
- * to 480 Hz and 0.26 gain, where a landing keeps something under it.
+ * The biome texture a `weather` fill chops: the outgoing track's LAST ambience
+ * layer. Two reasons it is the last one and not the bed or a middle accent.
+ *
+ * Not the bed, because the bed is already foregrounded through the late seam
+ * (`foreground` below) — chopping it would only double what is already there,
+ * where an accent may well have been resting, which is what makes it arrive as
+ * a gesture.
+ *
+ * Not a middle accent, because in every one of the four biomes the last layer
+ * is the **texture** and the middle ones are the **creatures** — glint, drips,
+ * leaves, sparkle against frogs, thunder, the piha, the shimmer. D31 is the
+ * standing lesson here: gating an animal onto a 16th grid is how you turn a
+ * recording of a bird into a sampler playing a bird, and the verdict on that
+ * was "horrendous". Textures survive being cut up; creatures do not.
  */
-const DISSOLVE_FILL = {
-  name: 'dissolve',
-  fig: '[sd ~ sd ~] [sd ~ [sd sd] ~] [[sd sd] ~ [sd sd sd] ~] [[sd sd sd] ~ ~ ~]',
-  gain: '[0.7 0.55 0.4 0.26]',
-  lpf: '[2600 1500 850 480]',
+export const seamFillWeather = (ambience = []) =>
+  ambience.slice(1).pop() ?? ambience[0] ?? 'ambwind';
+
+/** The material classes, in the order they rotate through a set. */
+export const FILL_VOICES = ['snare', 'break', 'pitch', 'weather'];
+
+/**
+ * Which fill a boundary gets: keyed to the track being entered, mixed with the
+ * seed, so the set varies and a reroll re-deals it. Pure — no draw from the
+ * phrase `rng`, which would shift every seeded decision downstream.
+ *
+ * **The material rotates; only the figure is drawn.** A flat draw over the bag
+ * is the wrong shape for this decision: with four snare figures in seven, the
+ * default seed dealt snare rolls to three of the set's four boundaries, which
+ * is the complaint the new material exists to answer arriving again by luck.
+ * Rotating `toIndex` through the voices instead guarantees that no two
+ * boundaries in a set are made of the same thing — a four-track set hears the
+ * break stop, a line fall, the biome chopped and exactly one snare roll — and
+ * the seed still chooses where the rotation starts and which snare figure it is.
+ *
+ * D38 — BOTH flavors draw from this one bag now. D18 gave the dissolve its own
+ * private figure, but D36 already took the figure-level difference away when it
+ * made both flavors wind down: what separates a landing from a dissolve is how
+ * the boundary is *met* (an impact and a root pedal, versus nothing at all),
+ * not which snare roll got there. Keeping a second bag would have meant half
+ * the boundaries in a set never hearing the new material.
+ */
+export const seamFillFor = (toIndex, seed) => {
+  const rot = Math.abs(strHash(`fillvoice:${seed}`)) % FILL_VOICES.length;
+  const voice = FILL_VOICES[(((toIndex + rot) % FILL_VOICES.length) + FILL_VOICES.length) % FILL_VOICES.length];
+  const bag = SEAM_FILLS.filter((f) => f.voice === voice);
+  return bag[Math.abs(strHash(`fill:${toIndex}:${seed}`)) % bag.length];
 };
 
-/** Dress a fill figure in the track's own snare. */
-const fillFigure = (fig, snd) => (snd === 'sd' ? fig : fig.replaceAll('sd', snd));
+/**
+ * The sound a fill's figure will be made of, given the track that is exiting.
+ * Exported because it is the only way to know what to listen for: the test and
+ * the probe both need it, and re-deriving it would be a second source of truth.
+ */
+export function seamFillSound(fill, track = {}) {
+  const pal = track.palette ?? {};
+  switch (fill.voice) {
+    case 'break': return pal.break?.s ?? 'jbreak';
+    case 'pitch': return pal.bass?.s ?? 'sawtooth';
+    case 'weather': return seamFillWeather(track.ambience);
+    default: return pal.snare?.s ?? 'sd';
+  }
+}
+
+/**
+ * Render a fill. The dissolve is a *treatment* applied here rather than a
+ * separate figure (D38): quieter, darker, and drowning further as it goes,
+ * where a landing keeps a little air so the hole is audibly a hole.
+ */
+function seamFillLayer(ctx, fill, { snd, notes, brk = {}, rs, deep }) {
+  const { s, note } = ctx;
+  const gain = perBar(fill.gain.map((v) => +(v * (deep ? 0.82 : 1)).toFixed(3)));
+  const lpf = perBar(fill.lpf.map((v) => Math.round(v * (deep ? 0.55 : 1))));
+  let pat;
+  switch (fill.voice) {
+    case 'break': {
+      // the costume's TEXTURE only — its speed, filter and room are per-track
+      // constants and this figure automates all three itself
+      let x = s(snd).slice(16, fill.fig)
+        .speed(perBar(fill.speed.map((v) => +(v * (brk.speed ?? 1)).toFixed(3))));
+      if (brk.crush) x = x.crush(brk.crush);
+      if (brk.coarse) x = x.coarse(brk.coarse);
+      if (brk.shape) x = x.shape(brk.shape);
+      if (brk.hpf) x = x.hpf(brk.hpf);
+      pat = x;
+      break;
+    }
+    case 'pitch':
+      pat = note(fill.fig.replace(/\d+/g, (d) => fmt(notes[Math.min(notes.length - 1, +d)])))
+        .s(snd).attack(0.004).decay(0.5).sustain(0.12).release(0.5);
+      break;
+    case 'weather':
+      pat = s(hits(fill.fig, snd)).begin(perBar(fill.begin)).attack(0.004).release(0.09);
+      break;
+    default:
+      pat = s(hits(fill.fig, snd));
+  }
+  return pat
+    .gain(gain).lpf(lpf)
+    .room(deep ? '[0.3 0.5 0.7 0.9]' : 0.18).roomsize(rs(1))
+    .slow(4).orbit(1);
+}
 
 // ---------- D35: one room per orbit ----------
 // `roomsize` is a property of the ORBIT, not of the event: superdough keeps one
@@ -801,27 +978,23 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // late phrase — §5's accelerating fill, bar-exact into the new downbeat.
     // slow(4) keys the roll to absolute cycle mod 4, which IS the bar-in-phrase
     // because track lengths are whole phrases (D9).
-    const snd = pal.snare?.s ?? 'sd';
-    if (dissolveExit) {
-      // dissolve (D18): the same uneven figure with its energy inverted —
-      // fading, closing, drowning as it speeds up. The drums recede into
-      // weather (§3.4); the ambient arrival is what this prepares.
-      layers.push(s(fillFigure(DISSOLVE_FILL.fig, snd))
-        .gain(DISSOLVE_FILL.gain)
-        .lpf(DISSOLVE_FILL.lpf)
-        .room('[0.3 0.5 0.7 0.9]').roomsize(rs(1))
-        .slow(4).orbit(1));
-    } else {
-      // which fill this seam gets: keyed to the track being entered, mixed with
-      // the seed, so the set varies and a reroll re-deals it. Pure — no draw
-      // from `rng`, which would shift every seeded decision downstream of here.
-      const fill = SEAM_FILLS[Math.abs(strHash(`fill:${seam?.toIndex ?? 0}:${p.seed}`)) % SEAM_FILLS.length];
-      layers.push(s(fillFigure(fill.fig, snd))
-        .gain(fill.gain)
-        .lpf(fill.lpf)
-        .room(0.18).roomsize(rs(1)) // a little air, so the hole is audibly a hole
-        .slow(4).orbit(1));
-    }
+    // D38 — one bag for both flavors, and it is no longer four snare rolls:
+    // the fill may be the break dragging to a halt, a pitched line falling to
+    // the root, or the biome's own texture chopped onto the grid. The dissolve
+    // is the deepening applied on top, not a separate figure.
+    // the UN-mixed seed, for the same reason D18's seam flavors use it: `p.seed`
+    // here has the phrase index and the track index folded in, so keying to it
+    // would re-roll the rotation at every boundary and the guarantee that a set
+    // hears four different materials would quietly stop holding.
+    const fill = seamFillFor(seam?.toIndex ?? 0, voice.baseSeed ?? p.seed);
+    const track = { palette: pal, ambience: ambience?.current };
+    layers.push(seamFillLayer(ctx, fill, {
+      snd: seamFillSound(fill, track),
+      notes: leadNotes(mode, 0, tuning), // between the bass and the pad
+      brk: pal.break ?? {},
+      rs,
+      deep: dissolveExit,
+    }));
   } else {
     if (kickIn) {
       layers.push(gate(

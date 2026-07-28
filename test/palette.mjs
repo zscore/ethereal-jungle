@@ -320,9 +320,13 @@ console.log('the biome mix is part of the cast (D30)');
 
 console.log('the dark sparkle (D37)');
 {
+  // D38 — scoped to the ether orbit, because `ambglint` is now also the material
+  // the undergrowth's seam fill chops (`seamFillWeather`): those hits are on the
+  // near orbit and are a drum part, not an ambience layer, and averaging them in
+  // here would read a deliberate four-bar gesture as a mixing error.
   const glints = (i) => {
     const b = trackStartBar(i);
-    return values(b, b + TRACKS[i].bars).filter((v) => v.s === 'ambglint');
+    return values(b, b + TRACKS[i].bars).filter((v) => v.s === 'ambglint' && (v.orbit ?? 0) === 3);
   };
   check(glints(0).length > 0 && [1, 2, 3].every((i) => glints(i).length === 0),
     `the glints are the undergrowth's alone (${glints(0).length} phrases carry them)`);
@@ -332,7 +336,7 @@ console.log('the dark sparkle (D37)');
   check(g.hcutoff > 0 && g.cutoff > 0, `it is filtered at both ends (${g.hcutoff}–${g.cutoff} Hz)`);
   check(g.room > 0 && g.roomsize === TRACKS[0].rooms[3], 'and put in the undergrowth’s own room, so it rings rather than ticks');
   const otherAccents = values(trackStartBar(0), trackStartBar(0) + TRACKS[0].bars)
-    .filter((v) => ['ambfrogs', 'ambrustle'].includes(v.s));
+    .filter((v) => ['ambfrogs', 'ambrustle'].includes(v.s) && (v.orbit ?? 0) === 3);
   const avg = (xs) => xs.reduce((s, v) => s + v.gain, 0) / xs.length;
   check(avg(glints(0)) < avg(otherAccents),
     `it sits under the frogs and the rustle (${avg(glints(0)).toFixed(3)} vs ${avg(otherAccents).toFixed(3)})`);
