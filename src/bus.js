@@ -170,8 +170,10 @@ export const TRACKS = [
       hats: { s: 'hh', lpf: 12000, gain: 1.12 },
       // open and affirmed: fewer extra kicks than the floor, but the ghosts
       // are audible — warmth leans into the backbeat, here and in `backbeat`
-      kick: { extras: 0.82, gain: 0.6 },
-      snare: { ghosts: 0.85, gain: 0.36 },
+      // D29 — auditioned in lab.html: pushed kicks + busy ghosts. The glad,
+      // full track wants to lean forward and chatter under the backbeat.
+      kick: { extras: 0.82, gain: 0.6, bag: 'pushed' },
+      snare: { ghosts: 0.85, gain: 0.36, bag: 'busy' },
       bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5 },
       pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2 },
       lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7, roomsize: 6 },
@@ -199,9 +201,12 @@ export const TRACKS = [
       // rhythm survives as texture
       hats: { s: 'white', hpf: 4500, release: 0.05, gain: 0.5 },
       // the skeleton is dematerialising with everything else: the heartbeat is
-      // nearly bare, and what few ghosts there are barely register
-      kick: { extras: 0.3, gain: 0.45 },
-      snare: { ghosts: 0.3, gain: 0.2 },
+      // nearly bare, and what few ghosts there are barely register.
+      // D29 — auditioned in lab.html: sparse both sides. Single hits only, so
+      // the little that is left has room around it. Agrees with everything else
+      // in this cast (the bass is absent 45% of phrases, the hats are hiss).
+      kick: { extras: 0.3, gain: 0.45, bag: 'sparse' },
+      snare: { ghosts: 0.3, gain: 0.2, bag: 'sparse' },
       // the floor is removed: bare sine, an octave up, absent for whole phrases
       bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45 },
       pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3 },

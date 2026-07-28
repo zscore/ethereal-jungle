@@ -133,30 +133,59 @@ function dissonance(sigma) {
 //
 // Positions are 16ths; 0/4/8/12 are the beats, and nothing here occupies the
 // two the anchor owns.
-export const KICK_EXTRAS = [
-  [10],      // the 'and of 3' — the second kick this idiom is built on
-  [14],      // a late pickup, leaning into the next bar
-  [6],       // pushing the backbeat
-  [3, 10],
-  [10, 14],
-  [6, 11],
-  [2, 10],
-];
-export const SNARE_GHOSTS = [
-  [13], [7], [7, 13], [3, 11], [11, 14], [5, 13], [7, 10, 13],
-];
+/**
+ * The named bags, as a library the cast can point at.
+ *
+ * Each keeps the D23 contract — 16th positions, never on an anchor — and what
+ * varies between them is WHERE the weight sits relative to the beat. That was
+ * the open question in docs/TODO.md §5, and it is not answerable offline:
+ * `test/groove.mjs` proves the figures vary and that the anchors hold still,
+ * and says nothing about whether any of it sounds good. `lab.html` auditions
+ * these; a track then names the one it wants.
+ *
+ * `shipped` is the original idiom-chosen bag and remains the default for any
+ * track that has not been auditioned yet.
+ */
+export const KICK_BAGS = {
+  shipped: [
+    [10],      // the 'and of 3' — the second kick this idiom is built on
+    [14],      // a late pickup, leaning into the next bar
+    [6],       // pushing the backbeat
+    [3, 10],
+    [10, 14],
+    [6, 11],
+    [2, 10],
+  ],
+  sparse: [[10], [14], [6], [10], [3], [11], [10]],
+  busy: [[3, 10], [6, 11], [2, 10, 14], [10, 14], [3, 6, 11], [6, 10, 14], [2, 6, 11]],
+  // everything on the 'a' before a beat: leans forward, pulls the bar early
+  pushed: [[3], [7], [11], [15], [3, 11], [7, 15], [3, 7, 11]],
+  // everything just after a beat: drags, sits behind the anchor
+  laidback: [[1], [5], [9], [13], [1, 9], [5, 13], [9, 13]],
+};
+
+export const SNARE_BAGS = {
+  shipped: [[13], [7], [7, 13], [3, 11], [11, 14], [5, 13], [7, 10, 13]],
+  sparse: [[13], [7], [11], [13], [5], [7], [13]],
+  busy: [[7, 10, 13], [3, 7, 11], [5, 7, 13], [7, 11, 14], [3, 7, 11, 14], [5, 9, 13], [7, 10, 13, 15]],
+  pushed: [[3], [11], [3, 11], [7, 15], [3, 7, 11], [11, 15], [3, 15]],
+  laidback: [[5], [9], [13], [9, 13], [1, 5, 9], [5, 9], [9, 14]],
+};
+
+// back-compatible names for the shipped bags
+export const KICK_EXTRAS = KICK_BAGS.shipped;
+export const SNARE_GHOSTS = SNARE_BAGS.shipped;
 
 /**
- * The bags actually drawn from, as a swappable reference.
- *
- * These placements were chosen from idiom rather than from listening (the
- * standing complaint in docs/TODO.md §5), and the only way to settle them is to
- * hear them side by side. `lab.html` swaps these at runtime and rebuilds, so
- * candidate bags can be A/B'd against the defaults without a code change or a
- * reload. Production never touches it: the defaults above are the shipped
- * values, and `test/groove.mjs` asserts against them.
+ * The lab's override. Null means "use the track's own bag", which is what
+ * production always does — a track names its bag in `TRACKS[i].palette`, next
+ * to the density that scales it. `lab.html` sets these to force ONE bag across
+ * every track so candidates can be A/B'd without the cast getting in the way.
  */
-export const GROOVE_BAGS = { kick: KICK_EXTRAS, snare: SNARE_GHOSTS };
+export const GROOVE_BAGS = { kick: null, snare: null };
+
+/** Resolve which bag a track draws from: lab override, else its cast, else shipped. */
+const bagFor = (library, override, name) => override ?? library[name] ?? library.shipped;
 
 // How much filling-in each section wants: the intro keeps the heartbeat bare,
 // the peak fills in. Form decides, tension only shades — same rule as D11.
@@ -689,7 +718,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // coupling constant between the two media (§3.3) and the visual duck is
       // on beat 1 — one pump per bar in both worlds, whatever else the floor
       // is doing down there.
-      const kx = placements(GROOVE_BAGS.kick, pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
+      const kx = placements(bagFor(KICK_BAGS, GROOVE_BAGS.kick, pal.kick?.bag), pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
       if (kx) {
         layers.push(gate(
           steps(s, pal.kick?.s ?? 'bd', kx.at)
@@ -714,7 +743,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // D23: ghosts stay OFF the dub rail. The 3/16 feedback is answering one
       // transient per bar (§9.3); answering six would be mud, and the rail's
       // job is to be heard as an echo, not as a texture.
-      const gh = placements(GROOVE_BAGS.snare, pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
+      const gh = placements(bagFor(SNARE_BAGS, GROOVE_BAGS.snare, pal.snare?.bag), pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
       if (gh) {
         layers.push(gate(
           steps(s, pal.snare?.s ?? 'sd', gh.at)

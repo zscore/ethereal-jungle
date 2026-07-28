@@ -1113,6 +1113,53 @@ and notice its absence honestly.
 above — most likely alongside the mischief layer (§8), which is the other
 place where a recurring visual character would earn its keep.
 
+## D29 — The groove bag is part of the cast (2026-07-28)
+
+**Decision.** Which placements a track draws from is now a property of the
+track, named in `TRACKS[i].palette` beside the density that scales it:
+
+    kick:  { extras: 0.82, gain: 0.6,  bag: 'pushed' }
+    snare: { ghosts: 0.85, gain: 0.36, bag: 'busy'   }
+
+`KICK_BAGS` / `SNARE_BAGS` in `generators.js` are the library — `shipped`,
+`sparse`, `busy`, `pushed`, `laidback` — and a track names one. Unnamed means
+`shipped`, so nothing changes for a track that has not been auditioned.
+
+**Why this and not one better bag.** D23 gave every cast the same two bags, so
+the only per-track variation in the floor was *how often* it fired, never
+*where the weight sat*. That is the one axis D22 had not yet been extended to,
+and it is the audible one: `pushed` and `laidback` are the same number of hits
+in the same bar and feel like different music. Making it data is the same move
+D12/D22 made for instrumentation — orchestration downgraded to authoring.
+
+**How the values were chosen: by ear, which is the point.** TODO §5's complaint
+was that these numbers came from idiom and had never been heard. `lab.html`
+boots the real engine with no scene (~3 s vs ~2 min under software rendering)
+and swaps the bags at runtime through `GROOVE_BAGS`, so candidates are judged
+in the actual arrangement. Two verdicts so far, and both agree with the cast
+they landed in:
+
+- **canopy → `pushed` + `busy`.** The glad, in-tune, fullest track. Leaning
+  forward and chattering under the backbeat is what that track already does
+  harmonically (warmth 0.85, just intonation, the affirmed backbeat).
+- **zenith → `sparse` + `sparse`.** "Letting everything breathe." Agrees with
+  every other decision in that cast: the bass is absent 45% of phrases, the
+  hats are already gone to high-passed hiss, the break is thinned and reversed.
+
+**Still open.** `undergrowth` and `forest floor` have not been auditioned and
+remain on `shipped`. Two of twenty pairings per track have been heard; this is
+a first pass, not a settled floor.
+
+**Rejected.** Applying one winning bag globally. The first verdict was written
+"nice on canopy" and the second contradicts it outright — sparse is the
+opposite of busy — which is the whole argument for per-track casts restated
+from the listening side rather than the theory side.
+
+**Revisit when** the remaining two tracks are auditioned, or if a bag turns out
+to want to change *within* a track — sections already scale density via
+`SKEL_LIFT`, and a per-section bag would be the natural next axis if the peak
+and the intro turn out to want different feels.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

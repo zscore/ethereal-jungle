@@ -17,80 +17,46 @@
  */
 import { bus, TRACKS, sectionSpans, trackStartBar } from '../bus.js';
 import { initEngine, rebuild, seekToBar, toggle } from '../music/engine.js';
-import { GROOVE_BAGS, KICK_EXTRAS, SNARE_GHOSTS } from '../music/generators.js';
+import { GROOVE_BAGS, KICK_BAGS, SNARE_BAGS } from '../music/generators.js';
 
 const ANCHORS = new Set([0, 4, 8, 12]);
 const STORE_KEY = 'groove-lab-verdicts-v1';
 
 // ---------------------------------------------------------------- candidates
-// Each bag keeps the D23 contract: 16th positions, never on an anchor. What
-// varies is WHERE the weight sits relative to the beat — which is the actual
-// open question, and the one a listening test can settle.
-const KICK_BAGS = [
-  {
-    key: 'shipped',
-    name: 'A — shipped (idiom)',
-    desc: 'What is in main today: the "and of 3" and a late pickup, mostly single hits.',
-    bag: KICK_EXTRAS,
-  },
-  {
-    key: 'sparse',
-    name: 'B — sparse',
-    desc: 'The same vocabulary, but one hit at a time. Tests whether the doubles are what make it busy.',
-    bag: [[10], [14], [6], [10], [3], [11], [10]],
-  },
-  {
-    key: 'busy',
-    name: 'C — busy',
-    desc: 'Two and three extras per bar. Tests whether the floor can carry more before it turns to mud.',
-    bag: [[3, 10], [6, 11], [2, 10, 14], [10, 14], [3, 6, 11], [6, 10, 14], [2, 6, 11]],
-  },
-  {
-    key: 'pushed',
-    name: 'D — pushed (anticipation)',
-    desc: 'Everything on the "a" before a beat (3/7/11/15) — leans forward, pulls the bar early.',
-    bag: [[3], [7], [11], [15], [3, 11], [7, 15], [3, 7, 11]],
-  },
-  {
-    key: 'laidback',
-    name: 'E — laid back',
-    desc: 'Everything just after a beat (1/5/9/13) — drags, sits behind the anchor.',
-    bag: [[1], [5], [9], [13], [1, 9], [5, 13], [9, 13]],
-  },
-];
+// The bags themselves live in generators.js, so the lab auditions exactly what
+// production can name — no second copy to drift. What lives here is only the
+// running commentary and the ordering.
+//
+// `cast` is the important one: it clears the override so every track draws from
+// its OWN bag, which is what actually ships. Use it to hear a verdict in place
+// once it has been written into a palette.
+const DESCRIPTIONS = {
+  cast: 'Whatever each track names in its own palette — this is the real set. Verdicts already applied show up here.',
+  shipped: 'The original idiom-chosen bag, and still the default for any track not yet auditioned.',
+  sparse: 'One hit at a time. Tests whether the doubles are what make it busy.',
+  busy: 'Two to four per bar — the rolling, chattering floor.',
+  pushed: 'Everything on the "a" before a beat (3/7/11/15): leans forward, pulls the bar early.',
+  laidback: 'Everything just after a beat (1/5/9/13): drags, sits behind the anchor.',
+};
+const ORDER = ['cast', 'shipped', 'sparse', 'busy', 'pushed', 'laidback'];
+const LABELS = {
+  cast: '— per-track cast (what ships) —',
+  shipped: 'A — shipped (idiom)',
+  sparse: 'B — sparse',
+  busy: 'C — busy',
+  pushed: 'D — pushed (anticipation)',
+  laidback: 'E — laid back',
+};
 
-const SNARE_BAGS = [
-  {
-    key: 'shipped',
-    name: 'A — shipped (idiom)',
-    desc: 'What is in main today: ghosts clustered around 7 and 13.',
-    bag: SNARE_GHOSTS,
-  },
-  {
-    key: 'sparse',
-    name: 'B — sparse',
-    desc: 'One ghost per bar. Tests whether the clusters are doing any work.',
-    bag: [[13], [7], [11], [13], [5], [7], [13]],
-  },
-  {
-    key: 'busy',
-    name: 'C — busy',
-    desc: 'Three and four ghosts — the rolling, chattering floor.',
-    bag: [[7, 10, 13], [3, 7, 11], [5, 7, 13], [7, 11, 14], [3, 7, 11, 14], [5, 9, 13], [7, 10, 13, 15]],
-  },
-  {
-    key: 'pushed',
-    name: 'D — pushed (anticipation)',
-    desc: 'Ghosts on the "a" — answers the backbeat early.',
-    bag: [[3], [11], [3, 11], [7, 15], [3, 7, 11], [11, 15], [3, 15]],
-  },
-  {
-    key: 'laidback',
-    name: 'E — laid back',
-    desc: 'Ghosts after the beat — the shuffle-ish, dragging feel.',
-    bag: [[5], [9], [13], [9, 13], [1, 5, 9], [5, 9], [9, 14]],
-  },
-];
+const optionsFor = (library) => ORDER.map((key) => ({
+  key,
+  name: LABELS[key],
+  desc: DESCRIPTIONS[key],
+  bag: key === 'cast' ? null : library[key],
+}));
+
+const KICK_OPTIONS = optionsFor(KICK_BAGS);
+const SNARE_OPTIONS = optionsFor(SNARE_BAGS);
 
 const SEEDS = [1, 2, 3, 7, 12];
 
@@ -100,8 +66,8 @@ const state = {
   track: 0,
   section: 'groove',
   seed: 1,
-  kick: 'shipped',
-  snare: 'shipped',
+  kick: 'cast',
+  snare: 'cast',
   force: true,
   playing: true,
 };
@@ -159,8 +125,8 @@ function renderGrid(host, bag) {
 }
 
 function applyBags() {
-  GROOVE_BAGS.kick = bagOf(KICK_BAGS, state.kick).bag;
-  GROOVE_BAGS.snare = bagOf(SNARE_BAGS, state.snare).bag;
+  GROOVE_BAGS.kick = bagOf(KICK_OPTIONS, state.kick).bag;
+  GROOVE_BAGS.snare = bagOf(SNARE_OPTIONS, state.snare).bag;
 }
 
 function jump() {
@@ -189,8 +155,8 @@ function renderSummary() {
     lines.push(`${rec.verdict.toUpperCase().padEnd(5)} ${key}${rec.note ? `\n      note: ${rec.note}` : ''}`);
   }
   lines.push('', 'Bags under test:');
-  for (const b of KICK_BAGS) lines.push(`  kick:${b.key.padEnd(9)} ${JSON.stringify(b.bag)}`);
-  for (const b of SNARE_BAGS) lines.push(`  snare:${b.key.padEnd(8)} ${JSON.stringify(b.bag)}`);
+  for (const b of KICK_OPTIONS) if (b.bag) lines.push(`  kick:${b.key.padEnd(9)} ${JSON.stringify(b.bag)}`);
+  for (const b of SNARE_OPTIONS) if (b.bag) lines.push(`  snare:${b.key.padEnd(8)} ${JSON.stringify(b.bag)}`);
   $('out').value = lines.join('\n');
 }
 
@@ -211,11 +177,22 @@ function syncSectionOptions() {
   fillSelect($('section'), names, state.section);
 }
 
+/**
+ * What the selected option actually resolves to for the track on screen. The
+ * `cast` option carries no bag of its own — it means "whatever this track
+ * names", so the grid has to follow the track selector, not the bag selector.
+ */
+function resolved(option, library, palettePart) {
+  if (option.bag) return { bag: option.bag, via: option.key };
+  const named = TRACKS[state.track].palette?.[palettePart]?.bag ?? 'shipped';
+  return { bag: library[named] ?? library.shipped, via: `cast → ${named}` };
+}
+
 function refreshBagUI() {
-  const k = bagOf(KICK_BAGS, state.kick);
-  const s = bagOf(SNARE_BAGS, state.snare);
-  $('kickdesc').textContent = k.desc;
-  $('snaredesc').textContent = s.desc;
+  const k = resolved(bagOf(KICK_OPTIONS, state.kick), KICK_BAGS, 'kick');
+  const s = resolved(bagOf(SNARE_OPTIONS, state.snare), SNARE_BAGS, 'snare');
+  $('kickdesc').textContent = `${bagOf(KICK_OPTIONS, state.kick).desc}  [${k.via}]`;
+  $('snaredesc').textContent = `${bagOf(SNARE_OPTIONS, state.snare).desc}  [${s.via}]`;
   renderGrid($('kickgrid'), k.bag);
   renderGrid($('snaregrid'), s.bag);
 }
@@ -235,8 +212,8 @@ $('overlay').addEventListener('click', async () => {
   fillSelect($('track'), TRACKS.map((t, i) => ({ value: String(i), label: t.name })), '0');
   syncSectionOptions();
   fillSelect($('seed'), SEEDS.map((s) => ({ value: String(s), label: `seed ${s}` })), '1');
-  fillSelect($('kickbag'), KICK_BAGS.map((b) => ({ value: b.key, label: b.name })), state.kick);
-  fillSelect($('snarebag'), SNARE_BAGS.map((b) => ({ value: b.key, label: b.name })), state.snare);
+  fillSelect($('kickbag'), KICK_OPTIONS.map((b) => ({ value: b.key, label: b.name })), state.kick);
+  fillSelect($('snarebag'), SNARE_OPTIONS.map((b) => ({ value: b.key, label: b.name })), state.snare);
 
   applyBags();
   applyDensity();
@@ -248,6 +225,7 @@ $('overlay').addEventListener('click', async () => {
   $('track').addEventListener('change', (e) => {
     state.track = Number(e.target.value);
     syncSectionOptions();
+    refreshBagUI();     // 'cast' resolves per track, so the grids follow this
     refreshVerdictUI();
     jump();
   });

@@ -149,8 +149,25 @@ pairing, and copy the summary out.
   auditioning. Turn it off to hear the real hit rate.
 - Verdicts persist in localStorage, so the tab can be closed mid-session.
 
-Not settled by this — it is the instrument, not the answer. The numbers stay
-open until there is a listening verdict to act on.
+**First verdicts are in, and applied — see D29.** The bag is now part of the
+cast (`TRACKS[i].palette.kick.bag` / `.snare.bag`), because the two verdicts
+contradicted each other in the most useful possible way:
+
+| track | kick | snare | from |
+|---|---|---|---|
+| undergrowth | `shipped` | `shipped` | not yet auditioned |
+| forest floor | `shipped` | `shipped` | not yet auditioned |
+| **canopy** | `pushed` | `busy` | *"this was nice on canopy"* |
+| **zenith** | `sparse` | `sparse` | *"nice letting everything breathe"* |
+
+Sparse is the opposite of busy, so there was never going to be one winning bag
+— which is D22's per-track-cast argument arriving from the listening side
+instead of the theory side.
+
+**Still open:** `undergrowth` and `forest floor`, both still on `shipped`. Two
+pairings of twenty per track have been heard, so this is a first pass and not a
+settled floor. The lab now defaults to a **per-track cast** option that plays
+what actually ships, so applied verdicts can be checked in place.
 
 ## 6. Housekeeping
 
