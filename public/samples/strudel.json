@@ -12,6 +12,11 @@
   "jbreak": [
     "breaks/break168.wav"
   ],
+  "toucan": [
+    "tom/toucan1.wav",
+    "tom/toucan2.wav",
+    "tom/toucan3.wav"
+  ],
   "ambinsects": [
     "amb/ambinsects.ogg"
   ],

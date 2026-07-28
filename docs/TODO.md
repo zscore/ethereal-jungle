@@ -5,7 +5,7 @@ the list of things that are *wrong or stale right now*. Delete entries as they
 land; if something turns into a real decision, it graduates to
 `design_decisions.md` and leaves here.
 
-Status as of 2026-07-27, on `main` @ `e5d5f78`.
+Status as of 2026-07-28, on `main` @ `d36f92f`.
 
 ---
 
@@ -242,3 +242,60 @@ what actually ships, so applied verdicts can be checked in place.
       *restraint*. The dissolve variant (D18) got the same treatment with its
       energy still inverted.
     Fills also wear the track's own snare costume now, instead of a bare `sd`.
+
+
+11. ~~can you replace the birds in the canopy one that sound like seagulls with
+    jungle style birds and also have like some toucan toms as an instrument
+    pitch shift them and process them so you can make multiple toms~~
+    🎧 **candidates landed — needs your ear.** Two changes, recorded as **D30**
+    and **D31**.
+    - **The birds are Amazonian now.** The gull was a coastal Breton blackbird
+      (`ambcalls`) over an Indiana dawn chorus (`ambbirds`) — a temperate
+      woodland, which is what it sounded like. The canopy is now a Tambopata
+      rainforest bed under two screaming pihas from Tauary. Same rule as D26:
+      *radio aporee ::: maps*, Public Domain Mark, credited in
+      `tools/amb_sources.json`; the retired sources move to `alternates` rather
+      than being deleted, since they shipped. The piha also gets heard: on this
+      seed it cleared the presence threshold in only 6 of the canopy's 17
+      phrases, so `ambienceMix` is now cast data and the canopy names one.
+    - **The toms were built, heard, and reversed** — your verdict was
+      "horrendous", and it was right: `speed` is varispeed, so dragging a
+      1450 Hz croak down to 220 Hz takes the formants with it and you get a
+      growl rather than a drum with a bird's timbre. **D31 is reversed by
+      D32**; `tomLayer` and the whole kit are gone.
+    - **What replaced it: the squawk** — `TRACKS[2].palette.squawk`. The same
+      three croaks (`tools/ingest_toms.py`, PD), but *as a bird*: one call
+      every two phrases, near its own pitch (0.86–1.18), never on a beat,
+      drowned and on the ether orbit. Because it is weather rather than
+      percussion it keeps calling through the intro and the breakdown, and
+      leaves at the late seam with the rest of the cast. Knobs in `bus.js`:
+      `every` (busier canopy), `gain` (nearer bird), `speeds`.
+    - **What has still NOT been verified by ear:** the four recordings. They
+      were chosen from title, description, license and a spectral profile — the
+      piha window has a 12 dB crest (isolated calls over a quiet bed), the
+      Petén window 1.2 dB (a stationary insect wall). That is evidence about
+      shape, not about whether it sounds good. If the piha reads as a car alarm
+      at the climax, `alternates.ambcalls` holds a vetted second Amazonian
+      candidate (a Crested Oropendola's metallic gurgle).
+12. ~~please add more frogs and jungle insect noise in the ground floor, can
+    also add in a bit of rustling ambience too~~
+    🎧 **candidate landed — needs your ear.** The undergrowth (**D30**). Two
+    things were wrong and they compounded: the frogs were Mediterranean marsh
+    frogs and the insects a Californian garden — neither had been to a jungle —
+    and both were *accent* layers resting below a 0.35 presence threshold, so
+    they surfaced in about two phrases out of three and quietly.
+    - New sources: night amazon frogs (Yarinacocha, Peru — the deep Neotropical
+      bullfrog "whoop" is the one you will notice) and rainforest by night from
+      a Maya pyramid in Petén for the always-on insect bed.
+    - `ambienceMix` on the undergrowth alone. The first pass
+      (`{ bed: 1.3, accent: 1.5, threshold: 0.15 }`) was too loud; it is now
+      **`{ bed: 1.15, accent: 1.2, threshold: 0.25 }`** — halfway back to the
+      default on every field, per "somewhere in the middle". The frogs are
+      still in **16 of the track's 17 phrases** (13 at the default) and the
+      rustle in 14, but they sit under the arrangement rather than on it. The
+      other biomes name no mix and are bit-identical — the forest floor's
+      thunder is *meant* to be rare.
+    - The rustle keeps its recording (dry leaves, Kaunas). It is a leaf texture
+      rather than a place, it reads correctly under the floor, and no
+      public-domain tropical-foliage recording in the collection beat it. Say
+      the word and it can be re-sourced. 

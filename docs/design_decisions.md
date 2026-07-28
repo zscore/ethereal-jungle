@@ -1160,6 +1160,193 @@ to want to change *within* a track — sections already scale density via
 `SKEL_LIFT`, and a per-section bag would be the natural next axis if the peak
 and the intro turn out to want different feels.
 
+## D30 — The biomes move to the tropics, and the mix joins the cast (2026-07-28)
+
+**Decision.** Four of the twelve D26 recordings are replaced by Neotropical
+sources, and how loud/how often a biome speaks becomes a per-track field,
+`TRACKS[i].ambienceMix = { bed, accent, threshold }`.
+
+| layer | was | is |
+|---|---|---|
+| `ambbirds` (canopy bed) | morning birds, Indiana bike trail | rainforest atmosphere, Reserva Nacional Tambopata, Peru |
+| `ambcalls` (canopy accent) | blackbird, Vallée des Traouiero, Brittany | two screaming pihas, Tauary, Amazonas |
+| `ambinsects` (undergrowth bed) | night insects, Los Gatos, California | rainforest by night, El Tintal, Petén |
+| `ambfrogs` (undergrowth accent) | night frogs, Sithonia, Greece | night amazon frogs, Yarinacocha, Ucayali |
+
+Every replacement is the same kind of source under the same rule — archive.org
+*radio aporee ::: maps*, Public Domain Mark 1.0 — so D26's licensing discipline
+is untouched. The retired entries move to `alternates` in
+`tools/amb_sources.json` with a `retired` note, because the manifest is the
+attribution record and deleting a source erases the credit for audio that
+shipped.
+
+**Why.** Two complaints, one cause. *"The birds in the canopy sound like
+seagulls"* — the canopy was a coastal Breton blackbird over an Indiana dawn
+chorus, which is a temperate woodland, and a temperate woodland heard through a
+jungle is a gull-haunted one. *"Add more frogs and jungle insect noise in the
+undergrowth"* — the frogs were Mediterranean marsh frogs (one chirping species,
+no depth) and the insects a Californian garden. The piece is called ethereal
+*jungle*; four of its twelve places had never been to one. Nothing about the
+engine was wrong: D26 built the right machine and pointed it at the nearest
+available recordings.
+
+**The mix had to move with them.** Swapping the file is not enough when the
+layer is inaudible. Accent layers ride a presence walk and rest below a fixed
+0.35 threshold — on the shipped seed the screaming piha, the one recording
+anybody would name as "a jungle bird", cleared it in **6 of the canopy's 17
+phrases** and at a gain averaging 0.012. So `ambienceMix` joins `warmth`,
+`tuning`, `palette` and the groove bag as cast data:
+
+    undergrowth: { bed: 1.3, accent: 1.5, threshold: 0.15 }   // the crowded floor
+    canopy:      {           accent: 1.25, threshold: 0.25 }  // let the piha speak
+
+At 0.15 the undergrowth's frogs are in 16 of that track's 17 phrases and the
+rustle in 15, instead of the odd episode, and half again as loud — which is
+what "more frogs" means when the frogs already existed. The other two biomes
+name no mix and are bit-identical.
+
+**Rejected.** A global threshold drop (the forest floor's thunder and the
+zenith's shimmer are *meant* to be rare — an accent that is always there is a
+bed, and D16's whole point was that the two are different roles). Promoting the
+frogs to `ambience[0]` (there is one bed per biome and it is what the seam
+crossfades; two beds would need the crossfade to become a mix). Re-cutting the
+loops to hunt for frog-dense windows (the window scorer already optimises for
+stationarity and head/tail match; asking it for *content* is asking it for the
+thing only ears can judge). Keeping the Kaunas dry-leaves `ambrustle` was
+deliberate, not an oversight — it is a leaf texture rather than a place, it
+reads correctly under the floor, and no PDM tropical-foliage recording in the
+collection beat it.
+
+**Unverified by ear, and knowingly so.** Every source here was chosen from its
+title, description, license and a spectral profile (the piha window has a 12 dB
+crest — isolated calls over a quiet bed, exactly what an accent layer wants; the
+Petén window has a 1.2 dB crest — a stationary wall of night insects, exactly
+what a bed wants). That is evidence about *shape*, not about whether it sounds
+good. Same standing as D29's groove bags before `lab.html`: a candidate, not a
+verdict.
+
+**Revisit when** they have been heard. If the piha reads as a car alarm at the
+climax, `ambcalls` has a second Amazonian candidate already vetted and sitting
+in `alternates` (the Crested Oropendola's metallic gurgle, Yarinacocha).
+
+## D31 — The toucan toms: one bird, tuned into a drum kit (2026-07-28)
+
+**Decision.** The canopy gains a percussion voice made from a toucan.
+`tools/ingest_toms.py` cuts the three loudest isolated croaks out of a single
+public-domain recording (Hato Corozal, Casanare, Colombia — PDM 1.0, in the same
+manifest as the beds) and ships them as `public/samples/tom/toucan{1,2,3}.wav`.
+`tomLayer` in `generators.js` plays them at four `speed` ratios —
+`[0.34, 0.26, 0.2, 0.15]`, which put the croak's ~1450 Hz fundamental at roughly
+490 / 375 / 290 / 220 Hz — so one bird becomes a high-tom-to-floor-tom kit. The
+cast entry is `TRACKS[2].palette.toms`.
+
+**Why the pitch shift lives in the engine.** Rendering four pre-tuned toms would
+freeze the tuning into the samples; as a `speed` array it stays a knob, and
+re-voicing the kit costs an edit to `bus.js` rather than a re-run of the ingest.
+It also makes the kit *one* instrument in the data, which is what it is.
+
+**Ratios, not scale degrees.** The toms do not transpose with the harmony.
+Every other tuned layer in the set reads `mode` and `tuning`; this one refuses
+to, because a tom kit is tuned once and then played — the moment it follows the
+chord it stops being percussion and becomes a fifth melodic voice, and the
+canopy already has four.
+
+**What "process them" turned into.** Per voice, and derived from the
+transposition rather than authored beside it: the lower the tom the longer its
+`decay` (0.16 s → 0.42 s) and the darker its filter (3200 Hz → 1760 Hz), because
+that is what a bigger drum does; `shape` 0.25 across the kit, since a bird has
+no drumhead and the drive is what supplies one; pan spread high-left to
+floor-right. Each strike also draws one of the three croaks at random, so a
+repeated hit is never the identical file — the machine-gun tell.
+
+**Placement.** 16th positions, never on an anchor (0/4/8/12), from a six-figure
+bag; successive strikes descend through the kit and wrap, which is what makes a
+row of toms read as a phrase instead of a repeated drum; and a descending run
+takes the phrase's last bar half the time. Density scales with `SKEL_LIFT`, the
+same per-section appetite the kick extras use, and `presence` 0.75 means the
+toms rest often. They are percussion, so they obey the skeleton's rules: absent
+from the ether-only sections, gone at the late seam, gated by the pre-drop
+dropout.
+
+**A superdough trap worth recording.** The first version set `release`, and
+every tom came out the same short tick no matter how it was tuned. In
+`sampler.mjs` a sample's duration falls back to the *hap's* duration whenever
+`release`, `clip` or `loop` is set — a 16th at 168 BPM is 89 ms — and only
+otherwise runs for the sample. Leaving `release` unset and shaping the tail with
+`decay` into `sustain(0)` is what lets the transposition actually be heard.
+
+**Rejected.** A synthesized tom (trivial, and it would have been the fifth
+sine-with-a-pitch-envelope in a piece whose whole argument is that its material
+comes from its world — D25's corpus shrine and the zenith's granular ghost are
+the same move). Cutting the croak *bursts* whole (a toucan croaks in bursts of
+3–7 pulses ~60 ms apart; the burst is a rattle, and the tom is one pulse — which
+is why `ingest_toms.py` has a `gap` of 60 ms rather than the 250 ms that
+"one call" would suggest). Ogg for the one-shots: they are transients, they are
+100 kB the lot, and every codec puts its own priming delay in front of the
+attack.
+
+**Unverified by ear.** Same standing as D30 — the pitch and envelope numbers are
+chosen from the measured fundamental, not from listening.
+
+**Revisit when** they have been heard. The obvious knobs are `speeds` (the kit's
+tuning), `presence`/`run` (how often), and whether the toms want to appear in
+the forest floor too — the argument against is that the canopy is the one track
+whose cast is *bright*, and a kit made of a bird belongs there.
+
+> **Reversed the same day by D32.** They were heard, and the verdict was
+> "horrendous". The material and the pipeline survive; the tom kit does not.
+
+## D32 — The toms are reversed: the toucan is a squawk (2026-07-28)
+
+**Decision.** D31's tom kit is removed. `tomLayer`, `TOM_SPEEDS`, `TOM_FIGURES`
+and `TOM_RUN` are gone from `generators.js`, and `TRACKS[2].palette.toms` becomes
+`palette.squawk`. The same three croaks now play as **one bird call every two
+phrases** — near their own pitch (`speeds` 0.86–1.18), off the beat, drowned
+(`room` 0.5, `roomsize` 8), on the **ether orbit** rather than the drums.
+
+**Why D31 failed.** Transposing a 1450 Hz croak down to 220 Hz is a 6.6×
+stretch, and `speed` on an `AudioBufferSourceNode` is varispeed — the formants
+travel with the pitch. What arrives is not a drum with a bird's timbre; it is a
+bird played at a sixth of its speed, which is a growl. Everything D31 measured
+about it was true — the fundamentals really do land in tom register, the decays
+really do scale with the transposition — and none of it was the question. That
+is the whole lesson of the entry: the numbers were right and the sound was
+wrong, and only ears can tell you which one you are looking at.
+
+**Why a squawk works where the kit did not.** Near speed 1 the sample is the
+recording, so it reads as an animal instead of as a sampler. And the role fits
+what the material already is: the canopy is where the *biome* is bird song
+(D30's Tambopata bed, the screaming pihas), so a foreground call is the same
+world one step closer — the piece is a jungle, and a jungle punctuates.
+
+**What that changes about its rules.** The toms were percussion and obeyed the
+skeleton: gone from the ether-only sections, gated by the pre-drop dropout,
+scaled by `SKEL_LIFT`. The squawk is weather (§3.4), so it does the opposite —
+it keeps calling through the intro and the breakdown, where a bird obviously
+would, and only leaves at the late seam with the rest of the cast.
+
+**Determinism detail.** The call draws from its own hashed rng
+(`makeRng(strHash('squawk:<phrase>:<seed>'))`), like `SEAM_FILLS`, not from the
+arrangement's stream. Two reasons, one structural and one audible: five draws
+off the shared stream would shift every seeded decision made after it, and
+drawing at a fixed point in a per-phrase stream turned out to correlate across
+phrases — the first version put four of eight calls on the same 16th.
+
+**Rejected.** Keeping both (a kit *and* a call from the same bird is one idea
+twice, and the kit was the bad half). Pitch-shifting properly, with formant
+correction — a real fix for the growl, but it needs a phase vocoder in a project
+whose renderer is superdough, and the destination was never worth the machinery.
+Triggering the call on a probability instead of an interval: "at intervals" was
+the request, and a steady period with a drawn position inside it is more legible
+than a Poisson bird.
+
+**Also in this pass:** the undergrowth's `ambienceMix` comes down from
+`{ bed: 1.3, accent: 1.5, threshold: 0.15 }` to
+`{ bed: 1.15, accent: 1.2, threshold: 0.25 }` — halfway back to the default on
+every field, on the same verdict ("too loud again, somewhere in the middle").
+The frogs still clear the threshold in 16 of 17 phrases against 13 at the
+default, so D30's argument survives its own levels being wrong.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

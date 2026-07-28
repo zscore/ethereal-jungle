@@ -253,6 +253,65 @@ const DISSOLVE_FILL = {
 /** Dress a fill figure in the track's own snare. */
 const fillFigure = (fig, snd) => (snd === 'sd' ? fig : fig.replaceAll('sd', snd));
 
+// ---------- D32: the squawk (was D31's tom kit) ----------
+// The same three croaks (tools/ingest_toms.py), and nothing else survives of
+// D31: transposing a 1450 Hz bird down to 220 Hz to make a tom sounded, in the
+// verdict that killed it, horrendous — a growl, not a drum. What the material
+// is actually good at is being a bird, so it is one: a single call over the
+// canopy at a steady interval, near its own pitch, at the back of the room.
+//
+// Speeds stay close to 1: this is a bird that is *near or far*, not a bird that
+// has been detuned. A hair up reads as a smaller bird, a hair down as a larger
+// one, and that is the whole range the ear will accept before it hears a
+// sampler instead of an animal.
+const SQUAWK_SPEEDS = [0.86, 0.94, 1.0, 1.09, 1.18];
+
+// Where in the bar a call may land: off the beat, always. A bird that lands on
+// the downbeat is playing in the band, and this one is in the trees.
+const SQUAWK_AT = [3, 5, 6, 7, 10, 11, 13, 14];
+
+/**
+ * The squawk (canopy). One call every `every` phrases — a steady interval, so
+ * it reads as punctuation — but the bar it lands in, the 16th inside that bar,
+ * which croak, its pitch and its position in the field are all drawn per
+ * phrase, so the interval never becomes a metronome.
+ *
+ * On the ether orbit and drowned, not on the drums: it is weather (§3.4), which
+ * is also why it keeps playing through the intro and the breakdown where the
+ * percussion does not. Returns null on the phrases between calls.
+ */
+function squawkLayer(ctx, sq, seed, phraseIndex) {
+  const { s } = ctx;
+  const every = Math.max(1, sq.every ?? 2);
+  if (((phraseIndex % every) + every) % every !== 0) return null;
+  // Its OWN rng, hashed from the phrase, rather than draws off the arrangement's
+  // stream — the same trick SEAM_FILLS uses. Two reasons: a call that took five
+  // draws would shift every seeded decision made after it, and drawing at a
+  // fixed point in a per-phrase stream correlates across phrases (the first
+  // version put four of eight calls on the same 16th).
+  const rng = makeRng(strHash(`squawk:${phraseIndex}:${seed}`));
+  const bar = Math.floor(rng() * PHRASE_BARS);
+  const at = SQUAWK_AT[Math.floor(rng() * SQUAWK_AT.length)];
+  const speeds = sq.speeds ?? SQUAWK_SPEEDS;
+  const speed = speeds[Math.floor(rng() * speeds.length)];
+  const n = Math.floor(rng() * (sq.samples ?? 3));
+  const bars = Array.from({ length: PHRASE_BARS }, (_, i) => (i === bar ? 1 : 0));
+  return steps(s, sq.s ?? 'toucan', [at])
+    .n(n)
+    .speed(speed.toFixed(3))
+    // No release and sustain 1: superdough hands a sample the *hap's* duration
+    // whenever `release` is set (89 ms at this tempo), which would clip the call
+    // in half. Left alone the call plays out, and the ingest already put a fade
+    // on its tail.
+    .attack(0.004).decay(0.1).sustain(1)
+    .lpf(sq.lpf ?? 5200)                       // distance takes the top off
+    .room(sq.room ?? 0.5).roomsize(sq.roomsize ?? 8)
+    .pan(0.15 + rng() * 0.7)                   // anywhere in the canopy
+    .gain(sq.gain ?? 0.3)
+    .mask(`[${bars.join(' ')}]/4`)             // absolute cycle mod 4 = bar-in-phrase
+    .orbit(sq.orbit ?? 3);
+}
+
 // ---------- pad motion ----------
 // How much the ether moves, by section. The complaint this answers is that the
 // background chords sit still for minutes at a time in the opening sections —
@@ -563,7 +622,10 @@ export function makeSetPattern(ctx, p, signals) {
         baseSeed: p.seed,
       };
       pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, seamInfo, ps.section,
-        { current: ps.track.ambience, incoming: ps.seam.to?.ambience, phraseIndex: idx, seed: p.seed },
+        {
+          current: ps.track.ambience, incoming: ps.seam.to?.ambience,
+          mix: ps.track.ambienceMix, phraseIndex: idx, seed: p.seed,
+        },
         voice);
       cache.set(idx, pat);
       if (cache.size > 32) cache.delete(cache.keys().next().value); // bounded over long runs
@@ -969,17 +1031,24 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .gain(g).attack(atk).release(rel).pan(panPos).slow(4).orbit(3);
     const [baseBed, ...accents] = ambience.current;
     const foreground = ambient || seamLate || silent;
-    const baseG = landingArrival ? 0.45 // the biome answers the hit at full voice
-      : foreground ? 0.35 : sec === 'build' || sec === 'release' ? 0.25 : 0.15;
+    // D30 — how loud, and how often, the biome is: part of the cast like
+    // everything else (TRACKS[i].ambienceMix). The undergrowth turns both up,
+    // because a jungle floor that goes quiet for whole phrases is not a floor.
+    const mix = ambience.mix ?? {};
+    const bedMix = mix.bed ?? 1;
+    const accentMix = mix.accent ?? 1;
+    const thr = mix.threshold ?? 0.35;
+    const baseG = (landingArrival ? 0.45 // the biome answers the hit at full voice
+      : foreground ? 0.35 : sec === 'build' || sec === 'release' ? 0.25 : 0.15) * bedMix;
     const inBed = ambience.incoming?.[0];
     const x = seam?.active && inBed && inBed !== baseBed ? Math.min(1, seam.progress + 0.25) : 0;
     layers.push(bed(baseBed, baseG * (1 - x)));
     if (x > 0) layers.push(bed(inBed, 0.35 * x));
     accents.forEach((name, li) => {
       const v = layerPresenceAt(name, ambience.phraseIndex ?? 0, ambience.seed ?? p.seed);
-      const lvl = Math.max(0, (v - 0.35) / 0.65); // rest below the threshold
+      const lvl = Math.max(0, (v - thr) / (1 - thr)); // rest below the threshold
       if (lvl <= 0.02) return;
-      const g = (foreground ? 0.3 : 0.12) * lvl * (1 - x);
+      const g = (foreground ? 0.3 : 0.12) * accentMix * lvl * (1 - x);
       layers.push(bed(name, g, 0.02, 0.01, 0.35 + 0.3 * li)); // spread in the field
     });
   }
@@ -1049,6 +1118,13 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   }
   if (pal.choir && castIn && !dropout) {
     layers.push(choirLayer(ctx, pal.choir, chord, brightness));
+  }
+  // D32: the squawk. Weather rather than percussion, so unlike D31's toms it
+  // survives the ether-only sections — a bird does not stop calling because the
+  // drums dropped out. It does leave at the late seam with everything else.
+  if (pal.squawk && castIn) {
+    const call = squawkLayer(ctx, pal.squawk, p.seed, voice.phraseIndex ?? 0);
+    if (call) layers.push(call);
   }
   if (pal.bowl && castIn) layers.push(bowlLayer(ctx, pal.bowl, mode, tuning));
   if (pal.ghost && castIn && !ambient) {

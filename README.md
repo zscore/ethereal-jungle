@@ -46,8 +46,9 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   snare-roll countdown → clean drop). Pure functions: params in, pattern out.
   Every layer wears the current track's costume; the shapes never change, only
   who plays them — Reese and log-tap in the undergrowth, breath voice and dub
-  rail on the forest floor, FM bells and a vowel choir at the canopy, glass bowl
-  and a granular ghost of the set at the zenith.
+  rail on the forest floor, FM bells, a vowel choir and a toucan calling every
+  other phrase (D32) at the canopy, glass bowl and a granular ghost of the set
+  at the zenith.
 - `music/scales.js` — the two harmonic axes: the mode ladder (brightness) and
   the voicing/tuning ladder (warmth). Where "bright but not glad" is actually
   implemented — the third is present, added-6th glad, or absent entirely — plus
@@ -132,6 +133,11 @@ composition code. Keep renderer-specific tricks inside `engine.js` only.
   into a gitignored cache, so the repo carries only the finished loops.
   `amb/impact.wav` is still synthesized (`tools/gen_samples.py`, CC0 by
   construction) because it is a tuned one-shot, not a recording.
+- **The toucan croaks** (`public/samples/tom/toucan{1,2,3}.wav`) ship under the
+  same rule: three calls cut from one Public-Domain-Mark recording in that same
+  manifest (`oneshots`), by `python3 tools/ingest_toms.py`. They are the canopy's
+  squawk — one call every two phrases, near its own pitch (D32; they were briefly
+  a pitch-shifted tom kit, which is what the directory name remembers).
 
 ## Tests
 

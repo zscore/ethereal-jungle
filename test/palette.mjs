@@ -197,6 +197,87 @@ console.log('characteristic instruments are where they belong, and nowhere else'
   check(inTrack(3, ghost) && !anywhereElse(3, ghost), 'and only the zenith hears the set as grains');
 }
 
+console.log('the squawk is a bird, not a drum kit (D32, reversing D31)');
+{
+  const calls = (i) => {
+    const b = trackStartBar(i);
+    return onsets(b, b + TRACKS[i].bars).filter((h) => (h.value ?? {}).s === 'toucan');
+  };
+  const canopy = calls(2);
+  const phrases = TRACKS[2].bars / PHRASE_BARS;
+  check(canopy.length > 0 && [0, 1, 3].every((i) => calls(i).length === 0),
+    `the toucan calls in the canopy and nowhere else (${canopy.length} of them)`);
+  // the interval is the point: one call per `every` phrases, never a burst
+  const perPhrase = new Map();
+  for (const h of canopy) {
+    const p = Math.floor(h.whole.begin.valueOf() / PHRASE_BARS);
+    perPhrase.set(p, (perPhrase.get(p) ?? 0) + 1);
+  }
+  check([...perPhrase.values()].every((n) => n === 1),
+    'exactly one call per phrase that has one — it punctuates, it never chatters');
+  check(canopy.length >= phrases / 3 && canopy.length <= phrases * 0.6,
+    `and it comes at an interval: ${canopy.length} calls across ${phrases} phrases`);
+  // D31's failure mode, asserted against: this is a bird, not a transposition
+  const speeds = canopy.map((h) => h.value.speed);
+  check(speeds.every((v) => v > 0.8 && v < 1.25),
+    `every call is near its own pitch (${Math.min(...speeds)}–${Math.max(...speeds)}) — the tom kit was the mistake`);
+  check(new Set(speeds).size > 1 && new Set(canopy.map((h) => h.value.n)).size > 1,
+    'but the croak and its pitch vary, so the interval is not a sampler firing');
+  const at16 = (h) => Math.round((h.whole.begin.valueOf() % 1) * 16);
+  check(canopy.every((h) => ![0, 4, 8, 12].includes(at16(h))),
+    'no call lands on a beat — the bird is in the trees, not in the band');
+  check(canopy.every((h) => h.value.orbit === 3 && h.value.room >= 0.4),
+    'it is on the ether orbit and wet: weather, not percussion');
+  // and BECAUSE it is weather it outlives the drums, which D31's toms did not
+  const inSection = (name) => {
+    const [b, e] = phraseOf(2, name);
+    return values(b, e).some((v) => v.s === 'toucan');
+  };
+  check(inSection('intro') || inSection('breakdown'),
+    'it keeps calling through the ether-only sections — a bird does not stop for a breakdown');
+  const seamStart = trackStartBar(2) + TRACKS[2].bars - PHRASE_BARS;
+  check(!values(seamStart, seamStart + PHRASE_BARS).some((v) => v.s === 'toucan'),
+    'but it leaves at the late seam, like the rest of the cast');
+}
+
+console.log('the biome mix is part of the cast (D30)');
+{
+  const shipped = JSON.parse((await import('node:fs')).readFileSync('public/samples/strudel.json', 'utf8'));
+  const beds = TRACKS.flatMap((tr) => tr.ambience ?? []);
+  check(beds.length > 0 && beds.every((n) => n in shipped),
+    'every biome layer names a recording we actually ship');
+  // the undergrowth is the crowded one: its accents speak in more phrases
+  const accents = (i) => {
+    const b = trackStartBar(i);
+    const names = new Set((TRACKS[i].ambience ?? []).slice(1));
+    return values(b, b + TRACKS[i].bars).filter((v) => names.has(v.s));
+  };
+  const heard = [0, 1, 2, 3].map((i) => accents(i).length);
+  check(heard[0] === Math.max(...heard),
+    `the undergrowth's accents are heard in more phrases than any other biome's (${heard.join(' / ')})`);
+  const phrases = TRACKS[0].bars / PHRASE_BARS;
+  const frogs = accents(0).filter((v) => v.s === 'ambfrogs').length;
+  check(frogs >= phrases * 0.7,
+    `the frogs are in most of it: ${frogs} of ${phrases} phrases, not the odd episode`);
+  // …and it is the MIX that did that, not the seed being kind. Same walk, both
+  // thresholds, counted directly — this is the claim the request actually made.
+  const { layerPresenceAt } = await import('../src/music/generators.js');
+  const clears = (name, thr) => {
+    let n = 0;
+    for (let p = 0; p < phrases; p++) {
+      if (layerPresenceAt(name, p, bus.params.seed) > thr) n++;
+    }
+    return n;
+  };
+  const mixed = clears('ambfrogs', TRACKS[0].ambienceMix.threshold);
+  const dflt = clears('ambfrogs', 0.35);
+  check(mixed > dflt, `the mix is what did it: ${mixed} phrases clear 0.25, ${dflt} would clear the default 0.35`);
+  check(TRACKS[0].ambienceMix.threshold > 0.15 && TRACKS[0].ambienceMix.accent < 1.5,
+    'and it sits in the middle — the first pass at these numbers was too loud');
+  check(TRACKS.filter((tr) => tr.ambienceMix).length < TRACKS.length,
+    'the mix is a per-track field, not a new default — the other biomes are untouched');
+}
+
 console.log('the spent gestures are spent (§5: a first appearance is an event)');
 {
   // the set's first sound is a stick on wood — bar 0, and never again

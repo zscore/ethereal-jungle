@@ -277,12 +277,22 @@ tracks; a cell that repeats is a thread the listener can hold onto.
 | pluck | dry / gridded | half wet | wet, off-grid | drowned, unmetered |
 | new face 1 | Reese | breath voice | FM bells | glass bowl |
 | new face 2 | log-tap | dub rail | vowel choir | granular ghost |
+| new face 3 | — | — | **the squawk** (D32) | — |
 | spent once | the first stick | delay self-oscillates | the hoover | the silence |
 
 Note the shape of the last three rows: two new faces per track, one per-track
 event, and **eight new sounds across a twenty-minute set** — that is a slow
 enough introduction rate for each one to register as an event rather than as
 decoration (§5's novelty budget, 80/20).
+
+**D31/D32 spend a ninth**, and only the canopy pays: the toucan is a third new
+face in the track that already had the most. That is a real cost against the
+budget this section is arguing for, and it is taken knowingly. D31 spent it on
+a tom kit and was reversed by ear; D32 spends it on a single call every other
+phrase, which is the cheaper version of the same expenditure — an event rather
+than a layer, and one that shades into the biome bed it is standing in front
+of. It still sharpens §7's last open question below, which was already asking
+whether the canopy is too permissive.
 
 ## 6. What this costs to build
 

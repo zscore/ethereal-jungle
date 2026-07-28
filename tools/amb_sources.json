@@ -1,27 +1,27 @@
 {
-  "_doc": "Public-domain field recordings behind the biome ambience loops (D26). Every item is from archive.org's radio-aporee-maps collection under CC0 or the Public Domain Mark, so this file is both the build input and the attribution record. `start` = null lets tools/ingest_amb.py pick the best-looping window automatically; set it to a number of seconds to pin one. Run: python3 tools/ingest_amb.py",
+  "_doc": "Public-domain field recordings behind the biome ambience loops (D26) and the toucan one-shots (D31). Every item is from archive.org's radio-aporee-maps collection under CC0 or the Public Domain Mark, so this file is both the build input and the attribution record. `start` = null lets tools/ingest_amb.py pick the best-looping window automatically; set it to a number of seconds to pin one. Run: python3 tools/ingest_amb.py (loops), python3 tools/ingest_toms.py (one-shots). `alternates` keeps every source that was ever shipped or auditioned — a `retired` note says why one lost the slot.",
   "bpm": 168,
   "bars": 32,
   "sources": {
     "ambinsects": {
-      "archive": "aporee_41451_47281",
-      "file": "nightgarden2.ogg",
-      "title": "Black Rd, Los Gatos, CA 95033, USA - Night forest insects",
-      "creator": "asya87piano",
-      "place": "19586 Black Rd, Los Gatos, CA 95033, USA",
+      "archive": "aporee_31997_36745",
+      "file": "160328001RainforestNight.ogg",
+      "title": "Peten, Guatemala - Rainforest by night",
+      "creator": "Anon6116",
+      "place": "El Tintal, Petén, Guatemala (from the top of a Maya pyramid)",
       "license": "http://creativecommons.org/publicdomain/mark/1.0/",
-      "source_secs": 151.3,
+      "source_secs": 381.0,
       "start": null,
       "gain_db": 0.0
     },
     "ambfrogs": {
-      "archive": "aporee_45956_52199",
-      "file": "frogs20190824125405.ogg",
-      "title": "Lacara, Sithonia 630 78, Griechenland - Night frogs",
-      "creator": "carsten stabenow",
-      "place": "Kalamonisia, Δήμος Σιθωνίας, Περιφερειακή Ενότητα Χαλκιδικής, Μακεδονία - Θράκη, Ελλάδα",
-      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
-      "source_secs": 254.3,
+      "archive": "aporee_71768_83810",
+      "file": "amazonfrogs.mp3",
+      "title": "Enrico home, Yarinacocha, Ucayali, Peru - night amazon frogs",
+      "creator": "3gatti",
+      "place": "La Restinga, Yarinacocha, Coronel Portillo, Ucayali, Perú",
+      "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 166.4,
       "start": null,
       "gain_db": 0.0
     },
@@ -70,24 +70,24 @@
       "gain_db": 0.0
     },
     "ambbirds": {
-      "archive": "aporee_45602_51785",
-      "file": "07202019WesthuesBirdsSIngingBikeTrail.ogg",
-      "title": "Paved Bike Trail, Ouabache State Park, Bluffton, IN 46714, USA - Morning bird song, Paved Bike Trail, Ouabache State Park, Bluffton, IN",
-      "creator": "Kay Westhues",
-      "place": "Wells County, Indiana, USA",
+      "archive": "aporee_40905_46690",
+      "file": "ReservaNacionalTambopataJuly620181210.ogg",
+      "title": "Reserva Nacional Tambopata, Peru - Rainforest atmosphere",
+      "creator": "Thijs Geritz",
+      "place": "Reserva Nacional Tambopata, Madre de Dios, Perú",
       "license": "http://creativecommons.org/publicdomain/mark/1.0/",
-      "source_secs": 90.0,
+      "source_secs": 457.3,
       "start": null,
       "gain_db": 0.0
     },
     "ambcalls": {
-      "archive": "aporee_45002_51132",
-      "file": "CAPSValleyTraoueroBlackbirdsong.ogg",
-      "title": "Vallée des Traouiero, 22730 Trégastel, France - Blackbird song [Valley Traouïero]",
-      "creator": "Yponomeutaneko !",
-      "place": "Perros-Guirec, Lannion, Côtes-dArmor, Bretagne, France métropolitaine, 22700, France",
+      "archive": "aporee_38530_44041",
+      "file": "ScreamingPihax2foretmatinABBR170913T02.ogg",
+      "title": "Tauary (Amazonian Rainforest) - Screaming Piha in the Amazonian Rain Forest",
+      "creator": "Felix BLUME",
+      "place": "Tefé, State of Amazonas, 69470-000, Brazil",
       "license": "http://creativecommons.org/publicdomain/mark/1.0/",
-      "source_secs": 94.6,
+      "source_secs": 510.0,
       "start": null,
       "gain_db": 0.0
     },
@@ -139,6 +139,18 @@
   "alternates": {
     "ambbirds": [
       {
+        "archive": "aporee_45602_51785",
+        "file": "07202019WesthuesBirdsSIngingBikeTrail.ogg",
+        "title": "Paved Bike Trail, Ouabache State Park, Bluffton, IN 46714, USA - Morning bird song",
+        "creator": "Kay Westhues",
+        "place": "Wells County, Indiana, USA",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 90.0,
+        "start": null,
+        "gain_db": 0.0,
+        "retired": "D30 — temperate dawn chorus; the wrong continent for a jungle"
+      },
+      {
         "archive": "aporee_22466_26067",
         "file": "140406000dawnchorus.ogg",
         "title": "Sounds from my Window, Glasgow, UK - Dawn Chorus",
@@ -150,7 +162,57 @@
         "gain_db": 0.0
       }
     ],
+    "ambcalls": [
+      {
+        "archive": "aporee_45002_51132",
+        "file": "CAPSValleyTraoueroBlackbirdsong.ogg",
+        "title": "Vallée des Traouiero, 22730 Trégastel, France - Blackbird song [Valley Traouïero]",
+        "creator": "Yponomeutaneko !",
+        "place": "Perros-Guirec, Côtes-d'Armor, Bretagne, France",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 94.6,
+        "start": null,
+        "gain_db": 0.0,
+        "retired": "D30 — the gull complaint: a coastal Breton blackbird, mewing over sea air"
+      },
+      {
+        "archive": "aporee_71750_83776",
+        "file": "forestdaysounds.mp3",
+        "title": "Enrico home, Yarinacocha, Ucayali, Peru - afternoon amazon forest sounds",
+        "creator": "3gatti",
+        "place": "La Restinga, Yarinacocha, Coronel Portillo, Ucayali, Perú",
+        "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 231.0,
+        "start": null,
+        "gain_db": 0.0,
+        "note": "Crested Oropendola — the metallic liquid gurgle. Second choice for ambcalls."
+      }
+    ],
     "ambinsects": [
+      {
+        "archive": "aporee_41451_47281",
+        "file": "nightgarden2.ogg",
+        "title": "Black Rd, Los Gatos, CA 95033, USA - Night forest insects",
+        "creator": "asya87piano",
+        "place": "19586 Black Rd, Los Gatos, CA 95033, USA",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 151.3,
+        "start": null,
+        "gain_db": 0.0,
+        "retired": "D30 — Californian garden crickets, thin against a jungle floor"
+      },
+      {
+        "archive": "aporee_41467_47297",
+        "file": "AporeeBelizesound3.ogg",
+        "title": "Hawkesworth Bridge, Macal River Park, San Ignacio, Belize - Cicadas in the rainy season",
+        "creator": "mwillis",
+        "place": "San Ignacio, Cayo, Belize",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 196.5,
+        "start": null,
+        "gain_db": 0.0,
+        "note": "Daytime cicada wall — denser and more monotone than the Petén night."
+      },
       {
         "archive": "aporee_46226_52519",
         "file": "R2600271tucskokmagashanguak.ogg",
@@ -159,6 +221,31 @@
         "place": "Ellend, Pécsi járás, Baranya megye, Dél-Dunántúl, Dunántúl, 7744, Magyarország",
         "license": "http://creativecommons.org/publicdomain/mark/1.0/",
         "source_secs": 175.5,
+        "start": null,
+        "gain_db": 0.0
+      }
+    ],
+    "ambfrogs": [
+      {
+        "archive": "aporee_45956_52199",
+        "file": "frogs20190824125405.ogg",
+        "title": "Lacara, Sithonia 630 78, Griechenland - Night frogs",
+        "creator": "carsten stabenow",
+        "place": "Kalamonisia, Δήμος Σιθωνίας, Χαλκιδική, Ελλάδα",
+        "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 254.3,
+        "start": null,
+        "gain_db": 0.0,
+        "retired": "D30 — Mediterranean marsh frogs; one chirping species, no depth"
+      },
+      {
+        "archive": "aporee_70471_82164",
+        "file": "FrogNightintheJungleofCongo.wav",
+        "title": "Lubudi, Lualaba, Democratic Republic of the Congo - Frog Night in the Jungle of Congo",
+        "creator": "Oddfeel",
+        "place": "Lubudi, Lualaba, Democratic Republic of the Congo",
+        "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+        "source_secs": 120.6,
         "start": null,
         "gain_db": 0.0
       }
@@ -215,5 +302,18 @@
         "gain_db": 0.0
       }
     ]
+  },
+  "oneshots": {
+    "toucan": {
+      "archive": "aporee_13799_16106",
+      "file": "003C006AUDIO20120417.wav",
+      "title": "Hato Corozal, Casanare, Colombia - Tucan",
+      "creator": "tuallin.caballero@gma...",
+      "place": "I-65 # 2, Hato Corozal, Casanare, Colombia",
+      "license": "http://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 51.8,
+      "count": 3,
+      "note": "A toucan croaking in the Llanos. tools/ingest_toms.py cuts the loudest distinct croaks into one-shots; the engine pitch-shifts them into the tom kit (D31)."
+    }
   }
 }

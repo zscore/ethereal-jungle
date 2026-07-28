@@ -117,6 +117,16 @@ export const TRACKS = [
   {
     name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30],
     ambience: ['ambinsects', 'ambfrogs', 'ambrustle'],
+    // D30 — the floor is the one biome that is meant to be crowded: the frogs
+    // and the rustle stop being rare episodes, and the bed (Petén night
+    // insects) sits a little louder than elsewhere.
+    //
+    // These are the SECOND set of numbers. The first (1.3 / 1.5 / 0.15) was
+    // judged too loud — "somewhere in the middle" — so each one is now halfway
+    // back to the default (1 / 1 / 0.35): the frogs and rustle still speak in
+    // most phrases rather than a third of them, but they sit under the
+    // arrangement instead of on top of it.
+    ambienceMix: { bed: 1.15, accent: 1.2, threshold: 0.25 },
     warmth: 0.15,                    // dark AND cold: the floor of both axes
     tuning: { stretch: -4 },         // the sag — the stack leans downward
     palette: {
@@ -162,7 +172,13 @@ export const TRACKS = [
   },
   {
     name: 'canopy', bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80], // set climax (~0.62 of set)
+    // D30 — the birds are Amazonian now: a Tambopata rainforest bed under the
+    // screaming piha's calls (tools/amb_sources.json). The accent walk gets a
+    // small lift because on this seed the piha only cleared the default
+    // threshold in 6 of the canopy's 17 phrases — the one recording anybody
+    // would name as "jungle bird" was the one you could barely hear.
     ambience: ['ambbirds', 'ambcalls', 'ambleaves'],
+    ambienceMix: { accent: 1.25, threshold: 0.25 },
     warmth: 0.85,                    // the one glad track: thirds, in tune, affirmed
     tuning: { just: 1 },             // the only track that actually locks
     palette: {
@@ -181,6 +197,16 @@ export const TRACKS = [
       // characteristic 1: FM bells doubling the lead an octave up — inharmonic
       // partials over a glad chord read as light, not error (§7.2)
       bells: { fmh: 3.0, fmi: 2.2, oct: 1, decay: 0.6, room: 0.55, roomsize: 5, gain: 0.19 },
+      // D32 — the squawk (D31's tom kit, reversed): the same three croaks cut
+      // from one Colombian toucan (tools/ingest_toms.py), but played as a bird
+      // rather than transposed into a drum. One call every `every` phrases,
+      // near its own pitch, wet and far back. Turn `every` down for a busier
+      // canopy, `gain` down for a more distant one.
+      squawk: {
+        s: 'toucan', samples: 3, every: 2,
+        speeds: [0.86, 0.94, 1.0, 1.09, 1.18],
+        gain: 0.3, lpf: 5200, room: 0.5, roomsize: 8, orbit: 3,
+      },
       // characteristic 2: the vowel choir. The voice is the strongest attractor
       // in the mix, so it is spent once per set — here, at the golden ratio
       choir: { gain: 0.2, lpf: 1500 },

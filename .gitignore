@@ -25,6 +25,7 @@ shots/
 
 # Field-recording download cache (rebuilt by tools/ingest_amb.py)
 tools/.amb_cache/
+__pycache__/
 
 # Agent scratch + git worktrees
 .claude/
