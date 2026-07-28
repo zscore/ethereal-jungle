@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Groove Lab — auditioning the D23 placements</title>
+    <style>
+      :root {
+        --bg: #0b0e13; --panel: #141922; --line: #232b38; --ink: #dfe6f2;
+        --dim: #8c9bb3; --hot: #ffd9a0; --ok: #8fe3a8; --no: #ff9a8f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.55 ui-sans-serif, system-ui, sans-serif;
+      }
+      #overlay {
+        position: fixed; inset: 0; display: flex; flex-direction: column; gap: 0.6rem;
+        align-items: center; justify-content: center; background: var(--bg); z-index: 10; cursor: pointer;
+      }
+      #overlay h1 { font-weight: 400; letter-spacing: 0.3em; font-size: 1rem; opacity: 0.85; }
+      #overlay p { opacity: 0.45; font-size: 0.8rem; max-width: 34rem; text-align: center; }
+      main { max-width: 1180px; margin: 0 auto; padding: 1.2rem 1.4rem 4rem; }
+      h1.title { font-size: 1rem; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; }
+      p.lede { color: var(--dim); max-width: 62ch; }
+      .cols { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 1.2rem; align-items: start; }
+      @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; }
+      .panel + .panel { margin-top: 0.9rem; }
+      .panel h2 { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin: 0 0 0.7rem; }
+      label { display: block; font-size: 0.76rem; color: var(--dim); margin: 0.65rem 0 0.2rem; }
+      select, button, textarea {
+        font: inherit; background: #0d1219; color: var(--ink);
+        border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.55rem;
+      }
+      select { width: 100%; }
+      button { cursor: pointer; }
+      button:hover { border-color: #3a465c; }
+      button.primary { background: #1d2836; }
+      .row { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.7rem; }
+      .pill { font-size: 0.72rem; padding: 0.15rem 0.5rem; border: 1px solid var(--line); border-radius: 999px; color: var(--dim); }
+      .grid { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin: 0.22rem 0 0.5rem; }
+      .cell { aspect-ratio: 1; border-radius: 3px; background: #10151d; border: 1px solid #1b2230; }
+      .cell.anchor { background: #1a222e; border-color: #2b3646; }
+      .cell.on { background: var(--hot); border-color: var(--hot); }
+      .cell.beat { border-color: #38455a; }
+      .bagrow { display: flex; align-items: center; gap: 0.6rem; }
+      .bagrow .grid { flex: 1; }
+      .bagrow .n { width: 2.4rem; color: var(--dim); font-size: 0.72rem; text-align: right; }
+      .desc { color: var(--dim); font-size: 0.8rem; margin: 0.1rem 0 0.6rem; }
+      .verdict button { min-width: 3.2rem; }
+      .verdict button.sel-yes { border-color: var(--ok); color: var(--ok); }
+      .verdict button.sel-no { border-color: var(--no); color: var(--no); }
+      textarea { width: 100%; min-height: 8.5rem; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.76rem; }
+      .live { font-family: ui-monospace, monospace; font-size: 0.76rem; color: var(--dim); white-space: pre; }
+      .scored { color: var(--dim); font-size: 0.78rem; }
+      .scored b { color: var(--ink); font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <div id="overlay">
+      <h1>groove lab</h1>
+      <p>Auditioning the D23 kick-extra and snare-ghost placements, which were chosen from idiom and never checked by ear. Click to start audio.</p>
+    </div>
+
+    <main>
+      <h1 class="title">Groove Lab</h1>
+      <p class="lede">
+        Pick a bag for the kick extras and one for the snare ghosts, listen, and mark it.
+        The anchors (beats 1–4, the dark cells) never move — that is the whole point of D23;
+        what you are judging is only what sits <em>around</em> them. Swaps take effect at the
+        next phrase boundary. When you are done, copy the summary at the bottom back to me.
+      </p>
+
+      <div class="cols">
+        <div>
+          <div class="panel">
+            <h2>What is playing</h2>
+            <label for="track">Track</label>
+            <select id="track"></select>
+            <label for="section">Section</label>
+            <select id="section"></select>
+            <label for="seed">Seed</label>
+            <select id="seed"></select>
+            <div class="row">
+              <button id="jump" class="primary">Jump here</button>
+              <button id="toggle">Pause</button>
+            </div>
+            <div class="row">
+              <label style="margin:0.5rem 0 0">
+                <input type="checkbox" id="force" checked />
+                Force density — draw an extra every phrase
+              </label>
+            </div>
+            <p class="desc" style="margin-top:0.5rem">
+              Off, the bags are drawn probabilistically and many phrases are bare, which is
+              correct musically but slow to audition. On, you hear the bag every phrase.
+            </p>
+          </div>
+
+          <div class="panel">
+            <h2>Live</h2>
+            <div class="live" id="live">—</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <h2>Kick extras</h2>
+            <select id="kickbag"></select>
+            <p class="desc" id="kickdesc"></p>
+            <div id="kickgrid"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Snare ghosts</h2>
+            <select id="snarebag"></select>
+            <p class="desc" id="snaredesc"></p>
+            <div id="snaregrid"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Verdict on this pairing</h2>
+            <div class="row verdict">
+              <button id="yes">Good</button>
+              <button id="meh">Meh</button>
+              <button id="no">Bad</button>
+            </div>
+            <label for="note">Note (what specifically?)</label>
+            <textarea id="note" style="min-height:4rem" placeholder="e.g. the 2,10 kick fights the bass on the forest floor"></textarea>
+            <div class="row">
+              <button id="save" class="primary">Save verdict</button>
+              <span class="scored" id="scored">nothing marked yet</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Summary — copy this back</h2>
+            <textarea id="out" readonly></textarea>
+            <div class="row">
+              <button id="copy">Copy</button>
+              <button id="clear">Clear all</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="/src/lab/groove_lab.js"></script>
+  </body>
+</html>

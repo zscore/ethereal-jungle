@@ -131,6 +131,27 @@ These are the easiest thing in the system to tune by ear; the bags are plain
 data. Listen through a full set and adjust before treating the numbers as
 settled.
 
+**A bench for it now exists: `lab.html`.** Run `npm run dev` and open
+`/lab.html`. It boots the real engine — same generators, same casts, same
+seeded draw — with **no scene**, which is why it starts in ~3 s instead of the
+main app's ~2 min under software rendering. Pick a bag for the kick extras and
+one for the snare ghosts, hear them in the actual arrangement, mark each
+pairing, and copy the summary out.
+
+- Five candidates per instrument: **shipped** (today's idiom), **sparse**,
+  **busy**, **pushed** (everything on the "a" before the beat) and **laid back**
+  (everything just after it). Pushed vs laid back is the real question — the
+  shipped bag mixes both, which may be why nothing has a clear feel.
+- `GROOVE_BAGS` in `generators.js` is the swap point. Production reads the same
+  reference but never writes it; `test/groove.mjs` still asserts the defaults.
+- **Force density** is on by default: shipped densities × the intro's 0.2 lift
+  means most phrases draw nothing, which is correct musically and useless for
+  auditioning. Turn it off to hear the real hit rate.
+- Verdicts persist in localStorage, so the tab can be closed mid-session.
+
+Not settled by this — it is the instrument, not the answer. The numbers stay
+open until there is a listening verdict to act on.
+
 ## 6. Housekeeping
 
 - Tag `pre-d23-main` (at `4d711e5`) is the pre-merge safety net for the D22/D23
@@ -148,9 +169,33 @@ settled.
   and deleted promptly. `main` is staging; production is a tag that only ever
   moves forward to a commit that passed `npm test && npm run build && npm run smoke`.
 ]
-7. the chords in the background are just constant for a lot of the time in the first couple section and need some effects
-and some motion between notes.
-8. that drum rolls filter is a bit overwhelming; maybe it needs probabilities of adding the rolls too?
+7. ~~the chords in the background are just constant for a lot of the time in the
+   first couple section and need some effects and some motion between notes.~~
+   🎧 **candidate landed — needs your ear.** Two changes in the pad block of
+   `generators.js`, both scaled by a new `PAD_MOTION` table that is *inverted
+   against density*: the bare early sections get the most movement (intro 1.0,
+   build 0.9) and the full ones the least (peak 0.25), because a wandering pad
+   under a full arrangement is just mud.
+   - **Effects motion:** the filter now breathes across the phrase instead of
+     sitting on one cutoff, and the pad drifts in the stereo field. Deliberately
+     asymmetric — an even in-out is its own kind of static.
+   - **Motion between notes:** the block chord *stays* a block, because it is
+     the common tone across the seam (§6.1) and cannot start arpeggiating. The
+     movement goes to a separate quiet voice an octave up, walking the same
+     chord tones one at a time — same harmony, but something is audibly moving.
+     Only present where `PAD_MOTION > 0.5`, i.e. the sections you complained
+     about.
+8. ~~that drum rolls filter is a bit overwhelming; maybe it needs probabilities
+   of adding the rolls too?~~
+   🎧 **candidate landed — needs your ear.** The roll knob answered only "how
+   fine" and then stuttered *every* drum hit in *every* bar for as long as it
+   was up, which is a wall rather than a gesture. It now also chooses **how much
+   of the phrase rolls** (`ROLL_BAR_MASKS` in `perform.js`): ×2 takes the
+   turnaround bar only, so it reads as a fill; ×3 takes every other bar; ×4 is
+   still the full wall, for when you actually want it.
+   I used a per-bar mask rather than literal probability — same musical effect,
+   but deterministic, so a set is reproducible from its seed and `test/roll.mjs`
+   can assert it. Say the word if you'd rather it were genuinely random.
 9. ~~the butterfly visualization thing looks stupid and should be removed~~
    ✅ **done 2026-07-27 — it was a moth, and it is gone.** The "butterfly" was
    the recurring glyph (proposal B2) in `src/visuals/figure.js`: a long-tailed
@@ -163,4 +208,20 @@ and some motion between notes.
    visual sibling. The slot is now empty and stays open. D28 lists the three
    constraints a replacement has to clear, the first being that it must read at
    both 2.5× and 9× — which a literal creature outline never did.
-10. that fill going into the seam is very cheesy and should be a bit better
+10. ~~that fill going into the seam is very cheesy and should be a bit better~~
+    🎧 **candidate landed — needs your ear.** The countdown was
+    `sd sd*2 sd*4 sd*8` under a rising gain ramp: a pure power-of-two doubling,
+    the stock build in dance music. Three things were wrong and `SEAM_FILLS` in
+    `generators.js` fixes all three.
+    - **It doubled cleanly**, so the ear predicted the whole figure from its
+      first two bars. The replacements accelerate unevenly — triplet groupings
+      and syncopations — so the arrival is still a surprise.
+    - **It ran solid into the downbeat.** Two of the three new figures stop
+      early: the hole is what makes the drop land. `test/seams.mjs` now asserts
+      the last 16th before the boundary is empty.
+    - **It was identical every seam** for eleven minutes. The figure is now
+      keyed to the track being entered, mixed with the seed, so the set varies
+      and a reroll re-deals it. Three to hear: *the hole*, *the drag*,
+      *restraint*. The dissolve variant (D18) got the same treatment with its
+      energy still inverted.
+    Fills also wear the track's own snare costume now, instead of a bare `sd`.

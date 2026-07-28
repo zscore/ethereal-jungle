@@ -72,10 +72,24 @@ console.log('late seam phrase (drums die, countdown)');
   check(!orbitsIn(lateStart, T0).has(4), 'lead gone');
   const padHaps = pattern.queryArc(lateStart, T0).filter((h) => (h.value?.orbit ?? 0) === 3);
   check(padHaps.length > 0, 'pads survive (the common tone)');
-  // the countdown doubles every bar: 1, 2, 4, 8 snare onsets
+  // The countdown accelerates but deliberately does NOT double cleanly: a
+  // power-of-two ramp is the stock build this set was trying not to sound like,
+  // and it is predictable from its first two bars. What must still hold is that
+  // the figure gathers — it is denser in its second half than its first — and
+  // that it leaves a hole rather than running solid into the downbeat.
   const rollCounts = Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
     onsets(lateStart + j, lateStart + j + 1).filter((h) => h.value?.s === 'sd').length);
-  check(rollCounts.join(',') === '1,2,4,8', `snare roll doubles per bar (got ${rollCounts.join(',')})`);
+  const firstHalf = rollCounts.slice(0, SEAM_LATE_BARS / 2).reduce((a, b) => a + b, 0);
+  const lastHalf = rollCounts.slice(SEAM_LATE_BARS / 2).reduce((a, b) => a + b, 0);
+  check(lastHalf > firstHalf, `the countdown gathers (got ${rollCounts.join(',')})`);
+  check(rollCounts.every((c) => c > 0) || rollCounts[0] === 0,
+    'every bar carries the figure, or it starts from silence by design');
+  check(!/^1,2,4,8$/.test(rollCounts.join(',')),
+    'and it is not a power-of-two doubling — that was the cheesy one');
+  // the hole: the last 16th before the new downbeat is empty, so the drop lands
+  // into space rather than into a wall of snare
+  const lastSixteenth = onsets(T0 - 1 / 16, T0).filter((h) => h.value?.s === 'sd').length;
+  check(lastSixteenth === 0, 'the fill leaves a hole on the last 16th before the downbeat');
 }
 
 console.log('bar-exactness at the phase edges');

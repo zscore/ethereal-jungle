@@ -9,7 +9,7 @@ import { controls, stack, Pattern } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
 import { bus } from '../src/bus.js';
 import { makeSetPattern } from '../src/music/generators.js';
-import { applyRoll, rollDivision, rollGain, DRUM_ORBIT } from '../src/perform.js';
+import { applyRoll, rollDivision, rollGain, DRUM_ORBIT, ROLL_BAR_MASKS } from '../src/perform.js';
 
 miniAllStrings();
 
@@ -37,12 +37,32 @@ check(baseDrums > 0 && baseRest > 0, `peak section carries both drums (${baseDru
 console.log('off is genuinely off');
 check(applyRoll(base, 0, stack) === base, 'a knob at rest returns the very same pattern object');
 
-console.log('division multiplies the drums only');
+// The mask is keyed to absolute cycle mod 4, and W starts on a phrase boundary,
+// so bar b of the window is phrase position b.
+const inBar = (haps, b) => haps.filter((h) => Math.floor(h.whole.begin.valueOf()) === W[0] + b);
+const maskBits = (n) => ROLL_BAR_MASKS[n].replace(/[^01]/g, '').split('').map(Number);
+
+console.log('division multiplies the drums, on the bars it claims');
 for (const knob of [0.3, 0.6, 1]) {
   const n = rollDivision(knob);
   const rolled = applyRoll(base, knob, stack);
-  check(drums(rolled).length === baseDrums * n, `knob ${knob} → x${n} drum onsets`);
+  const bits = maskBits(n);
+  const perBar = bits.every((bit, b) =>
+    inBar(drums(rolled), b).length === inBar(drums(base), b).length * (bit ? n : 1));
+  check(perBar, `knob ${knob} → x${n} on ${ROLL_BAR_MASKS[n]}, dry elsewhere`);
   check(rest(rolled).length === baseRest, `knob ${knob} leaves bass/pads/lead untouched`);
+}
+
+console.log('the roll is a gesture, not a wall');
+{
+  const light = applyRoll(base, 0.3, stack);
+  const full = applyRoll(base, 1, stack);
+  check(drums(light).length < drums(full).length,
+    'the low end of the travel is quieter than the top — a fill, not a texture');
+  check(drums(light).length > baseDrums, 'but it is still audibly a roll');
+  check(inBar(drums(applyRoll(base, 0.3, stack)), 3).length > inBar(drums(base), 3).length
+     && inBar(drums(applyRoll(base, 0.3, stack)), 0).length === inBar(drums(base), 0).length,
+    'x2 rolls the turnaround bar and leaves bar 0 alone');
 }
 
 console.log('energy compensation');

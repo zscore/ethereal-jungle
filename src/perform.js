@@ -186,19 +186,49 @@ export function rollGain(n) {
 }
 
 /**
- * Stutter the drum orbit n-fold, leaving every other stream alone. Pure
- * pattern surgery — `stack` is injected so this file never imports strudel
- * (and so the test can drive it). Returns the pattern unchanged when off.
+ * HOW MUCH of the phrase rolls, per division. The knob used to answer only
+ * "how fine", and then stuttered every drum hit in every bar for as long as it
+ * was up — which is a wall, not a gesture. A drum roll is a thing that
+ * *arrives*, so the low end of the travel is now a turnaround fill and only the
+ * top is the wall. Same `/4` trick as SKEL_MASKS in generators.js: track
+ * lengths are whole phrases (D9), so absolute cycle mod 4 IS bar-in-phrase.
+ */
+export const ROLL_BAR_MASKS = {
+  2: '[0 0 0 1]/4', // the turnaround only — reads as a fill
+  3: '[0 1 0 1]/4', // every other bar — a lean
+  4: '[1 1 1 1]/4', // the wall, for when you actually want it
+};
+
+/** The complement: bars the roll does NOT take, which play dry. */
+const ROLL_DRY_MASKS = {
+  2: '[1 1 1 0]/4',
+  3: '[1 0 1 0]/4',
+  4: null, // nothing left dry at the top of the travel
+};
+
+/** Which bars of the phrase a given knob position rolls, or null when off. */
+export function rollMask(roll) {
+  return ROLL_BAR_MASKS[rollDivision(roll)] ?? null;
+}
+
+/**
+ * Stutter the drum orbit n-fold on the bars this division claims, leaving every
+ * other stream — and every unclaimed bar — alone. Pure pattern surgery;
+ * `stack` is injected so this file never imports strudel (and so the test can
+ * drive it). Returns the pattern unchanged when off.
  */
 export function applyRoll(pattern, roll, stack) {
   const n = rollDivision(roll);
   if (n <= 1) return pattern;
   const g = rollGain(n);
   const isDrum = (v) => (v?.orbit ?? 0) === DRUM_ORBIT;
-  return stack(
-    pattern.filterValues(isDrum).ply(n).withValue((v) => ({ ...v, gain: (v.gain ?? 1) * g })),
+  const drums = pattern.filterValues(isDrum);
+  const parts = [
+    drums.ply(n).withValue((v) => ({ ...v, gain: (v.gain ?? 1) * g })).mask(ROLL_BAR_MASKS[n]),
     pattern.filterValues((v) => !isDrum(v)),
-  );
+  ];
+  if (ROLL_DRY_MASKS[n]) parts.push(drums.mask(ROLL_DRY_MASKS[n]));
+  return stack(...parts);
 }
 
 /**

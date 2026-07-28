@@ -133,7 +133,7 @@ function dissonance(sigma) {
 //
 // Positions are 16ths; 0/4/8/12 are the beats, and nothing here occupies the
 // two the anchor owns.
-const KICK_EXTRAS = [
+export const KICK_EXTRAS = [
   [10],      // the 'and of 3' — the second kick this idiom is built on
   [14],      // a late pickup, leaning into the next bar
   [6],       // pushing the backbeat
@@ -142,9 +142,21 @@ const KICK_EXTRAS = [
   [6, 11],
   [2, 10],
 ];
-const SNARE_GHOSTS = [
+export const SNARE_GHOSTS = [
   [13], [7], [7, 13], [3, 11], [11, 14], [5, 13], [7, 10, 13],
 ];
+
+/**
+ * The bags actually drawn from, as a swappable reference.
+ *
+ * These placements were chosen from idiom rather than from listening (the
+ * standing complaint in docs/TODO.md §5), and the only way to settle them is to
+ * hear them side by side. `lab.html` swaps these at runtime and rebuilds, so
+ * candidate bags can be A/B'd against the defaults without a code change or a
+ * reload. Production never touches it: the defaults above are the shipped
+ * values, and `test/groove.mjs` asserts against them.
+ */
+export const GROOVE_BAGS = { kick: KICK_EXTRAS, snare: SNARE_GHOSTS };
 
 // How much filling-in each section wants: the intro keeps the heartbeat bare,
 // the peak fills in. Form decides, tension only shades — same rule as D11.
@@ -159,6 +171,69 @@ const SKEL_MASKS = [
   '[1 1 1 1]/4', '[0 1 0 1]/4', '[0 0 0 1]/4',
   '[1 0 1 1]/4', '[0 1 1 1]/4', '[1 1 0 1]/4',
 ];
+
+// ---------- the seam fill ----------
+// The countdown into a clean downbeat used to be `sd sd*2 sd*4 sd*8` under a
+// rising gain ramp: a pure power-of-two doubling, which is the most generic
+// build in dance music and reads as a stock preset rather than as this set's
+// own gesture. Three things were wrong with it, and the bags below fix all
+// three:
+//
+//   1. **It doubled cleanly.** Every subdivision was 2^n, so the ear predicted
+//      the whole figure from its first two bars. These accelerate unevenly —
+//      triplet groupings, syncopations — so the arrival is still a surprise.
+//   2. **It was solid to the very last 16th.** A wall of snare straight into
+//      the downbeat leaves the drop nothing to do. §5's expectation machinery
+//      wants a *hole*: two of these three stop early, and the silence is what
+//      makes the next bar land.
+//   3. **It was the same every time.** One figure, every seam, for eleven
+//      minutes. The choice is now keyed to which track we are entering, mixed
+//      with the seed, so a set has variety and a reroll re-deals it.
+//
+// Each entry is four top-level groups — one per bar under `.slow(4)` — so the
+// figure stays bar-exact into the new downbeat (D9).
+const SEAM_FILLS = [
+  {
+    name: 'the hole',
+    fig: '[sd ~ ~ sd] [sd ~ sd [~ sd]] [sd [sd sd] sd [sd sd]] [[sd sd sd] [sd sd sd] ~ ~]',
+    gain: '[0.5 0.62 0.74 0.9]',
+    lpf: '[2200 2800 3400 4200]',
+  },
+  {
+    name: 'the drag',
+    fig: '[~ ~ sd ~] [sd ~ [sd sd] ~] [[sd sd sd] ~ [sd sd sd] ~] [[sd sd sd sd sd sd] ~ [sd sd] ~]',
+    gain: '[0.45 0.6 0.72 0.88]',
+    lpf: '[1900 2500 3100 3900]',
+  },
+  {
+    name: 'restraint',
+    fig: '~ [~ ~ ~ sd] [~ sd ~ sd] [sd ~ [sd sd] [sd ~]]',
+    gain: '[0.4 0.55 0.68 0.82]',
+    lpf: '[1700 2300 2900 3600]',
+  },
+];
+
+/** The dissolve's figure (D18): the same unevenness, energy inverted. */
+const DISSOLVE_FILL = {
+  name: 'dissolve',
+  fig: '[sd ~ sd ~] [sd ~ [sd sd] ~] [[sd sd] ~ [sd sd sd] ~] [[sd sd sd] ~ ~ ~]',
+  gain: '[0.7 0.55 0.4 0.26]',
+  lpf: '[2600 1500 850 480]',
+};
+
+/** Dress a fill figure in the track's own snare. */
+const fillFigure = (fig, snd) => (snd === 'sd' ? fig : fig.replaceAll('sd', snd));
+
+// ---------- pad motion ----------
+// How much the ether moves, by section. The complaint this answers is that the
+// background chords sit still for minutes at a time in the opening sections —
+// which is exactly where the arrangement is thinnest, so a static pad is most
+// exposed there and least excusable. Inverted against density on purpose: the
+// bare sections get the most movement, the full ones the least, because by the
+// peak there is plenty else going on and a wandering pad would just be mud.
+const PAD_MOTION = {
+  intro: 1, build: 0.9, breakdown: 0.8, release: 0.6, build2: 0.4, groove: 0.35, peak: 0.25,
+};
 
 /** Draw a placement set and the bars it falls on, or null for a bare phrase. */
 function placements(bag, density, lift, rng) {
@@ -578,17 +653,26 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // late phrase — §5's accelerating fill, bar-exact into the new downbeat.
     // slow(4) keys the roll to absolute cycle mod 4, which IS the bar-in-phrase
     // because track lengths are whole phrases (D9).
+    const snd = pal.snare?.s ?? 'sd';
     if (dissolveExit) {
-      // dissolve (D18): the same accelerating figure with its energy
-      // inverted — fading, closing, drowning as it speeds up. The drums
-      // recede into weather (§3.4); the ambient arrival is what this prepares.
-      layers.push(s('[sd sd*2 sd*4 sd*8]')
-        .gain('[0.7 0.55 0.4 0.28]')
-        .lpf('[2600 1500 850 480]')
+      // dissolve (D18): the same uneven figure with its energy inverted —
+      // fading, closing, drowning as it speeds up. The drums recede into
+      // weather (§3.4); the ambient arrival is what this prepares.
+      layers.push(s(fillFigure(DISSOLVE_FILL.fig, snd))
+        .gain(DISSOLVE_FILL.gain)
+        .lpf(DISSOLVE_FILL.lpf)
         .room('[0.3 0.5 0.7 0.9]').roomsize(6)
         .slow(4).orbit(1));
     } else {
-      layers.push(s('[sd sd*2 sd*4 sd*8]').gain('[0.55 0.65 0.75 0.88]').slow(4).orbit(1));
+      // which fill this seam gets: keyed to the track being entered, mixed with
+      // the seed, so the set varies and a reroll re-deals it. Pure — no draw
+      // from `rng`, which would shift every seeded decision downstream of here.
+      const fill = SEAM_FILLS[Math.abs(strHash(`fill:${seam?.toIndex ?? 0}:${p.seed}`)) % SEAM_FILLS.length];
+      layers.push(s(fillFigure(fill.fig, snd))
+        .gain(fill.gain)
+        .lpf(fill.lpf)
+        .room(0.18).roomsize(3)  // a little air, so the hole is audibly a hole
+        .slow(4).orbit(1));
     }
   } else {
     if (kickIn) {
@@ -605,7 +689,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // coupling constant between the two media (§3.3) and the visual duck is
       // on beat 1 — one pump per bar in both worlds, whatever else the floor
       // is doing down there.
-      const kx = placements(KICK_EXTRAS, pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
+      const kx = placements(GROOVE_BAGS.kick, pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
       if (kx) {
         layers.push(gate(
           steps(s, pal.kick?.s ?? 'bd', kx.at)
@@ -630,7 +714,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // D23: ghosts stay OFF the dub rail. The 3/16 feedback is answering one
       // transient per bar (§9.3); answering six would be mud, and the rail's
       // job is to be heard as an echo, not as a texture.
-      const gh = placements(SNARE_GHOSTS, pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
+      const gh = placements(GROOVE_BAGS.snare, pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
       if (gh) {
         layers.push(gate(
           steps(s, pal.snare?.s ?? 'sd', gh.at)
@@ -781,21 +865,48 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   const pp = pal.pad ?? {};
   const swell = sec === 'breakdown';
   const chord = padVoicing(mode, warmth, { oct: pp.oct ?? 1, tuning, width: pp.width ?? 0 });
+  const motion = PAD_MOTION[sec] ?? 0.4;
   if (!silent) {
     const [plo, pspan] = pp.lpf ?? [900, 2600];
+    const cutoff = plo + pspan * tension + (swell ? 600 : 0);
+    // The filter breathes across the phrase rather than sitting on one value.
+    // Deliberately not symmetric — an even in-out is its own kind of static.
+    const breath = (k) => Math.round(cutoff * (1 + motion * k));
+    const drift = 0.09 * motion; // stereo wander, widest where the pad is barest
     layers.push(
       note(`[${chord.map(fmt).join(',')}]`)
         .s(pp.s ?? 'sawtooth')
         .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
         .release(swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4))
-        .lpf(plo + pspan * tension + (swell ? 600 : 0))
+        .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`)
         .room(0.9).roomsize(8)       // low DRR: distance, the heavens
         .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1))
-        .pan(0.5)
+        .pan(`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`)
         // harmonic rhythm as warmth: the glad track re-voices twice as often
         .slow(pp.slow ?? 4)
         .orbit(3),
     );
+    // ---- motion between notes ----
+    // The block chord is the continuity layer and must stay a block — it is the
+    // common tone across the seam (§6.1), so it cannot start arpeggiating. The
+    // movement therefore goes to a SEPARATE quiet voice an octave up, walking
+    // the same chord tones one at a time. Same harmony, but something is
+    // audibly moving. Loudest exactly where the complaint was — the early
+    // sections, where the arrangement is otherwise a held pad and a heartbeat.
+    if (motion > 0.5) {
+      const tones = padVoicing(mode, warmth, { oct: (pp.oct ?? 1) + 1, tuning, width: 0 });
+      layers.push(
+        note(`<${tones.map(fmt).join(' ')}>`)
+          .s(pp.s ?? 'sawtooth')
+          .attack(0.9).release(2.6)
+          .lpf(breath(0.4))
+          .room(0.93).roomsize(11)   // further away than the pad it decorates
+          .gain((pp.gain ?? 0.32) * 0.34 * motion)
+          .pan(`[0.4 0.6]`)
+          .slow(2)                   // one tone per two cycles: a walk, not a riff
+          .orbit(3),
+      );
+    }
   } else {
     // the silence: one sine on the root, and the wind. Nothing else.
     layers.push(
