@@ -116,7 +116,11 @@ const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax
 export const TRACKS = [
   {
     name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30],
-    ambience: ['ambinsects', 'ambfrogs', 'ambrustle'],
+    // D37 — `ambglint` is the dark sparkle: drips inside an ice-filled lava
+    // tube, 15 countable plinks per loop rather than a wash. It is the fourth
+    // layer here and the only one anywhere that is *treated* — see
+    // `ambienceMix.layers` below, which is where "dark" actually happens.
+    ambience: ['ambinsects', 'ambfrogs', 'ambrustle', 'ambglint'],
     // D30 — the floor is the one biome that is meant to be crowded: the frogs
     // and the rustle stop being rare episodes, and the bed (Petén night
     // insects) sits a little louder than elsewhere.
@@ -126,12 +130,24 @@ export const TRACKS = [
     // back to the default (1 / 1 / 0.35): the frogs and rustle still speak in
     // most phrases rather than a third of them, but they sit under the
     // arrangement instead of on top of it.
-    ambienceMix: { bed: 1.15, accent: 1.2, threshold: 0.25 },
+    ambienceMix: {
+      bed: 1.15, accent: 1.2, threshold: 0.25,
+      // The glints arrive from a cave, so: no low end at all (the floor is
+      // already crowded and a rumble under a rumble is mud), the fizz above
+      // 5 kHz rolled off so they read as *dark*, sat well below the other
+      // accents, and given the ether's room so each one rings rather than
+      // ticking. Panned dead centre — everything else here is spread, and the
+      // sparkle wants to come from under your feet rather than off to a side.
+      layers: { ambglint: { gain: 0.62, hpf: 420, lpf: 5000, room: 0.5, pan: 0.5 } },
+    },
     warmth: 0.15,                    // dark AND cold: the floor of both axes
     tuning: { stretch: -4 },         // the sag — the stack leans downward
+    // D35 — one reverb per orbit, sized by the cast. The undergrowth is the
+    // closest air in the set: a low ceiling on the drums, a small ether.
+    rooms: { 1: 2, 3: 7, 4: 6 },
     palette: {
       // the most degraded break of the four: no top end, bit-reduced, close
-      break: { lpf: 3200, crush: 8, coarse: 2, room: 0.1, roomsize: 2 },
+      break: { lpf: 3200, crush: 8, coarse: 2, room: 0.1 },
       hats: { s: 'hh', lpf: 5500, gain: 0.85 },
       // D23 — the skeleton's appetite. The undergrowth is the heaviest floor
       // of the four: the second kick is almost always there, the ghosts are
@@ -142,10 +158,10 @@ export const TRACKS = [
       // slow phase-cancellation sweep — split-banded with a clean mono sub
       bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: 8, sub: true, lpf: [130, 220], gain: 0.46 },
       pad: { s: 'sawtooth', oct: 0, width: 6, lpf: [700, 2000], attack: 1.4, release: 4, gain: 0.32 },
-      lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8, roomsize: 6 },
+      lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8 },
       // the migrating pluck at its near/dry extreme: wooden tuned percussion,
       // struck on the break's non-anchor positions and locked to the grid
-      pluck: { fmh: 3.5, fmi: 2.4, oct: 0, k: 3, decay: 0.12, room: 0.05, roomsize: 2, offGrid: 0, gain: 0.3, orbit: 1 },
+      pluck: { fmh: 3.5, fmi: 2.4, oct: 0, k: 3, decay: 0.12, room: 0.05, offGrid: 0, gain: 0.3, orbit: 1 },
     },
   },
   {
@@ -153,16 +169,17 @@ export const TRACKS = [
     ambience: ['ambrain', 'ambthunder', 'ambdrips'],
     warmth: 0.35,
     tuning: {},                      // plain 12-TET: the neutral middle of the arc
+    rooms: { 1: 3, 3: 8, 4: 6 },     // D35 — one step further out
     palette: {
-      break: { speed: 1.02, shape: 0.15, room: 0.18, roomsize: 3 }, // tight, tuned up, dry
+      break: { speed: 1.02, shape: 0.15, room: 0.18 }, // tight, tuned up, dry
       hats: { s: 'hh', lpf: 9000, gain: 1 },
       // the busiest skeleton in the set — this is the track that struts
       kick: { extras: 0.95, gain: 0.6 },
       snare: { ghosts: 0.9, gain: 0.34 },
       bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42 }, // the floor walks
       pad: { s: 'sawtooth', oct: 1, width: 9, lpf: [900, 2600], attack: 1.2, release: 4, gain: 0.32 },
-      lead: { s: 'triangle', lpf: [1200, 2400], room: 0.8, roomsize: 6 },
-      pluck: { fmh: 3.5, fmi: 2.2, oct: 0, k: 3, decay: 0.16, room: 0.4, roomsize: 4, offGrid: 0.33, gain: 0.28, orbit: 1 },
+      lead: { s: 'triangle', lpf: [1200, 2400], room: 0.8 },
+      pluck: { fmh: 3.5, fmi: 2.2, oct: 0, k: 3, decay: 0.16, room: 0.4, offGrid: 0.33, gain: 0.28, orbit: 1 },
       // characteristic 1: bamboo/duduk-ish breath — sine + noise, living pitch
       breath: { vib: 4.5, vibmod: 0.18, noise: 0.32, oct: 1, lpf: [1600, 900], gain: 0.26 },
       // characteristic 2: the dub rail — water made musical. A dotted-eighth
@@ -181,8 +198,11 @@ export const TRACKS = [
     ambienceMix: { accent: 1.25, threshold: 0.25 },
     warmth: 0.85,                    // the one glad track: thirds, in tune, affirmed
     tuning: { just: 1 },             // the only track that actually locks
+    // D35 — the canopy is a big bright space, and the squawk is the thing that
+    // makes you hear how big (its send is the highest in the set)
+    rooms: { 1: 3, 3: 11, 4: 7 },
     palette: {
-      break: { room: 0.15, roomsize: 3 }, // full, open, top end intact
+      break: { room: 0.15 }, // full, open, top end intact
       hats: { s: 'hh', lpf: 12000, gain: 1.12 },
       // open and affirmed: fewer extra kicks than the floor, but the ghosts
       // are audible — warmth leans into the backbeat, here and in `backbeat`
@@ -192,11 +212,11 @@ export const TRACKS = [
       snare: { ghosts: 0.85, gain: 0.36, bag: 'busy' },
       bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5 },
       pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2 },
-      lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7, roomsize: 6 },
-      pluck: { fmh: 3.5, fmi: 1.8, oct: 1, k: 3, decay: 0.35, room: 0.75, roomsize: 7, offGrid: 0.6, gain: 0.26, orbit: 4 },
+      lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7 },
+      pluck: { fmh: 3.5, fmi: 1.8, oct: 1, k: 3, decay: 0.35, room: 0.75, offGrid: 0.6, gain: 0.26, orbit: 4 },
       // characteristic 1: FM bells doubling the lead an octave up — inharmonic
       // partials over a glad chord read as light, not error (§7.2)
-      bells: { fmh: 3.0, fmi: 2.2, oct: 1, decay: 0.6, room: 0.55, roomsize: 5, gain: 0.19 },
+      bells: { fmh: 3.0, fmi: 2.2, oct: 1, decay: 0.6, room: 0.55, gain: 0.19 },
       // D32 — the squawk (D31's tom kit, reversed): the same three croaks cut
       // from one Colombian toucan (tools/ingest_toms.py), but played as a bird
       // rather than transposed into a drum. One call every `every` phrases,
@@ -205,7 +225,10 @@ export const TRACKS = [
       squawk: {
         s: 'toucan', samples: 3, every: 2,
         speeds: [0.86, 0.94, 1.0, 1.09, 1.18],
-        gain: 0.3, lpf: 5200, room: 0.5, roomsize: 8, orbit: 3,
+        // The send is the highest in the set, into the canopy's 11 s ether
+        // (D35): the call arrives from across the canopy rather than from a
+        // speaker, and its tail is longer than the gap to the next drum hit.
+        gain: 0.3, lpf: 5200, room: 0.82, orbit: 3,
       },
       // characteristic 2: the vowel choir. The voice is the strongest attractor
       // in the mix, so it is spent once per set — here, at the golden ratio
@@ -219,10 +242,13 @@ export const TRACKS = [
     ambience: ['ambwind', 'ambshimmer', 'ambsparkle'],
     warmth: 0.10,                    // brightest AND coldest: the axes cross here
     tuning: { stretch: 3 },          // stretched octaves — nothing ever settles
+    // D35 — the zenith drowns even its drums: the near orbit is as wet as the
+    // canopy's ether, which is what "dematerialised" means in room terms
+    rooms: { 1: 9, 3: 12, 4: 9 },
     palette: {
       // dematerialised: high-passed (the drums lose their body), drowned,
       // thinned, slices reversed
-      break: { hpf: 700, room: 0.85, roomsize: 9, reverse: 0.35, thin: 0.25, gain: 0.7 },
+      break: { hpf: 700, room: 0.85, reverse: 0.35, thin: 0.25, gain: 0.7 },
       // hats are gone; their euclid mask now drives a high-passed hiss, so
       // rhythm survives as texture
       hats: { s: 'white', hpf: 4500, release: 0.05, gain: 0.5 },
@@ -236,11 +262,23 @@ export const TRACKS = [
       // the floor is removed: bare sine, an octave up, absent for whole phrases
       bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45 },
       pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3 },
-      lead: { s: 'sine', lpf: [2000, 1500], room: 0.9, roomsize: 9 },
-      pluck: { fmh: 3.5, fmi: 1.4, oct: 1, k: 2, decay: 0.9, room: 0.95, roomsize: 12, offGrid: 1, gain: 0.22, orbit: 3, slow: 2 },
+      lead: { s: 'sine', lpf: [2000, 1500], room: 0.9 },
+      // D34 — the pluck's own ceiling: fmh 3.5 puts sidebands at 4.5× the
+      // fundamental, and this is the cast that plays them into the biggest room
+      pluck: { fmh: 3.5, fmi: 1.4, oct: 1, k: 2, decay: 0.9, room: 0.95, lpf: 2600, offGrid: 1, gain: 0.22, orbit: 3, slow: 2 },
       // characteristic 1: the glass bowl — a Chowning-ratio FM shimmer with
-      // nothing to resolve to, one strike every two phrases
-      bowl: { fmh: 2.76, fmi: 1.6, oct: 2, attack: 2.5, release: 7, gain: 0.17 },
+      // nothing to resolve to, one strike every two phrases.
+      //
+      // D34 — this was the unpleasant high ring. Measured, not guessed: with
+      // the bowl muted every persistent narrowband peak in the zenith
+      // breakdown fell from −1 dB to −70 dB in the quietest frame
+      // (tools/spectrum_probe.mjs --track=3 --section=breakdown --mute=bowl).
+      // Four changes, in order of how much each did: an octave down, so the
+      // fundamentals sit at 295–665 Hz instead of 590–1330; the FM index more
+      // than halved, which is what governs how many sidebands there are at
+      // all; a ceiling at last; and a shorter tail so two strikes cannot
+      // overlap into a drone.
+      bowl: { fmh: 2.76, fmi: 0.7, oct: 1, attack: 2.8, release: 5, lpf: 2200, gain: 0.17 },
       // characteristic 2: the granular ghost of the set — the break itself,
       // half-speed, reversed, drowned, no skeleton under it (§3.4). The audio
       // sibling of the corpus shrine (D25): at the top of the set the piece
@@ -471,20 +509,38 @@ export const bus = {
     let T = lerp(track.floor, track.peak, sampleBreakpoints(SHAPE, phase));
     const seam = seamAt(t);
     if (seam.active) {
-      if (seamVariant(seam.toIndex, this.params.seed) === 'landing') {
-        T = Math.max(T, lerp(T, 0.95, seam.progress)); // tension_spike: the countdown
+      // D36 — the seam is a WIND-DOWN, and this function is where that is
+      // decided for both media at once.
+      //
+      // It used to be a build: 'landing' drove T from wherever the track had
+      // got to up to 0.95 at the boundary, and even 'dissolve' rose to 0.8
+      // before exhaling. That is the standard club gesture, and it is the wrong
+      // one here, because of what is on the far side. A DJ builds into the next
+      // track's drop; this set builds into the next track's *intro* — eight
+      // bars of ether with a bare kick heartbeat (D11). So the old seam spent
+      // its energy arriving somewhere that had nothing to catch it, and the
+      // loudest moment of every boundary was immediately followed by its
+      // quietest. Winding down means the boundary is the bottom of a breath
+      // rather than the top of one, and the intro is then an opening instead of
+      // an anticlimax.
+      //
+      // Shape: energy drains through the early phase to a TROUGH, which is the
+      // quietest point in the set outside the zenith's silence, and the late
+      // phase settles from there onto the incoming track's own opening tension.
+      // No cliff at the boundary in either direction.
+      const lateStart = 1 - SEAM_LATE_BARS / SEAM_BARS;
+      const tOpen = lerp(seam.to.floor, seam.to.peak, sampleBreakpoints(SHAPE, 0));
+      // A landing still arrives — something lands on that downbeat and the
+      // visuals stage it (look.js M1/I2) — so it keeps more under it than a
+      // dissolve, which is allowed to empty out completely.
+      const landing = seamVariant(seam.toIndex, this.params.seed) === 'landing';
+      const trough = Math.min(T, tOpen) * (landing ? 0.7 : 0.45);
+      if (seam.progress < lateStart) {
+        const x = seam.progress / lateStart;
+        T = lerp(T, trough, x * x * (3 - 2 * x));
       } else {
-        // dissolve (D18): a softer spike through the early phase, then the
-        // late phase exhales into the incoming track's opening tension — no
-        // cliff at the boundary for either medium.
-        const lateStart = 1 - SEAM_LATE_BARS / SEAM_BARS;
-        const tOpen = lerp(seam.to.floor, seam.to.peak, sampleBreakpoints(SHAPE, 0));
-        if (seam.progress < lateStart) {
-          T = Math.max(T, lerp(T, 0.8, seam.progress / lateStart));
-        } else {
-          const x = (seam.progress - lateStart) / (1 - lateStart);
-          T = lerp(Math.max(T, 0.8), tOpen, x * x * (3 - 2 * x));
-        }
+        const x = (seam.progress - lateStart) / (1 - lateStart);
+        T = lerp(trough, tOpen, x * x * (3 - 2 * x));
       }
     }
     const p = this.params;

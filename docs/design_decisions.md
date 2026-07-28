@@ -1347,6 +1347,192 @@ every field, on the same verdict ("too loud again, somewhere in the middle").
 The frogs still clear the threshold in 16 of 17 phrases against 13 at the
 default, so D30's argument survives its own levels being wrong.
 
+## D33 — The probe: the project listens to itself (2026-07-28)
+
+**Decision.** `tools/spectrum_probe.mjs` boots the engine headless, taps the
+finished mix through a new `getAudioTap()` in `engine.js`, records N seconds of
+it with MediaRecorder, and hands the file to `tools/analyse_probe.py`. The
+analyser answers three questions: **is something ringing** (narrowband peaks,
+scored by prominence AND by whether they are still up in the *quietest* frame),
+**where is the energy** (octave bands), and **what shape is it over time** (RMS
+per half second, which is how a build and a wind-down are told apart).
+`--mute=bowl,lead` deletes palette slots in the running page and recompiles, so
+a frequency can be traced to the cast member that owns it.
+
+**Why.** Every check this project had asks whether the *pattern* is right.
+`test/palette.mjs` proves a layer exists where it should; `cast_audit.mjs`
+proves the events reach the renderer; `smoke.mjs` proves the page makes sound.
+None of them can hear. So every complaint of the form "the zenith has an
+unpleasant high ring in it" was unanswerable except by guessing, and D31 is what
+guessing costs: a tom kit whose measured numbers were all correct and which
+sounded, in the verdict, horrendous.
+
+The first thing it was pointed at settled that particular question in two runs:
+the zenith breakdown had peaks at 1762 / 2340 / 3332 Hz still standing 1–10 dB
+above their neighbourhood in the quietest frame of the recording; muting the
+bowl dropped every one of them to −65 dB or below. That is not an opinion about
+the glass bowl, it is a measurement of it (D34).
+
+**It records the LAB, not the app.** The first seam recordings had 2.5 s and
+then 8 s of *digital zero* in them, in different places each run. That is not
+an arrangement stopping — it is the audio thread starving while three.js is
+being software-rasterized, the same failure `smoke.mjs` documents at length. So
+the probe loads `/lab.html`, which boots the same engine with no scene, and the
+analyser now counts runs of digital silence and says so loudly. A starved
+recording that reads as a musical decision is the worst possible output of a
+measuring tool.
+
+**What it is not.** A gate. It prints numbers; it fails nothing, because
+"3.2% of the energy is above 4 kHz" is not a pass/fail proposition and pretending
+otherwise would produce exactly the kind of test that gets deleted in six
+months. `npm test` remains the gate.
+
+**Rejected.** Rendering offline through an OfflineAudioContext (superdough owns
+a global context and the scheduler is wall-clock; the surgery would have been
+larger than the tool). Analysing the *pattern's* spectrum analytically — that is
+what produced D31's confident wrong answer. numpy (the repo's Python has none,
+by the same offline-reproducibility rule as `ingest_amb.py`; an iterative FFT in
+stdlib is ninety lines).
+
+## D34 — The zenith gets a ceiling (2026-07-28)
+
+**Decision.** The glass bowl drops an octave (`oct` 2 → 1), its FM index falls
+from 1.6 to 0.7, its tail from 7 s to 5 s, and — for the first time — it has a
+low-pass at 2200 Hz. The zenith's pluck gets one too, at 2600 Hz, and
+`pluckLayer`/`bowlLayer` learned to read `lpf` at all.
+
+**Why, with the evidence.** The complaint was "an unpleasant high ring in the
+zenith". Measured with D33's probe: in the zenith breakdown, narrowband peaks at
+2219 Hz and 5001 Hz that never went away. Those are not arbitrary numbers —
+the bowl's FM ratio is 2.76, so a carrier at 590 Hz throws a sideband at
+590 × 3.76 = 2219 Hz and one at 1330 Hz throws 1330 × 3.76 = 5001 Hz. The bowl
+was the only voice in the entire set with **no filter of any kind**, playing
+inharmonic partials two octaves up, into a twelve-second reverb, with a
+seven-second release. It was less a bowl than a test tone.
+
+Four changes rather than one, because each does something different: the octave
+moves the whole structure down, the index governs how many sidebands exist at
+all, the low-pass takes what is left off the top, and the shorter tail stops two
+strikes overlapping into a drone. After: the worst persistent peak in the same
+section is −65 dB in the quietest frame, against −1.0 dB before, and the
+4–8 kHz share of the mix falls from 2.5% to 0.6% — with the bowl still audibly
+there.
+
+**Rejected.** Deleting the bowl (it is one of the zenith's two characteristic
+instruments, D22 — the complaint was about a ring, not about a bell). A master
+low-pass on the zenith (blunt; the hats' hiss is *meant* to be up there, and
+this way the fix is legible in the cast rather than hidden in a chain). Leaving
+the pluck alone — it has the same shape of problem at a lower level, and fixing
+one unfiltered FM voice while leaving its neighbour is how a ring comes back.
+
+**Revisit when** heard. If the bowl now reads as too dark, `lpf` and `oct` are
+the two knobs, and the probe will say what moved.
+
+## D35 — One room per orbit (2026-07-28)
+
+**Decision.** `roomsize` is no longer a per-instrument palette field. Each track
+names the size of the space each orbit sits in — `TRACKS[i].rooms = { 1, 3, 4 }`
+— and instruments keep only their reverb SEND (`room`), which is per-event and
+free. Defaults live in `ROOM_SIZE`; the resolver is threaded through every layer
+helper as `rs`.
+
+**Why — this was a bug, found while doing something else.** Superdough keeps one
+reverb per orbit and **regenerates its impulse response** whenever an event asks
+for a different size (`superdoughoutput.mjs getReverb`). Every track was asking
+for two or three sizes on the same orbit: the canopy's ether orbit alternated
+8, 9 and 11 across some five hundred events per track. So the engine was
+rebuilding an impulse response of up to twelve seconds of noise, hundreds of
+times a track, and — worse musically — the length of the reverb tail depended on
+whichever layer had spoken most recently. The room was not a room. It was a
+property of the last note.
+
+It was found while trying to give the toucan more reverb (the ask), which is the
+useful kind of accident: the honest way to make one voice wetter turned out to
+require deciding what the room *is*.
+
+**What the sizes say.** The orbit map is the stream vector (§3.1) and this makes
+it literal — four streams, four distances, authored per track: the undergrowth
+close and low-ceilinged (2 / 7 / 6), the canopy a big bright space (3 / 11 / 7),
+the zenith drowning even its drums (9 / 12 / 9). The set walks from a room you
+are inside to one you are lost in.
+
+**Rejected.** One global room table (the per-track drift *is* the arc — a
+zenith that sounds like the undergrowth's floor would undo D22). Keeping
+per-instrument sizes and deduplicating at the engine (that hides a composition
+decision in a renderer detail, which is exactly the line `engine.js` exists to
+hold).
+
+## D36 — The seam winds down (2026-07-28)
+
+**Decision.** Every boundary is now a **wind-down** rather than a build. In
+`bus.js` the tension curve drains through the early phase to a trough and
+settles onto the incoming track's opening tension; the old spike to 0.95 is
+gone. In `generators.js`: the exit *loses* 0.15 of wildness instead of gaining
+0.25, the break fades bar by bar across the window and degrades further, the
+hats get an `ebb` mode that falls and closes (9000 → 2500 Hz) where they used to
+climb, the fill bag decelerates instead of accelerating, and the landing's
+arrival impact is halved.
+
+**Why.** Because of what is on the far side. A DJ builds into the next track's
+drop; this set builds into the next track's *intro* — eight bars of ether over a
+bare kick heartbeat (D11). So the loudest moment of every boundary was
+immediately followed by its quietest, and the gesture argued for an arrival that
+the form then refused to deliver. Winding down makes the boundary the bottom of
+a breath instead of the top of one, and the intro becomes an opening rather than
+an anticlimax.
+
+**Both media get it from one function.** The visuals never learn about any of
+this: they read `tensionAt`, so the camera and the ether wind down with the
+music for free (§0). That is the whole architecture doing its job, and it is why
+the tension curve — not the drum pattern — is where the change had to be made.
+
+**The two flavors survive, reframed.** D18's landing and dissolve are no longer
+"build" and "fade": both descend, and what separates them is how the boundary is
+met. A landing still arrives on something — a soft impact, a root pedal under
+the intro, and the visual dolly zoom (`look.js` M1/I2) — while a dissolve
+arrives on nothing at all. The dissolve's figure also stays the more extreme of
+the two: it keeps gathering rhythmically while its level and filter collapse,
+which is a different way of letting go than simply thinning out.
+
+**Measured, not asserted.** `tools/spectrum_probe.mjs --seam=0` records the
+approach, the boundary and the first bars of the new track: −11.4 dB falling
+continuously to −18 dB with no cliff. `test/seams.mjs` now asserts the shape
+directly — the window drains to a late trough, nothing inside it is louder than
+its start, and the incoming intro opens above the trough.
+
+**Rejected.** Making every seam a dissolve and deleting the landing (the set has
+four boundaries and one shape for all of them is what D18 was written to avoid;
+also the visuals stage the two differently and that staging is good). Keeping a
+short build inside the wind-down as a "last gasp" — that is a build, and this
+entry exists because builds are the wrong gesture here.
+
+## D37 — The dark sparkle (2026-07-28)
+
+**Decision.** The undergrowth gains a fourth ambience layer, `ambglint`: water
+dripping inside an ice-filled lava tube (Double Hole Crater, PDM 1.0). And the
+ambience block learns per-layer treatment — `ambienceMix.layers[name]` may set
+`gain`, `hpf`, `lpf`, `pan` and `room`.
+
+**Why the treatment matters more than the recording.** The brief was "a bit of
+dark sparkle". The first source tried — resonating drains under a shaded path,
+which reads perfectly on paper — measured as 37% of its energy below 150 Hz with
+a 3.9 dB crest: dark, but a wash rather than a sparkle. The ice cave measures at
+83% above 800 Hz, a 9.8 dB crest, and **15 countable events per loop**. That is
+the difference between a texture and a glint, and it is audible in one number.
+
+Then the mix makes it dark: everything below 420 Hz removed (the floor is
+already crowded and a rumble under a rumble is mud), the fizz above 5 kHz rolled
+off, sat under the frogs and the rustle, and given the undergrowth's own room so
+each drip rings rather than ticks. A recording is raw material, not a finished
+part — which is the same argument D30 made about the mix and D35 about the room,
+arriving from a third direction.
+
+**Rejected.** Reusing `ambdrips` (the forest floor's, and the biomes are
+supposed to be different places). Synthesising the glints (the set's rule is
+that its material comes from its world — D25, D31). Making the whole layer
+quiet instead of filtered: quiet-and-full-range still muddies a floor that
+already has insects, frogs and leaves in it.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

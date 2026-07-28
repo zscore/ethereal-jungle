@@ -299,3 +299,81 @@ what actually ships, so applied verdicts can be checked in place.
       rather than a place, it reads correctly under the floor, and no
       public-domain tropical-foliage recording in the collection beat it. Say
       the word and it can be re-sourced. 
+13. ~~remove the unpleasant high ring from the zenith~~
+    ✅ **found by measurement, not by guessing — D33/D34.** It was the **glass
+    bowl**. Its FM ratio is 2.76, so a carrier at 590 Hz throws a sideband at
+    2219 Hz and one at 1330 Hz throws 5001 Hz — and both showed up in a
+    recording of the zenith breakdown as narrowband peaks that were *still up*
+    in the quietest frame. Muting the bowl dropped every one of them to −65 dB
+    or below, which is the A/B that settles it.
+    - The bowl was the only voice in the set with **no filter of any kind**,
+      playing inharmonic partials two octaves up into a twelve-second reverb
+      with a seven-second release.
+    - Fixed four ways, because each does something different: an octave down,
+      the FM index cut from 1.6 to 0.7 (that is what governs how many sidebands
+      exist), a low-pass at 2200 Hz, and a shorter tail so two strikes cannot
+      overlap into a drone. The zenith's pluck got a ceiling too — same shape of
+      problem, one level quieter.
+    - After: worst persistent peak −65 dB (was −1.0), and the 4–8 kHz share of
+      the mix fell from 2.5% to 0.6%, with the bowl still audibly there. If it
+      now reads as too dark, `lpf` and `oct` in `TRACKS[3].palette.bowl` are the
+      two knobs.
+14. ~~add a bit more reverb to the toucan in canopy to make it more cooler~~
+    ✅ **done — and it turned up a real bug (D35).** The send went from 0.5 to
+    0.82, the wettest thing on that orbit.
+    - The bug: `roomsize` is a property of the **orbit**, not of the event —
+      superdough keeps one reverb per orbit and rebuilds its impulse response
+      whenever an event asks for a different size. Every track was asking for
+      two or three sizes on the same orbit (the canopy's ether alternated 8, 9
+      and 11 about five hundred times a track), so the engine was regenerating
+      up to twelve seconds of noise over and over, and the reverb tail depended
+      on whichever layer had spoken last.
+    - So the room is now cast data: `TRACKS[i].rooms = { 1, 3, 4 }`, and
+      instruments keep only their send. The set walks from a close, low
+      undergrowth (2 / 7 / 6) through a big bright canopy (3 / 11 / 7) to a
+      zenith that drowns even its drums (9 / 12 / 9). `test/palette.mjs` fails
+      if any orbit is ever asked for two sizes again.
+15. ~~can you turn the seams into a wind-down instead of a build-up since it's
+    going back to the intro of the next track~~
+    ✅ **done — D36, and you were right about why.** The seam built to 0.95
+    tension and then handed over to eight bars of ether with a bare kick in it:
+    the loudest moment of every boundary was immediately followed by its
+    quietest.
+    - **The curve first.** `bus.tensionAt` now drains through the early phase to
+      a trough and settles onto the incoming track's opening tension. The
+      visuals never learn about any of this — they read the same function, so
+      the camera winds down with the music for free.
+    - **Then everything that follows tension:** the exit *loses* wildness
+      instead of gaining it, the break fades bar by bar and degrades further,
+      the hats got an `ebb` mode that falls and closes (9000 → 2500 Hz) where
+      they used to climb, and the fill bag decelerates — dense first bar,
+      thinning after it, still uneven, still leaving the hole.
+    - **The landing survives, softer.** Both flavors descend now; what separates
+      them is that a landing still arrives on something (a halved impact, the
+      root pedal, the visual dolly zoom) and a dissolve arrives on nothing.
+    - Measured: −11.4 dB falling continuously to −18 dB across the boundary,
+      no cliff.
+16. ~~in the undergrowth it would be good to also add a bit of dark sparkle to
+    the ambience thanks~~
+    ✅ **done — D37.** A fourth layer, `ambglint`: water dripping inside an
+    ice-filled lava tube (PDM, same rule as every other bed).
+    - The first source tried was resonating drains under a shaded path — perfect
+      on paper, and it measured 37% of its energy below 150 Hz with a 3.9 dB
+      crest. Dark, but a wash. The ice cave measures 83% above 800 Hz, a 9.8 dB
+      crest and **15 countable events per loop**: glints rather than texture.
+    - "Dark" is then the mix, not the recording: everything below 420 Hz gone,
+      the fizz above 5 kHz rolled off, sat under the frogs and the rustle, and
+      given the undergrowth's own room so each drip rings instead of ticking.
+      Per-layer treatment is new — `ambienceMix.layers` — and this is the only
+      layer in the set that uses it.
+
+**New in this pass, and the reason 13 could be answered at all: the project can
+now listen to itself.** `node tools/spectrum_probe.mjs --track=3
+--section=breakdown` boots the engine headless, records the master output and
+reports what is ringing, where the energy sits, and whether a passage rises or
+falls. `--mute=bowl` A/Bs a cast member out of the mix. It records `lab.html`
+(no scene) because the renderer starves the audio thread badly enough to punch
+multi-second holes of digital silence into a recording — the analyser now counts
+those and says so, since a starved recording reads exactly like an arrangement
+that stopped.
+  

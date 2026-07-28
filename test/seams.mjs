@@ -56,14 +56,28 @@ console.log('pre-seam phrase (full arrangement)');
   check(orbitsIn(earlyStart - PHRASE_BARS, earlyStart).has(2), 'bass playing');
 }
 
-console.log('early seam phrase (intensified exit)');
+console.log('early seam phrase (D36 — the exit winds down)');
 {
   const s = soundsIn(earlyStart, lateStart);
   check(s.has('jbreak') && s.has('bd'), 'drums still present');
-  check(s.has('hh'), 'hat riser present');
+  check(s.has('hh'), 'hats still present — the exit thins, it does not cut');
+  // the break fades bar by bar across the window instead of intensifying
+  const brkGain = (b) => Math.max(0, ...onsets(b, b + 1)
+    .filter((h) => h.value?.s === 'jbreak').map((h) => h.value?.gain ?? 0));
+  const before = brkGain(earlyStart - 1);
+  const ramp = Array.from({ length: SEAM_LATE_BARS }, (_, j) => brkGain(earlyStart + j));
+  check(ramp[0] < before, `the break drops as the window opens (${before.toFixed(2)} → ${ramp[0].toFixed(2)})`);
+  check(ramp.every((g, j) => j === 0 || g <= ramp[j - 1] + 1e-9),
+    `and keeps falling, bar by bar (${ramp.map((g) => g.toFixed(2)).join(' → ')})`);
+  // the hats ebb: quieter AND darker as the boundary approaches
+  const hatAt = (b) => onsets(b, b + 1).filter((h) => h.value?.s === 'hh');
+  const hatGain = (b) => Math.max(0, ...hatAt(b).map((h) => h.value?.gain ?? 0));
+  const hatLpf = (b) => Math.max(0, ...hatAt(b).map((h) => h.value?.cutoff ?? 0));
+  check(hatGain(lateStart - 1) < hatGain(earlyStart), 'the hat ebbs rather than rising (D36 reversed the ramp)');
+  check(hatLpf(lateStart - 1) < hatLpf(earlyStart), 'and closes as it goes — receding, not just quieter');
 }
 
-console.log('late seam phrase (drums die, countdown)');
+console.log('late seam phrase (drums die, the figure lets go)');
 {
   const s = soundsIn(lateStart, T0);
   check(!s.has('jbreak'), 'break gone');
@@ -72,22 +86,25 @@ console.log('late seam phrase (drums die, countdown)');
   check(!orbitsIn(lateStart, T0).has(4), 'lead gone');
   const padHaps = pattern.queryArc(lateStart, T0).filter((h) => (h.value?.orbit ?? 0) === 3);
   check(padHaps.length > 0, 'pads survive (the common tone)');
-  // The countdown accelerates but deliberately does NOT double cleanly: a
-  // power-of-two ramp is the stock build this set was trying not to sound like,
-  // and it is predictable from its first two bars. What must still hold is that
-  // the figure gathers — it is denser in its second half than its first — and
-  // that it leaves a hole rather than running solid into the downbeat.
+  // D36 — the figure now LETS GO. What is asserted is the energy, not the note
+  // count: one flavor thins rhythmically, the other keeps moving while its
+  // level and filter fall away, and both have to end up quieter and darker than
+  // they started or the seam is still a build wearing new figures.
+  const perBar = (f) => Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
+    Math.max(0, ...onsets(lateStart + j, lateStart + j + 1)
+      .filter((h) => h.value?.s === 'sd').map(f)));
+  const gains = perBar((h) => h.value?.gain ?? 0);
+  const cutoffs = perBar((h) => h.value?.cutoff ?? 0);
+  check(gains.every((g, j) => j === 0 || g < gains[j - 1]),
+    `the figure falls away bar by bar (${gains.map((g) => g.toFixed(2)).join(' → ')})`);
+  check(cutoffs.every((c, j) => j === 0 || c < cutoffs[j - 1]),
+    `and closes with it (${cutoffs.join(' → ')} Hz)`);
   const rollCounts = Array.from({ length: SEAM_LATE_BARS }, (_, j) =>
     onsets(lateStart + j, lateStart + j + 1).filter((h) => h.value?.s === 'sd').length);
-  const firstHalf = rollCounts.slice(0, SEAM_LATE_BARS / 2).reduce((a, b) => a + b, 0);
-  const lastHalf = rollCounts.slice(SEAM_LATE_BARS / 2).reduce((a, b) => a + b, 0);
-  check(lastHalf > firstHalf, `the countdown gathers (got ${rollCounts.join(',')})`);
-  check(rollCounts.every((c) => c > 0) || rollCounts[0] === 0,
-    'every bar carries the figure, or it starts from silence by design');
   check(!/^1,2,4,8$/.test(rollCounts.join(',')),
-    'and it is not a power-of-two doubling — that was the cheesy one');
-  // the hole: the last 16th before the new downbeat is empty, so the drop lands
-  // into space rather than into a wall of snare
+    `and it is still not a power-of-two doubling (got ${rollCounts.join(',')})`);
+  // the hole: the last 16th before the new downbeat is empty, so the boundary
+  // lands into space rather than into a wall of snare
   const lastSixteenth = onsets(T0 - 1 / 16, T0).filter((h) => h.value?.s === 'sd').length;
   check(lastSixteenth === 0, 'the fill leaves a hole on the last 16th before the downbeat');
 }
@@ -207,24 +224,52 @@ console.log('seam variants (D18) — every boundary is a landing or a dissolve')
       Math.max(...onsets(late0 + j, late0 + j + 1)
         .filter((h) => h.value?.s === 'sd').map((h) => h.value?.gain ?? 0)));
     const impacts = onsets(boundary, boundary + 1).filter((h) => h.value?.s === 'ambimpact');
+    // D36 — BOTH flavors wind down now; what still separates them is how the
+    // boundary is met. A landing arrives on something (a soft impact, a root
+    // pedal under the intro); a dissolve arrives on nothing at all.
+    check(sdGains.every((g, j) => j === 0 || g < sdGains[j - 1]),
+      `→${into}: the figure falls away (${sdGains.map((g) => g.toFixed(2)).join(' → ')})`);
+    check(Math.abs(bus.tensionAt(tB - 0.05) - bus.tensionAt(tB + 0.05)) < 0.15,
+      `→${into}: no tension cliff at the boundary`);
     if (variants[i] === 'landing') {
-      check(sdGains.every((g, j) => j === 0 || g > sdGains[j - 1]), `→${into}: countdown gains rise`);
-      check(soundsIn(late0, boundary).has(hat), `→${into}: hat riser runs to the boundary`);
+      check(soundsIn(late0, boundary).has(hat), `→${into}: the hat ebbs all the way to the boundary`);
       check(impacts.length === 1 && impacts[0].whole.begin.equals(Fraction(boundary)),
         `→${into}: impact lands exactly on the downbeat`);
+      check(impacts[0].value.gain <= 0.5, `→${into}: and it marks the arrival rather than announcing it`);
       check(orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: root pedal in the arrival phrase`);
       check(!onsets(boundary + PHRASE_BARS, boundary + 2 * PHRASE_BARS)
         .some((h) => h.value?.s === 'ambimpact' || (h.value?.orbit ?? 0) === 2),
         `→${into}: impact and pedal are arrival-phrase only`);
-      check(bus.tensionAt(tB - 0.05) > 0.85, `→${into}: tension spikes into the boundary`);
     } else {
-      check(sdGains.every((g, j) => j === 0 || g < sdGains[j - 1]), `→${into}: roll dissolves (gains fall)`);
       check(!soundsIn(late0, boundary).has(hat), `→${into}: hats leave with the promise`);
       check(impacts.length === 0, `→${into}: no impact on a dissolve arrival`);
       check(!orbitsIn(boundary, boundary + PHRASE_BARS).has(2), `→${into}: intro stays bass-free`);
-      check(Math.abs(bus.tensionAt(tB - 0.05) - bus.tensionAt(tB + 0.05)) < 0.15,
-        `→${into}: no tension cliff at the boundary`);
     }
+  }
+}
+
+console.log('D36 — the seam is a wind-down, and the curve says so');
+{
+  // The claim is about tension itself, because tension is what BOTH media read:
+  // if this falls, the visuals wind down with the music for free (§0's one
+  // signal, two renderers). Sampled across the whole window of every boundary.
+  for (let i = 0; i < TRACKS.length; i++) {
+    const boundary = i === 0 ? SET_BARS : trackStartBar(i);
+    const t0 = (boundary - SEAM_BARS) * BAR_SECONDS;
+    const tB = boundary * BAR_SECONDS;
+    const N = 40;
+    const curve = Array.from({ length: N + 1 }, (_, k) => bus.tensionAt(t0 + (k / N) * (tB - t0)));
+    const start = curve[0];
+    const trough = Math.min(...curve);
+    const troughAt = curve.indexOf(trough) / N;
+    const into = TRACKS[i].name;
+    check(trough < start * 0.85,
+      `→${into}: the window drains (${start.toFixed(2)} → trough ${trough.toFixed(2)})`);
+    check(troughAt > 0.4, `→${into}: and the trough is late in the window (at ${(troughAt * 100).toFixed(0)}%)`);
+    check(Math.max(...curve) <= start + 1e-9,
+      `→${into}: nothing in the window is louder than its start — no build anywhere`);
+    // the far side is an intro, and it must not be quieter than the seam's floor
+    check(bus.tensionAt(tB + 0.5) >= trough - 1e-9, `→${into}: the incoming intro opens above the trough`);
   }
 }
 

@@ -221,28 +221,39 @@ const SKEL_MASKS = [
 //
 // Each entry is four top-level groups — one per bar under `.slow(4)` — so the
 // figure stays bar-exact into the new downbeat (D9).
+// D36 — and then the whole bag was turned around. These used to ACCELERATE
+// into the boundary, because the seam was a build; the figures below decelerate,
+// because it is now a wind-down (bus.js `tensionAt` carries the argument). Each
+// still obeys the two rules the D10 rewrite established — nothing doubles
+// cleanly, and the last 16th before the downbeat is empty — but the energy runs
+// the other way: dense first bar, thinning bars after it, gains falling,
+// filters closing. The figure is a hand coming off the fader, not onto it.
 const SEAM_FILLS = [
   {
-    name: 'the hole',
-    fig: '[sd ~ ~ sd] [sd ~ sd [~ sd]] [sd [sd sd] sd [sd sd]] [[sd sd sd] [sd sd sd] ~ ~]',
-    gain: '[0.5 0.62 0.74 0.9]',
-    lpf: '[2200 2800 3400 4200]',
+    name: 'the outbreath',
+    fig: '[sd [sd sd] sd [sd sd]] [sd ~ [sd sd] sd] [~ sd ~ [sd ~]] [sd ~ ~ ~]',
+    gain: '[0.86 0.66 0.48 0.3]',
+    lpf: '[4000 2800 1800 1000]',
   },
   {
-    name: 'the drag',
-    fig: '[~ ~ sd ~] [sd ~ [sd sd] ~] [[sd sd sd] ~ [sd sd sd] ~] [[sd sd sd sd sd sd] ~ [sd sd] ~]',
-    gain: '[0.45 0.6 0.72 0.88]',
-    lpf: '[1900 2500 3100 3900]',
+    name: 'the stagger',
+    fig: '[[sd sd sd] ~ [sd sd] sd] [~ sd [sd sd] ~] [sd ~ ~ sd] [~ ~ sd ~]',
+    gain: '[0.8 0.62 0.46 0.28]',
+    lpf: '[3600 2500 1600 900]',
   },
   {
-    name: 'restraint',
-    fig: '~ [~ ~ ~ sd] [~ sd ~ sd] [sd ~ [sd sd] [sd ~]]',
-    gain: '[0.4 0.55 0.68 0.82]',
-    lpf: '[1700 2300 2900 3600]',
+    name: 'letting go',
+    fig: '[sd [sd sd] [sd sd sd] ~] [sd ~ sd ~] [~ ~ [sd sd] ~] ~',
+    gain: '[0.82 0.58 0.36 0.2]',
+    lpf: '[3400 2200 1300 700]',
   },
 ];
 
-/** The dissolve's figure (D18): the same unevenness, energy inverted. */
+/**
+ * The dissolve's figure (D18): the same unevenness, taken further down. Now
+ * that both flavors wind down this is the more extreme of the two — it closes
+ * to 480 Hz and 0.26 gain, where a landing keeps something under it.
+ */
 const DISSOLVE_FILL = {
   name: 'dissolve',
   fig: '[sd ~ sd ~] [sd ~ [sd sd] ~] [[sd sd] ~ [sd sd sd] ~] [[sd sd sd] ~ ~ ~]',
@@ -252,6 +263,24 @@ const DISSOLVE_FILL = {
 
 /** Dress a fill figure in the track's own snare. */
 const fillFigure = (fig, snd) => (snd === 'sd' ? fig : fig.replaceAll('sd', snd));
+
+// ---------- D35: one room per orbit ----------
+// `roomsize` is a property of the ORBIT, not of the event: superdough keeps one
+// reverb per orbit and REGENERATES its impulse response whenever an event asks
+// for a different size (superdoughoutput.mjs `getReverb`). Every track was
+// asking for two or three sizes on the same orbit — the canopy's ether orbit
+// alternated 8, 9 and 11 about five hundred times a track — so the reverb was
+// rebuilding an impulse of up to twelve seconds of noise, over and over, and
+// the tail length depended on whichever layer had spoken last.
+//
+// So the size of the space is per orbit and per track, and instruments keep
+// only their `room` SEND, which is per-event and free. The orbit map is the
+// stream vector (§3.1), and this makes it literal: four streams, four rooms,
+// each at its own distance.
+const ROOM_SIZE = { 1: 3, 2: 3, 3: 9, 4: 6 }; // drums near, ether far
+
+/** The room a track puts an orbit in: cast data (`TRACKS[i].rooms`) or default. */
+const roomsFor = (voice) => (orbit) => voice.rooms?.[orbit] ?? ROOM_SIZE[orbit] ?? 4;
 
 // ---------- D32: the squawk (was D31's tom kit) ----------
 // The same three croaks (tools/ingest_toms.py), and nothing else survives of
@@ -280,7 +309,7 @@ const SQUAWK_AT = [3, 5, 6, 7, 10, 11, 13, 14];
  * is also why it keeps playing through the intro and the breakdown where the
  * percussion does not. Returns null on the phrases between calls.
  */
-function squawkLayer(ctx, sq, seed, phraseIndex) {
+function squawkLayer(ctx, sq, seed, phraseIndex, rs) {
   const { s } = ctx;
   const every = Math.max(1, sq.every ?? 2);
   if (((phraseIndex % every) + every) % every !== 0) return null;
@@ -305,7 +334,7 @@ function squawkLayer(ctx, sq, seed, phraseIndex) {
     // on its tail.
     .attack(0.004).decay(0.1).sustain(1)
     .lpf(sq.lpf ?? 5200)                       // distance takes the top off
-    .room(sq.room ?? 0.5).roomsize(sq.roomsize ?? 8)
+    .room(sq.room ?? 0.5).roomsize(rs(sq.orbit ?? 3))
     .pan(0.15 + rng() * 0.7)                   // anywhere in the canopy
     .gain(sq.gain ?? 0.3)
     .mask(`[${bars.join(' ')}]/4`)             // absolute cycle mod 4 = bar-in-phrase
@@ -405,7 +434,7 @@ const fmt = (n) => n.toFixed(3); // fractional MIDI: cents are just decimals
  * floor, nothing at all for the canopy, and a high-passed reversed drowning for
  * the zenith, where the drums stop having bodies.
  */
-function costume(pat, bp = {}) {
+function costume(pat, bp = {}, rs) {
   let x = pat;
   if (bp.speed) x = x.speed(bp.speed);
   if (bp.reverse) x = x.sometimesBy(bp.reverse, (y) => y.speed(-(bp.speed ?? 1)));
@@ -414,7 +443,7 @@ function costume(pat, bp = {}) {
   if (bp.crush) x = x.crush(bp.crush);
   if (bp.coarse) x = x.coarse(bp.coarse);
   if (bp.shape) x = x.shape(bp.shape);
-  if (bp.room) x = x.room(bp.room).roomsize(bp.roomsize ?? 4);
+  if (bp.room) x = x.room(bp.room).roomsize(rs(1));
   return x;
 }
 
@@ -436,7 +465,7 @@ function dub(pat, spec, tension, boost = 0) {
  * the drum orbit in the undergrowth; drowned, unmetered and on the ether orbit
  * at the zenith. The set's slowest-moving variable.
  */
-function pluckLayer(ctx, pk, mode, tuning, rng) {
+function pluckLayer(ctx, pk, mode, tuning, rng, rs) {
   const { note } = ctx;
   const scale = leadNotes(mode, pk.oct ?? 0, tuning);
   const mask = euclid(pk.k ?? 3, 16, Math.floor(rng() * 16));
@@ -448,10 +477,14 @@ function pluckLayer(ctx, pk, mode, tuning, rng) {
   let pat = note(seq.join(' '))
     .s('sine').fmh(pk.fmh ?? 3.5).fmi(pk.fmi ?? 2.2)   // inharmonic ratio = wooden
     .attack(0.002).decay(pk.decay ?? 0.12).sustain(0).release(pk.release ?? 0.14)
-    .room(pk.room ?? 0.05).roomsize(pk.roomsize ?? 3)
+    .room(pk.room ?? 0.05).roomsize(rs(pk.orbit ?? 1))
     .gain(pk.gain ?? 0.28)
     .pan(0.35 + rng() * 0.3)
     .orbit(pk.orbit ?? 1);
+  // D34 — an optional ceiling. `fmh` 3.5 puts sidebands at 4.5× the fundamental,
+  // and in the drowned casts they arrive in a twelve-second room with nothing
+  // above them: that is where a wooden knock turns into a ring.
+  if (pk.lpf) pat = pat.lpf(pk.lpf);
   if (pk.offGrid) pat = pat.sometimesBy(pk.offGrid, (x) => x.late(1 / 32)); // the grid lock loosens
   if (pk.slow) pat = pat.slow(pk.slow);
   return pat;
@@ -467,7 +500,7 @@ function pluckLayer(ctx, pk, mode, tuning, rng) {
  * an oscillator the voice has usually already released — one console error per
  * note. Stacking our own noise costs nothing and lets it be filtered apart.
  */
-function breathLayer(ctx, br, mode, tuning, rng, w, tension) {
+function breathLayer(ctx, br, mode, tuning, rng, w, tension, rs) {
   const { note, s } = ctx;
   const contour = leadContour(rng, w); // the set's cell, not a new tune
   const scale = leadNotes(mode, br.oct ?? 1, tuning);
@@ -484,13 +517,13 @@ function breathLayer(ctx, br, mode, tuning, rng, w, tension) {
     .s('sine').vib(br.vib ?? 4.5).vibmod(br.vibmod ?? 0.18)
     .attack(0.3).release(1.1)
     .lpf(lo + span * tension)
-    .room(0.55).roomsize(5)
+    .room(0.55).roomsize(rs(4))
     .gain(g).pan(0.45)
     .slow(4).orbit(4); // long tones under the lead's half-time
   const air = s(seq.map((x) => (x === '~' ? '~' : 'white')).join(' '))
     .attack(0.35).release(0.9)
     .hpf(900).lpf(lo + span * tension).resonance(4)
-    .room(0.55).roomsize(5)
+    .room(0.55).roomsize(rs(4))
     .gain(g * (br.noise ?? 0.32)).pan(0.45)
     .slow(4).orbit(4);
   return [tone, air];
@@ -501,14 +534,14 @@ function breathLayer(ctx, br, mode, tuning, rng, w, tension) {
  * it is spent exactly once per set — at the golden-ratio climax, and nowhere
  * else. Formant follows brightness: 'a' opening toward 'o' as the light rises.
  */
-function choirLayer(ctx, ch, chord, brightness) {
+function choirLayer(ctx, ch, chord, brightness, rs) {
   const { note } = ctx;
   return note(`[${chord.map(fmt).join(',')}]`)
     .s('sawtooth')
     .vowel(brightness > 0.68 ? 'o' : 'a')
     .attack(2.6).release(6)
     .lpf(ch.lpf ?? 1500)
-    .room(0.9).roomsize(9)
+    .room(0.9).roomsize(rs(3))
     .gain(ch.gain ?? 0.2).pan(0.5)
     .slow(4).orbit(3);
 }
@@ -518,13 +551,18 @@ function choirLayer(ctx, ch, chord, brightness) {
  * tuning — inharmonic partials with nothing to resolve to. One strike every two
  * phrases; the sparsest thing in the set.
  */
-function bowlLayer(ctx, bw, mode, tuning) {
+function bowlLayer(ctx, bw, mode, tuning, rs) {
   const { note } = ctx;
   const voices = [1, 5, 9].map((d) => fmt(tune(degreeToMidi(d, mode, bw.oct ?? 2), tuning)));
   return note(`[${voices.join(',')}]`)
     .s('sine').fmh(bw.fmh ?? 2.76).fmi(bw.fmi ?? 1.6)
     .attack(bw.attack ?? 2.5).release(bw.release ?? 7)
-    .room(0.95).roomsize(12)
+    // D34 — the bowl is the one voice in the set that had NO ceiling, and a
+    // 2.76 ratio throws its sidebands to nearly four times the fundamental.
+    // Measured (tools/spectrum_probe.mjs): peaks at 2219 and 5001 Hz that were
+    // still up 1 dB in the quietest frame of the breakdown — the ring.
+    .lpf(bw.lpf ?? 2200)
+    .room(0.95).roomsize(rs(3))
     .gain(bw.gain ?? 0.17).pan(0.5)
     .slow(8).orbit(3);
 }
@@ -535,7 +573,7 @@ function bowlLayer(ctx, bw, mode, tuning) {
  * heard as weather, and the audio sibling of the corpus shrine (D25): at the
  * top of the set, the piece plays back its own earlier material as ether.
  */
-function ghostLayer(ctx, gh, rng, breakSound) {
+function ghostLayer(ctx, gh, rng, breakSound, rs) {
   const { s } = ctx;
   const mask = euclid(gh.grains ?? 5, 16, Math.floor(rng() * 16));
   const grid = { snd: [], begin: [], end: [], speed: [], pan: [] };
@@ -553,7 +591,7 @@ function ghostLayer(ctx, gh, rng, breakSound) {
     .speed(grid.speed.join(' ')).pan(grid.pan.join(' '))
     .attack(0.08).release(0.7)
     .lpf(gh.lpf ?? 2200)
-    .room(0.95).roomsize(12)
+    .room(0.95).roomsize(rs(3))
     .gain(gh.gain ?? 0.15)
     .slow(2).orbit(3);
 }
@@ -562,7 +600,7 @@ function ghostLayer(ctx, gh, rng, breakSound) {
  * The hoover (canopy, spent once): the rave-lineage lead-weapon on the drop
  * bar. Detuned saws with a downward pitch envelope — 1992, once, never again.
  */
-function hooverLayer(ctx, hv, mode, tuning) {
+function hooverLayer(ctx, hv, mode, tuning, rs) {
   const { note } = ctx;
   const root = tune(degreeToMidi(1, mode, 1), tuning);
   const voices = [root - 0.07, root, root + 0.07].map(fmt);
@@ -571,7 +609,7 @@ function hooverLayer(ctx, hv, mode, tuning) {
     .penv(hv.penv ?? -10).pattack(0.001).pdecay(0.35).pcurve(1)
     .attack(0.01).release(1.4)
     .lpf(2600).resonance(6)
-    .room(0.35).roomsize(4)
+    .room(0.35).roomsize(rs(1))
     .gain(hv.gain ?? 0.3).pan(0.5)
     .mask('[1 0 0 0]/4') // bar 0 of the phrase = the drop
     .orbit(1);
@@ -616,6 +654,8 @@ export function makeSetPattern(ctx, p, signals) {
         warmth,
         palette: ps.track.palette ?? {},
         tuning: ps.track.tuning,
+        rooms: ps.track.rooms,          // D35 — one reverb size per orbit
+
         trackIndex: ps.trackIndex,
         barInTrack: ps.barInTrack,
         phraseIndex: idx,
@@ -662,6 +702,10 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   const warmth = voice.warmth ?? 0.4;
   const pal = voice.palette ?? {};
   const tuning = voice.tuning;
+  // D35 — one reverb size per orbit, from the cast. Instruments still choose
+  // their own SEND (`room`); what they no longer do is each demand a different
+  // room and make superdough rebuild the impulse response between them.
+  const rs = roomsFor(voice);
 
   // ---- section state (D11) ----
   const sec = section?.name ?? 'groove';
@@ -670,10 +714,12 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // bar-level progress through the section is secProgress + j/(4·sectionPhrases)
   const secProgress = section ? section.phraseInSection / section.sectionPhrases : 0;
 
-  // Seam phases (§6.3), bar-exact: early seam = intensified exit (A's drums
-  // peak), late seam = the drums die BEFORE the boundary (§6.1's asymmetry —
-  // drums are the strongest stream and must not cross), while the incoming
-  // ether is already here via brightnessAt's forward leak.
+  // Seam phases (§6.3), bar-exact: the early seam is the EXIT — D36 turned it
+  // from an intensification into a wind-down, so the break loosens and the hats
+  // ebb instead of rising — and the late seam is where the drums die BEFORE the
+  // boundary (§6.1's asymmetry: drums are the strongest stream and must not
+  // cross), while the incoming ether is already here via brightnessAt's
+  // forward leak.
   const seamEarly = seam?.active && !seam.late;
   const seamLate = seam?.active && seam.late;
   const dissolveExit = seamLate && seam?.variant === 'dissolve';
@@ -682,7 +728,11 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // The intro reads as aftermath, not absence.
   const landingArrival = sec === 'intro' && section?.phraseInSection === 0 &&
     seam?.entryVariant === 'landing';
-  const wEff = Math.min(1, w + (seamEarly ? 0.25 : 0) + (sec === 'build2' ? 0.15 : 0));
+  // D36 — the exit calms rather than boils. A seam used to add 0.25 of
+  // wildness, which chopped the break hardest exactly where the arrangement is
+  // now supposed to be letting go; build2 keeps its lift, because a pre-drop
+  // IS a build and that is the one place in the form that should still climb.
+  const wEff = Math.min(1, Math.max(0, w - (seamEarly ? 0.15 : 0) + (sec === 'build2' ? 0.15 : 0)));
 
   // D22, spent once: **the silence**. The zenith's release opens with one sine
   // and the wind — the set's only true emptiness — before the loop dives back
@@ -715,18 +765,25 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     const thin = sec === 'build'; // degraded entry: the break fades in over the build
     const sigma = permuteBreak(wEff, rng);
     const bg = bp.gain ?? 1;      // the costume's own level (the zenith sits back)
+    // D36 — the exit fades bar by bar. The break is the loudest thing in the
+    // arrangement, so a seam that winds down has to be visible here first;
+    // `seam.progress + j/SEAM_BARS` is the window's own clock, which keeps the
+    // ramp falling across the phrase line rather than restarting at it.
+    const exitFade = (j) => 0.86 - 0.5 * Math.min(1, seam.progress + j / SEAM_BARS);
     const gainSpec = sec === 'peak' && firstPhraseOf
       // the drop bar slams (per-bar, phrase-aligned)
       ? `[${[1, 0.9, 0.9, 0.9].map((g) => (g * bg).toFixed(3)).join(' ')}]/4`
-      : (thin ? 0.75 : 0.9) * bg;
+      : seamEarly
+        ? `[${Array.from({ length: 4 }, (_, j) => (exitFade(j) * bg).toFixed(3)).join(' ')}]/4`
+        : (thin ? 0.75 : 0.9) * bg;
     layers.push(gate(costume(
       s(bp.s ?? 'jbreak') // local synthesized break; try s('breaks165') with the remote pack
         .slice(16, sigma.join(' '))
         .sometimesBy(thin ? 0 : wEff * 0.4, (x) => x.ply(2)) // stochastic re-subdivision
-        .degradeBy((thin ? 0.4 - 0.2 * secProgress : wEff * 0.15) + (bp.thin ?? 0))
+        .degradeBy((thin ? 0.4 - 0.2 * secProgress : wEff * 0.15) + (bp.thin ?? 0) + (seamEarly ? 0.18 : 0))
         .gain(gainSpec)
         .orbit(1),
-      bp,
+      bp, rs,
     )));
   }
 
@@ -752,7 +809,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       layers.push(s(fillFigure(DISSOLVE_FILL.fig, snd))
         .gain(DISSOLVE_FILL.gain)
         .lpf(DISSOLVE_FILL.lpf)
-        .room('[0.3 0.5 0.7 0.9]').roomsize(6)
+        .room('[0.3 0.5 0.7 0.9]').roomsize(rs(1))
         .slow(4).orbit(1));
     } else {
       // which fill this seam gets: keyed to the track being entered, mixed with
@@ -762,7 +819,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       layers.push(s(fillFigure(fill.fig, snd))
         .gain(fill.gain)
         .lpf(fill.lpf)
-        .room(0.18).roomsize(3)  // a little air, so the hole is audibly a hole
+        .room(0.18).roomsize(rs(1)) // a little air, so the hole is audibly a hole
         .slow(4).orbit(1));
     }
   } else {
@@ -771,7 +828,10 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         s('bd ~ ~ ~')
           // landing arrival: bar 0 slams at full weight, the heartbeat decays
           // from it (per-bar gains, phrase-aligned like the drop slam)
-          .gain(landingArrival ? '[1 0.72 0.6 0.52]/4' : anchorStrength)
+          // D36 — a landing still lands, but it is the bottom of a breath now,
+          // not a slam: the arrival bar sits under where the outgoing track was
+          // rather than above it, and decays from there.
+          .gain(landingArrival ? '[0.8 0.66 0.56 0.48]/4' : anchorStrength)
           .duckorbit('3:4').duckattack(0.12) // engine pre-creates orbits
           .duckdepth(landingArrival ? Math.max(duckDepth, 0.8 * p.coupling) : duckDepth)
           .orbit(1),
@@ -828,7 +888,9 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   if (!ambient && !dissolveExit && !silent) { // D18: on a dissolve the hats leave with the promise
     const hp = pal.hats ?? {};
     let hatMode;
-    if (seam?.active || sec === 'build2') hatMode = 'riser';
+    // D36 — a seam now EBBS and only build2 rises. Same machinery, opposite sign.
+    if (seam?.active) hatMode = 'ebb';
+    else if (sec === 'build2') hatMode = 'riser';
     else {
       const table = {
         build: [['sparse', 1]],
@@ -842,25 +904,38 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     }
     if (hatMode !== 'off') {
       const sparse = hatMode === 'sparse';
-      const k = hatMode === 'riser' ? 6 : sparse ? 2 + Math.round(tension * 2) : 3 + Math.round(tension * 3);
+      const k = hatMode === 'riser' ? 6
+        // the ebb starts near the riser's density and is thinned bar by bar by
+        // its gain ramp; going sparse here too would empty the exit at a stroke
+        : hatMode === 'ebb' ? 5
+        : sparse ? 2 + Math.round(tension * 2) : 3 + Math.round(tension * 3);
       const hatMask = euclid(k, 16, Math.floor(rng() * 16));
       const lvl = hp.gain ?? 1;
       let hats = s(hatMask.map((v) => (v ? (hp.s ?? 'hh') : '~')).join(' ')).pan(0.4 + rng() * 0.2);
       if (hatMode === 'riser') {
         // per-bar gain ramp: the riser climbs bar by bar, phrase-aligned (/4)
         const base = (0.26 + 0.2 * tension) * lvl;
-        const prog = seam?.active
-          ? (j) => seam.progress + j / SEAM_BARS
-          : (j) => secProgress + j / (4 * section.sectionPhrases);
+        const prog = (j) => secProgress + j / (4 * section.sectionPhrases);
         const gains = Array.from({ length: 4 }, (_, j) => (base + 0.28 * lvl * prog(j)).toFixed(3));
         hats = hats.gain(`[${gains.join(' ')}]/4`);
+      } else if (hatMode === 'ebb') {
+        // D36 — the same ramp, downward, and keyed to the seam's own progress so
+        // it keeps falling across BOTH phrases of the window rather than
+        // resetting at the phrase line. It also closes: a hat that only gets
+        // quieter still sounds present, and one that also gets darker recedes.
+        const top = (0.3 + 0.2 * tension) * lvl;
+        const prog = (j) => Math.min(1, seam.progress + j / SEAM_BARS);
+        const gains = Array.from({ length: 4 }, (_, j) => (top * (1 - 0.85 * prog(j))).toFixed(3));
+        hats = hats.gain(`[${gains.join(' ')}]/4`);
+        const close = Array.from({ length: 4 }, (_, j) => Math.round(9000 - 6500 * prog(j)));
+        hats = hats.lpf(`[${close.join(' ')}]/4`);
       } else {
         const base = ((sparse ? 0.15 : 0.22) + 0.16 * tension) * lvl;
         const gains = hatMask.map((v, i) =>
           v ? (base * (0.55 + 0.5 * (1 - INDISPENSABILITY[i]))).toFixed(3) : '0');
         hats = hats.gain(`[${gains.join(' ')}]`); // 16 per-step velocities
       }
-      if (hp.lpf) hats = hats.lpf(hp.lpf);
+      if (hp.lpf && hatMode !== 'ebb') hats = hats.lpf(hp.lpf); // the ebb owns its own closing filter
       if (hp.hpf) hats = hats.hpf(hp.hpf);
       if (hp.release) hats = hats.attack(0.002).decay(hp.release).sustain(0).release(hp.release);
       layers.push(gate(hats.orbit(1)));
@@ -933,7 +1008,8 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // whole notes, fading with the heartbeat. Both exist only in intro phrase 0.
   if (landingArrival) {
     layers.push(
-      s('ambimpact').gain(0.8).room(0.5).roomsize(8).pan(0.5)
+      // D36 — halved: the impact marks the boundary, it no longer announces it
+      s('ambimpact').gain(0.42).room(0.6).roomsize(rs(3)).pan(0.5)
         .mask('[1 0 0 0]/4') // bar 0 of the phrase = the boundary downbeat
         .orbit(3),
     );
@@ -970,7 +1046,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
         .release(swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4))
         .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`)
-        .room(0.9).roomsize(8)       // low DRR: distance, the heavens
+        .room(0.9).roomsize(rs(3))   // low DRR: distance, the heavens
         .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1))
         .pan(`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`)
         // harmonic rhythm as warmth: the glad track re-voices twice as often
@@ -991,7 +1067,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
           .s(pp.s ?? 'sawtooth')
           .attack(0.9).release(2.6)
           .lpf(breath(0.4))
-          .room(0.93).roomsize(11)   // further away than the pad it decorates
+          .room(0.93).roomsize(rs(3)) // one room per orbit (D35); distance is the SEND
           .gain((pp.gain ?? 0.32) * 0.34 * motion)
           .pan(`[0.4 0.6]`)
           .slow(2)                   // one tone per two cycles: a walk, not a riff
@@ -1003,7 +1079,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     layers.push(
       note(fmt(tune(degreeToMidi(1, mode, 1), tuning)))
         .s('sine').attack(3).release(8)
-        .room(0.95).roomsize(12).gain(0.22).pan(0.5)
+        .room(0.95).roomsize(rs(3)).gain(0.22).pan(0.5)
         .slow(4).orbit(3),
     );
   }
@@ -1025,16 +1101,28 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // same audio, any real release would sum the recording with itself.
   if (ambience?.current?.length) {
     const chunk = ((ambience.phraseIndex ?? 0) % AMB_CHUNKS + AMB_CHUNKS) % AMB_CHUNKS;
-    const bed = (name, g, atk = 0.01, rel = 0.01, panPos = 0.5) =>
-      s(name)
-        .begin(chunk / AMB_CHUNKS).end((chunk + 1) / AMB_CHUNKS)
-        .gain(g).attack(atk).release(rel).pan(panPos).slow(4).orbit(3);
-    const [baseBed, ...accents] = ambience.current;
-    const foreground = ambient || seamLate || silent;
     // D30 — how loud, and how often, the biome is: part of the cast like
     // everything else (TRACKS[i].ambienceMix). The undergrowth turns both up,
     // because a jungle floor that goes quiet for whole phrases is not a floor.
     const mix = ambience.mix ?? {};
+    // D37 — and one layer may be treated differently from its neighbours.
+    // A recording is raw material, not a finished part: the ice-cave glints are
+    // the undergrowth's *dark* sparkle only because the mix filters and drowns
+    // them. Every field is optional and the default is the untouched layer.
+    const layerFx = mix.layers ?? {};
+    const bed = (name, g, atk = 0.01, rel = 0.01, panPos = 0.5) => {
+      const fx = layerFx[name] ?? {};
+      let pat = s(name)
+        .begin(chunk / AMB_CHUNKS).end((chunk + 1) / AMB_CHUNKS)
+        .gain(g * (fx.gain ?? 1)).attack(atk).release(rel)
+        .pan(fx.pan ?? panPos).slow(4).orbit(3);
+      if (fx.hpf) pat = pat.hpf(fx.hpf);
+      if (fx.lpf) pat = pat.lpf(fx.lpf);
+      if (fx.room) pat = pat.room(fx.room).roomsize(rs(3));
+      return pat;
+    };
+    const [baseBed, ...accents] = ambience.current;
+    const foreground = ambient || seamLate || silent;
     const bedMix = mix.bed ?? 1;
     const accentMix = mix.accent ?? 1;
     const thr = mix.threshold ?? 0.35;
@@ -1073,7 +1161,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     let lead = note(seq.join(' '))
       .s(lp.s ?? 'triangle')
       .attack(0.05).release(1.5)
-      .room(lp.room ?? 0.8).roomsize(lp.roomsize ?? 6) // drowned: the pluck problem's legal resolution (§7.2)
+      .room(lp.room ?? 0.8).roomsize(rs(4)) // drowned: the pluck problem's legal resolution (§7.2)
       .lpf(llo + lspan * tension)
       // featured (breakdown, D11): the ether becomes figure, tension gate waived
       .gain(featured ? 0.34 : 0.28 * Math.min(1, (tension - 0.3) / 0.3))
@@ -1089,7 +1177,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const up = seq.map((x) => (x === '~' ? '~' : fmt(parseFloat(x) + 12 * (bl.oct ?? 1)))).join(' ');
       layers.push(note(up).s('sine').fmh(bl.fmh ?? 3).fmi(bl.fmi ?? 2.2)
         .attack(0.005).decay(bl.decay ?? 0.6).sustain(0.08).release(1.2)
-        .room(bl.room ?? 0.55).roomsize(bl.roomsize ?? 5)
+        .room(bl.room ?? 0.55).roomsize(rs(4))
         .gain((bl.gain ?? 0.19) * (featured ? 1.15 : 1)).pan(0.55)
         .slow(2).orbit(4));
     }
@@ -1099,7 +1187,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // The migrating pluck plays everywhere except the ambient sections (where the
   // ether is the figure) — and its costume is what changes across the set.
   if (pal.pluck && castIn && !ambient) {
-    const pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng);
+    const pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng, rs);
     if (pluck) layers.push(gate(pluck));
   }
   // spent once: the set's first sound is a stick on wood.
@@ -1114,25 +1202,25 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     );
   }
   if (pal.breath && castIn && sec !== 'intro') {
-    for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, tension)) layers.push(gate(l));
+    for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, tension, rs)) layers.push(gate(l));
   }
   if (pal.choir && castIn && !dropout) {
-    layers.push(choirLayer(ctx, pal.choir, chord, brightness));
+    layers.push(choirLayer(ctx, pal.choir, chord, brightness, rs));
   }
   // D32: the squawk. Weather rather than percussion, so unlike D31's toms it
   // survives the ether-only sections — a bird does not stop calling because the
   // drums dropped out. It does leave at the late seam with everything else.
   if (pal.squawk && castIn) {
-    const call = squawkLayer(ctx, pal.squawk, p.seed, voice.phraseIndex ?? 0);
+    const call = squawkLayer(ctx, pal.squawk, p.seed, voice.phraseIndex ?? 0, rs);
     if (call) layers.push(call);
   }
-  if (pal.bowl && castIn) layers.push(bowlLayer(ctx, pal.bowl, mode, tuning));
+  if (pal.bowl && castIn) layers.push(bowlLayer(ctx, pal.bowl, mode, tuning, rs));
   if (pal.ghost && castIn && !ambient) {
-    layers.push(gate(ghostLayer(ctx, pal.ghost, rng, pal.break?.s ?? 'jbreak')));
+    layers.push(gate(ghostLayer(ctx, pal.ghost, rng, pal.break?.s ?? 'jbreak', rs)));
   }
   // spent once: the hoover, on the canopy's drop bar. 1992, once, never again.
   if (pal.hoover && sec === 'peak' && firstPhraseOf && !silent) {
-    layers.push(hooverLayer(ctx, pal.hoover, mode, tuning));
+    layers.push(hooverLayer(ctx, pal.hoover, mode, tuning, rs));
   }
 
   return stack(...layers);

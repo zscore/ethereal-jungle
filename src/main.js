@@ -2,14 +2,18 @@
  * main.js — wiring. One process, one clock, two renderers:
  * the pattern engine renders the bus for the ear, the scene renders it for the eye.
  */
-import { bus } from './bus.js';
-import { initEngine, rebuild, toggle, seekToBar, getMasterChain } from './music/engine.js';
+import { bus, TRACKS } from './bus.js';
+import { initEngine, rebuild, toggle, seekToBar, getMasterChain, getAudioTap } from './music/engine.js';
 import { initScene } from './visuals/scene.js';
 import { initUI } from './ui.js';
 import { initMidi } from './midi.js';
 import { initOsc } from './osc.js';
 
-window.jungle = { bus, getMasterChain }; // console access for poking the running system
+// Console access for poking the running system. `getAudioTap` is how
+// tools/spectrum_probe.mjs records the finished mix, and TRACKS + rebuild are
+// what let it A/B a cast member out of the mix to find which one is ringing
+// (D33) — the audio equivalent of soloing a channel.
+window.jungle = { bus, TRACKS, getMasterChain, getAudioTap, seekToBar, rebuild };
 
 const overlay = document.getElementById('overlay');
 const canvas = document.getElementById('scene');

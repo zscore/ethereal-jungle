@@ -36,6 +36,18 @@
       "start": null,
       "gain_db": 0.0
     },
+    "ambglint": {
+      "archive": "aporee_56956_65144",
+      "file": "IceCaveNearDoubleHoleCrater.mp3",
+      "title": "Double Hole Crater Lava Flow - Ice cave near Double Hole Crater",
+      "creator": "kellydrafuse",
+      "place": "Double Hole Crater lava flow, Oregon, USA",
+      "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "source_secs": 600.0,
+      "start": null,
+      "gain_db": 0.0,
+      "note": "The dark sparkle (D37): running water resonating under a shaded path, each drain pitched slightly differently. Chosen over three cave recordings because it is pitched and intermittent rather than a wash — glints in the dark, which is the brief."
+    },
     "ambrain": {
       "archive": "aporee_43527_49569",
       "file": "1903270024ProjensdorferGehlzTascamDR100MKIIIOKMIIKlassikA3AdapterED.ogg",

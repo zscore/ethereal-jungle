@@ -168,3 +168,21 @@ export function stopEngine() {
 export function getMasterChain() {
   return masterChain;
 }
+
+/**
+ * The finished mix, as a node anything may fan out from — the audio sibling of
+ * the bus's event stream, and the tap `tools/spectrum_probe.mjs` records
+ * through (D33). Returns superdough's destination gain while the master insert
+ * is idle, and the insert's own output once a knob has spliced it, so a probe
+ * always hears exactly what the speakers do.
+ *
+ * Connecting another destination to a node does not disturb its existing
+ * connections, so a listener here is genuinely passive.
+ */
+export function getAudioTap() {
+  if (!scheduler) return null;
+  return {
+    ctx: getAudioContext(),
+    node: masterChain?.output ?? getSuperdoughAudioController().output.destinationGain,
+  };
+}

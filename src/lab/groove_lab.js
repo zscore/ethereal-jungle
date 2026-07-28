@@ -16,8 +16,15 @@
  * Verdicts persist to localStorage and render as text to paste back.
  */
 import { bus, TRACKS, sectionSpans, trackStartBar } from '../bus.js';
-import { initEngine, rebuild, seekToBar, toggle } from '../music/engine.js';
+import { initEngine, rebuild, seekToBar, toggle, getAudioTap } from '../music/engine.js';
 import { GROOVE_BAGS, KICK_BAGS, SNARE_BAGS } from '../music/generators.js';
+
+// The same console/tooling handles the main page exposes (main.js). This page
+// is where tools/spectrum_probe.mjs actually measures, because it boots the
+// engine with NO SCENE: under software rasterization the renderer starves the
+// audio thread badly enough to punch multi-second holes of digital silence into
+// a recording, which is indistinguishable from an arrangement that stopped.
+window.jungle = { bus, TRACKS, getAudioTap, seekToBar, rebuild, toggle };
 
 const ANCHORS = new Set([0, 4, 8, 12]);
 const STORE_KEY = 'groove-lab-verdicts-v1';

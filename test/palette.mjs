@@ -240,6 +240,46 @@ console.log('the squawk is a bird, not a drum kit (D32, reversing D31)');
     'but it leaves at the late seam, like the rest of the cast');
 }
 
+console.log('one room per orbit, sized by the cast (D35)');
+{
+  // superdough keeps ONE reverb per orbit and regenerates its impulse response
+  // whenever an event asks for a different size. Two sizes on one orbit is
+  // therefore not a mix decision, it is a rebuild loop — this is the check that
+  // stops one creeping back in.
+  for (let i = 0; i < TRACKS.length; i++) {
+    const b = trackStartBar(i);
+    const sizes = new Map();
+    for (const v of values(b, b + TRACKS[i].bars)) {
+      if (v.roomsize == null) continue;
+      const o = v.orbit ?? 0;
+      (sizes.get(o) ?? sizes.set(o, new Set()).get(o)).add(v.roomsize);
+    }
+    const bad = [...sizes.entries()].filter(([, set]) => set.size > 1);
+    check(bad.length === 0,
+      `${TRACKS[i].name}: every orbit asks for exactly one room size (${[...sizes.entries()]
+        .map(([o, set]) => `${o}:${[...set].join('/')}`).join(' ')})`);
+  }
+  // and the sizes are authored: the set walks from a close floor to a vast top
+  const ether = TRACKS.map((tr) => tr.rooms?.[3]);
+  check(ether.every((v) => typeof v === 'number'), 'every track sizes its own ether');
+  check(ether[3] > ether[0], `and the set opens close and ends vast (${ether.join(' → ')})`);
+  check(TRACKS[3].rooms[1] > TRACKS[0].rooms[1] * 3,
+    'the zenith drowns even its drums — the near orbit is as wet as the canopy’s ether');
+}
+
+console.log('the squawk carries the canopy’s room (D35, and the ask that started it)');
+{
+  const b = trackStartBar(2);
+  const calls = values(b, b + TRACKS[2].bars).filter((v) => v.s === 'toucan');
+  check(calls.length > 0 && calls.every((v) => v.room >= 0.8),
+    `the call is sent hard into the reverb (room ${calls[0]?.room})`);
+  check(calls.every((v) => v.roomsize === TRACKS[2].rooms[3]),
+    `into the canopy's own ${TRACKS[2].rooms[3]} s ether, the biggest room any voice plays into`);
+  const others = values(b, b + TRACKS[2].bars).filter((v) => v.orbit === 3 && v.s !== 'toucan' && v.room != null);
+  check(others.length > 0 && calls[0].room > Math.max(...others.map((v) => v.room)) * 0.85,
+    'and it is among the wettest things on that orbit — the bird is across the canopy, not in the speaker');
+}
+
 console.log('the biome mix is part of the cast (D30)');
 {
   const shipped = JSON.parse((await import('node:fs')).readFileSync('public/samples/strudel.json', 'utf8'));
@@ -276,6 +316,28 @@ console.log('the biome mix is part of the cast (D30)');
     'and it sits in the middle — the first pass at these numbers was too loud');
   check(TRACKS.filter((tr) => tr.ambienceMix).length < TRACKS.length,
     'the mix is a per-track field, not a new default — the other biomes are untouched');
+}
+
+console.log('the dark sparkle (D37)');
+{
+  const glints = (i) => {
+    const b = trackStartBar(i);
+    return values(b, b + TRACKS[i].bars).filter((v) => v.s === 'ambglint');
+  };
+  check(glints(0).length > 0 && [1, 2, 3].every((i) => glints(i).length === 0),
+    `the glints are the undergrowth's alone (${glints(0).length} phrases carry them)`);
+  // "dark" is the mix, not the recording: the layer is filtered top and bottom,
+  // sat under its neighbours, and given the ether's room so each drip rings
+  const g = glints(0)[0];
+  check(g.hcutoff > 0 && g.cutoff > 0, `it is filtered at both ends (${g.hcutoff}–${g.cutoff} Hz)`);
+  check(g.room > 0 && g.roomsize === TRACKS[0].rooms[3], 'and put in the undergrowth’s own room, so it rings rather than ticks');
+  const otherAccents = values(trackStartBar(0), trackStartBar(0) + TRACKS[0].bars)
+    .filter((v) => ['ambfrogs', 'ambrustle'].includes(v.s));
+  const avg = (xs) => xs.reduce((s, v) => s + v.gain, 0) / xs.length;
+  check(avg(glints(0)) < avg(otherAccents),
+    `it sits under the frogs and the rustle (${avg(glints(0)).toFixed(3)} vs ${avg(otherAccents).toFixed(3)})`);
+  check(!values(trackStartBar(0), trackStartBar(0) + TRACKS[0].bars)
+    .some((v) => v.s === 'ambinsects' && v.cutoff), 'and it is the only treated layer — the bed is untouched');
 }
 
 console.log('the spent gestures are spent (§5: a first appearance is an event)');

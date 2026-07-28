@@ -146,7 +146,22 @@ npm test           # seams, OSC, the perform rail, look + weather (no browser)
 npm run smoke      # headless browser boot: audio + visuals + bus events
 node tools/visual_check.mjs                     # screenshot sweep, WebGL2
 node tools/visual_check.mjs --backend=webgpu    # …and the other backend
+node tools/cast_audit.mjs                       # every track x section, in the browser
+node tools/spectrum_probe.mjs --seam=0          # RECORD the mix and measure it
 ```
+
+**`spectrum_probe.mjs` is the ear this project did not have** (D33). Everything
+else checks the *pattern*; this one boots the engine headless, taps the master
+output, records N seconds and reports what is **ringing** (narrowband peaks that
+survive into the quietest frame), where the energy sits (octave bands) and
+whether a passage **rises or falls** (level envelope — how a seam wind-down is
+verified). `--mute=bowl,lead` drops cast members from the running page and
+recompiles, which is how the zenith's high ring was traced to the glass bowl in
+two runs. It records `lab.html`, not the app: under software rasterization the
+scene starves the audio thread badly enough to punch seconds of digital silence
+into a recording, and the analyser now counts those and warns rather than
+letting a starved run read as a musical decision. It is a diagnostic, not a
+gate — `npm test` is the gate.
 
 The screenshot sweep captures every biome band, the climax, the
 corpus shrine, one shot per perform-rail knob, both seam flavors, the weather
