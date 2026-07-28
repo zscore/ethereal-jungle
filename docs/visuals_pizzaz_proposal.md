@@ -222,14 +222,20 @@ tying accent walks to the climax, on the visual side first.
 
 ## What is NOT done
 
-- **The near field never bokehs.** K5's fronds sit at 2.8–3.4 units and the
-  focus rides the look-at target ~14 units out, but at rest the focal length is
-  1200 (G1's "off"), so the pass is a no-op and the fronds render sharp. Making
-  them blur at rest means giving the world a real resting aperture, which
-  contradicts F–J's "at rest the frame is indistinguishable from today's" and
-  is therefore a decision, not a bug fix.
-- **Fireflies are O(n²) with a 3-frame stride.** Fine at 220 agents; a spatial
-  hash is the obvious move if the population ever grows.
+- ~~**The near field never bokehs.**~~ ✅ **decided and done — D41.** The
+  decision this entry was holding open was made: the world has a resting
+  aperture now, the focal plane sits on the trunks at ~26 units, and the fronds
+  at the lens are a smear. F–J's "at rest the frame is indistinguishable from
+  today's" is deliberately broken, on the grounds that a forest at eye level has
+  almost no depth of field and a frame where 3 units and 40 units are equally
+  sharp is a diagram. It is scaled by the same curve the fronds fade on, so
+  above the last leaf the focal length is exactly 1200 again and the promise
+  still holds where there is nothing near enough to be about.
+- ~~**Fireflies are O(n²) with a 3-frame stride.**~~ ✅ **done — D41.** The
+  spatial hash this entry named: a uniform grid, one cell per interaction
+  radius, rebuilt each frame by counting sort in preallocated typed arrays. The
+  boid rules are untouched, so it is the same swarm at about a twentieth of the
+  distance tests.
 - **Only WebGL2 has been looked at.** The whole chain — every style node
   included — compiles and boots on WebGPU, and the harness certifies that much.
   It certifies nothing else: on this headless chromium the WebGPU **device is

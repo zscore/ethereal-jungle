@@ -29,19 +29,42 @@ that band." Both media read the walk from `bus.brightnessAt(t)`.
 
 ## 2. The biome map (current)
 
-| band (world y) | biome | family (§3) | palette | mode territory | musical twin |
+**Rewritten by D39** — the four bands stopped being four scenes stacked and
+became four *storeys of one forest*. Read that entry before authoring anything
+new here: the light budget (`canopyLight`), the crown altitudes and the band
+names all changed, and the sky's nested shells were removed.
+
+| band (world y) | storey | family (§3) | palette | mode territory | musical twin |
 |---|---|---|---|---|---|
-| 0–12 | **roots** | local-rule texture | deep violet `#1b1030` | locrian/phrygian | tendency-free dissonance: alive, going nowhere |
-| 10–24 | **forest floor** | growth (vines) | moss green `#16301f` | aeolian/dorian | brown noise: all memory, answers the arc not the beat |
-| 22–42 | **canopy** | fields (particle ether) | blue-grey `#20315e` | dorian/mixolydian | drift(t) made visible; the kick ducks it |
-| 40–62 | **sky** | self-similar (nested shells) | gold `#ffd9a0` | ionian/lydian | ascent without arrival; golden-ratio nesting, coprime rotation rates |
+| 0–12 | **undergrowth** | local-rule texture | black-green `#08120c` | locrian/phrygian | tendency-free dissonance: alive, going nowhere |
+| 10–24 | **understory** | growth (vines) | the green gloom `#12281a` | aeolian/dorian | brown noise: all memory, answers the arc not the beat |
+| 22–42 | **canopy** | fields (particle ether) | sunlit foliage | dorian/mixolydian | drift(t) made visible; the kick ducks it |
+| 40–62 | **open air** | self-similar (crowns, at two scales) | pale blue | ionian/lydian | ascent without arrival; golden-ratio nesting, coprime rotation rates |
 
 Bands deliberately **overlap by ~2 units** so no altitude ever shows a void
-between worlds. The figure stream (drum flashes) is band-independent — it
-spawns at the camera's altitude, because the drums are *here* wherever here is.
-Two non-band elements share the whole stack: the **air** (altitude-graded
+between worlds. Since D39 two structures also *span* them, which is a stronger
+form of the same idea: the **trunks** run from the litter into the crowns and
+are the only objects in all four bands at once, and the **crowns** themselves
+sit across the boundary between the middle two — which is why two tracks play
+under the canopy, one inside it and one above it. Those two altitudes are read
+out of the timeline (`CANOPY_BASE`/`CANOPY_TOP` in `look.js`), not chosen.
+
+The figure stream (drum flashes, and the recurring form) is band-independent —
+it spawns at the camera's altitude, because the drums are *here* wherever here
+is. Two non-band elements share the whole stack: the **air** (altitude-graded
 background sphere) and the **mist** (additive card stack through the floor and
-lower canopy, the parallax the fog can't give).
+lower canopy, the parallax the fog can't give). A third is nearly one: the
+**near field** (K5) hangs leaves on the lens itself, and since D41 it is also
+what the world's resting aperture is scaled by — under the crowns the frame is
+soft up close, and over them there is nothing near enough to be soft.
+
+The old palette anchors are worth keeping in view, because D39 moved every one
+of them and said why: the undergrowth's deep violet `#1b1030` was *phrygian's*
+colour rather than a forest's, and the sky's gold `#ffd9a0` moved from the air
+to the *grade*. The air cools as you climb (light through a leaf comes out
+green, light through air comes out blue) while the picture's grade warms toward
+the sun; splitting those across `biomes.js` and `look.js` is what lets the top
+band be a blue distance under a golden light instead of one or the other.
 
 The last family landed as the **corpus shrine** (§3.5, D25): a flickering
 screen in the undergrowth playing back *this world's* own last bar, chopped by
@@ -124,11 +147,16 @@ Ordered; each step is independently shippable.
 5. **Artifact operators** wired to `w`: ✅ *done (D14)* — feedback smear
    (afterimage, high-`w` only), chroma displacement (rgbShift), grain/scanline
    (film) over the final composited frame, amounts driven by wildness.
-6. **The recurring glyph** (§5, repetition legitimizes): one silhouette that
-   appears at each track's climax, transformed — the visual sibling of the
-   set's single melodic cell (already in the music: `MOTIF` in generators.js).
-   ⚠️ *Built as a moth line-figure (B2), then **removed** — see D28. The slot
-   is still open and still worth filling; the moth is not the way to fill it.*
+6. **The recurring form** (§5, repetition legitimizes): one figure that appears
+   at each track's climax, transformed — the visual sibling of the set's single
+   melodic cell (`MOTIF` in generators.js). ✅ *filled on the second attempt
+   (D40)*. Built first as a moth line-figure (B2) and **removed** by D28 for
+   looking like clip-art; D28's lasting contribution was to price a replacement
+   at three constraints rather than close the slot, and `src/visuals/motif.js`
+   is shaped by them: it is a **rule** (a growth from the cell itself, emitted
+   breadth-first so depth is a zoom level), it is figure by edge and takes no
+   event, and it grows from the music's own cell under the music's own
+   transforms. Still unverified the way the moth failed — **by eye, in motion**.
 7. **Stream fusion at the set climax**, spent once: at canopy-track climax
    (the set's golden-ratio point), let figure flashes ignite the ether —
    particles burst from flash positions; forbidden everywhere else, which is

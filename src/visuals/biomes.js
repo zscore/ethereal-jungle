@@ -63,7 +63,7 @@
  * place*. Any new biome should sample the field rather than invent a clock.
  */
 import * as THREE from 'three';
-import { canopyLight, beamAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
+import { canopyLight, beamAt, nearFieldAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
 
 export const WORLD_TOP = 62;
 
@@ -1059,6 +1059,27 @@ function makeFireflies(rng) {
   const base = new THREE.Color('#ffd98a');
   let stride = 0;           // rebuild a third of the accelerations per frame
 
+  // A uniform-grid spatial hash, one cell per interaction radius, rebuilt each
+  // frame by counting sort — so the flock costs O(N) instead of O(N²) and the
+  // population is free to grow. The pizzaz doc listed the quadratic scan under
+  // *what is not done* and named this as the obvious move; at 220 agents the
+  // old scan ran ~16k distance tests a frame and this runs about a twentieth of
+  // that, all of it in preallocated typed arrays so a flock never allocates.
+  //
+  // The rules themselves are untouched, and that is the point: a boid's
+  // neighbourhood is defined by a radius, and every candidate still faces the
+  // same `d2 > NEIGHBOUR²` test it always did. This changes only which agents
+  // are *offered* to that test, so the swarm that comes out is the same swarm.
+  const CELL = NEIGHBOUR;
+  const BUCKETS = 1024;                       // power of two: mask, not modulo
+  const cellStart = new Int32Array(BUCKETS + 1);
+  const cursor = new Int32Array(BUCKETS);
+  const sorted = new Int32Array(N);
+  const keys = new Int32Array(N);
+  const nearBuckets = new Int32Array(27);     // the 3×3×3 neighbourhood, deduped
+  const hashCell = (cx, cy, cz) =>
+    (((cx * 73856093) ^ (cy * 19349663) ^ (cz * 83492791)) >>> 0) & (BUCKETS - 1);
+
   return {
     name: 'fireflies',
     group: mesh,
@@ -1073,23 +1094,60 @@ function makeFireflies(rng) {
 
       stride = (stride + 1) % 3;
       const wind = windAtOr(env, 0, 20, 0);
+
+      // rebuild the grid: count, prefix-sum, place. Every agent moved last
+      // frame, so this is a full rebuild rather than an update — which is
+      // cheaper than maintaining incremental cell membership at this size.
+      cellStart.fill(0);
+      for (let i = 0; i < drawn; i++) {
+        const ix = i * 3;
+        keys[i] = hashCell(
+          Math.floor(pos[ix] / CELL), Math.floor(pos[ix + 1] / CELL), Math.floor(pos[ix + 2] / CELL));
+        cellStart[keys[i] + 1]++;
+      }
+      for (let b = 0; b < BUCKETS; b++) cellStart[b + 1] += cellStart[b];
+      for (let b = 0; b < BUCKETS; b++) cursor[b] = cellStart[b];
+      for (let i = 0; i < drawn; i++) sorted[cursor[keys[i]]++] = i;
+
       for (let i = 0; i < drawn; i++) {
         const ix = i * 3;
         // the neighbour rules are the expensive part, so each agent re-reads
         // its neighbourhood every third frame — a flock has latency anyway
         if (i % 3 === stride) {
           let sx = 0, sy = 0, sz = 0, ax = 0, ay = 0, az = 0, cx = 0, cy = 0, cz = 0, n = 0;
-          for (let j = 0; j < drawn; j++) {
-            if (j === i) continue;
-            const jx = j * 3;
-            const dx = pos[jx] - pos[ix], dy = pos[jx + 1] - pos[ix + 1], dz = pos[jx + 2] - pos[ix + 2];
-            const d2 = dx * dx + dy * dy + dz * dz;
-            if (d2 > NEIGHBOUR * NEIGHBOUR || d2 < 1e-6) continue;
-            n++;
-            cx += pos[jx]; cy += pos[jx + 1]; cz += pos[jx + 2];         // cohesion
-            ax += vel[jx]; ay += vel[jx + 1]; az += vel[jx + 2];         // alignment
-            const inv = 1 / d2;
-            sx -= dx * inv; sy -= dy * inv; sz -= dz * inv;              // separation
+          // the 27 cells that can hold anything inside the radius. Deduped,
+          // because two distinct cells can hash to the same bucket and a
+          // neighbour counted twice would quietly bias cohesion and alignment
+          // toward whichever agent got lucky — a real bug, and an invisible one.
+          let nb = 0;
+          const bx = Math.floor(pos[ix] / CELL);
+          const by = Math.floor(pos[ix + 1] / CELL);
+          const bz = Math.floor(pos[ix + 2] / CELL);
+          for (let ox = -1; ox <= 1; ox++) {
+            for (let oy = -1; oy <= 1; oy++) {
+              for (let oz = -1; oz <= 1; oz++) {
+                const b = hashCell(bx + ox, by + oy, bz + oz);
+                let seen = false;
+                for (let k = 0; k < nb; k++) if (nearBuckets[k] === b) { seen = true; break; }
+                if (!seen) nearBuckets[nb++] = b;
+              }
+            }
+          }
+          for (let k = 0; k < nb; k++) {
+            const b = nearBuckets[k];
+            for (let s = cellStart[b]; s < cellStart[b + 1]; s++) {
+              const j = sorted[s];
+              if (j === i) continue;
+              const jx = j * 3;
+              const dx = pos[jx] - pos[ix], dy = pos[jx + 1] - pos[ix + 1], dz = pos[jx + 2] - pos[ix + 2];
+              const d2 = dx * dx + dy * dy + dz * dz;
+              if (d2 > NEIGHBOUR * NEIGHBOUR || d2 < 1e-6) continue;
+              n++;
+              cx += pos[jx]; cy += pos[jx + 1]; cz += pos[jx + 2];         // cohesion
+              ax += vel[jx]; ay += vel[jx + 1]; az += vel[jx + 2];         // alignment
+              const inv = 1 / d2;
+              sx -= dx * inv; sy -= dy * inv; sz -= dz * inv;              // separation
+            }
           }
           if (n) {
             acc[ix] = sx * 2.2 + (ax / n - vel[ix]) * 0.7 + (cx / n - pos[ix]) * 0.06;
@@ -1454,7 +1512,11 @@ function makeNearField(rng, camera) {
       // trunks, and nothing at all at the lens once you are over the crowns.
       // "What is near you" is the difference between being in a forest and
       // being above one, and it costs one number.
-      const nearness = 1 - Math.min(1, Math.max(0, (alt - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE)));
+      // …and it is now the same number the world's resting aperture is scaled
+      // by (`nearFieldAt` in look.js), which is what makes the defocus at rest
+      // honest: the frame is only ever soft up close where there is in fact
+      // something up close. Two copies of this curve would have drifted.
+      const nearness = nearFieldAt(alt);
       for (const f of fronds) {
         f.mesh.visible = frondsWanted && nearness > 0.02;
         // the same gust that bends the grove moves the leaf at the lens —

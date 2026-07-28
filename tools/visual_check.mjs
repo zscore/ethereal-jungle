@@ -60,9 +60,34 @@ page.on('pageerror', (e) => errors.push(`[pageerror] ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${m.text()}`); });
 
 console.log(`serving: ${origin}`);
-await page.goto(origin, { waitUntil: 'load' });
-await page.waitForTimeout(2500);
-await page.click('#overlay');
+// Boot and click the way `smoke.mjs` does, and for the reason it does. This
+// used to be `waitUntil: 'load'`, a fixed 2.5 s sleep, and one `click` — three
+// bets on how fast the machine is, and on a box under load they all lose
+// together: the click times out after 30 s waiting for a main-thread slot and
+// the whole sweep dies before its first frame, which reads like a broken app
+// rather than a busy laptop. `load` is also the wrong signal here (the page
+// pulls ~7 MB of ogg and then keeps streaming); `window.jungle.bus` is the
+// real "our code ran" one. Then the click escalates — twice for real, because
+// that proves the overlay is hit-testable, then dispatched, which needs one
+// slot instead of many — and says which one worked, since a run that needed
+// the fallback is telling you not to trust its frame rate for anything.
+await page.goto(origin, { waitUntil: 'commit' });
+await page.waitForFunction(() => Boolean(window.jungle?.bus), null, { timeout: 120000 });
+const overlayHidden = () =>
+  page.evaluate(() => document.getElementById('overlay')?.style.display === 'none');
+let started = null;
+for (const [name, fire] of [
+  ['click', () => page.locator('#overlay').click({ timeout: 20000 })],
+  ['click (retry)', () => page.locator('#overlay').click({ timeout: 20000 })],
+  ['dispatched click', () => page.evaluate(() => document.getElementById('overlay').click())],
+]) {
+  try {
+    await fire();
+    if (await overlayHidden()) { started = name; break; }
+  } catch (err) { console.log(`${name} threw: ${err.message.split('\n')[0]}`); }
+}
+if (!started) { console.error('could not start audio — the overlay never took a click'); process.exit(1); }
+console.log(`started: ${started}${started === 'click' ? '' : '  (the machine is loaded — treat timings with suspicion)'}`);
 await page.waitForTimeout(9000); // samples load, engine schedules, figures fire
 
 const backend = await page.evaluate(() => window.jungle?.visuals?.backend ?? 'unknown');
@@ -108,7 +133,41 @@ for (const [name, a] of stops) {
 }
 await page.evaluate(() => window.jungle.visuals.setStyles(null)); // back to the governor
 
-// (the peak-glyph shot lived here until D28 removed the glyph)
+// The recurring form (B2, second attempt — the slot D28 emptied). Two shots,
+// and they are the two the whole argument rests on: the SAME rule at the two
+// scales D28 named. If it reads at 2.5× among the litter and at 9× over the
+// canopy, the constraint the moth failed is cleared; if one of them looks like
+// clip-art, this one goes the way of the moth and the slot opens again.
+//
+// The presence is pinned rather than waited for. The reveal is a ~4 s growth by
+// design, and on a software rasterizer at 2 fps that is minutes of wall clock —
+// the same trap the style pin exists for. And as with the styles, what is
+// photographed is also asserted: a draw range of zero is invisible in a PNG.
+await page.evaluate(() => window.jungle.visuals.setStyles(false));
+for (const [name, track, altitude] of [
+  ['form-small', 'undergrowth', 0.16],
+  ['form-vast', 'canopy', 0.66],
+]) {
+  await page.click(`button:has-text("${track}")`).catch(() => {});
+  await page.click('button:has-text("peak")').catch(() => {});
+  await page.evaluate((a) => {
+    window.jungle.visuals.setAltitude(a, true);
+    window.jungle.visuals.setLateral(0);  // pin the wander: the form stays framed
+    window.jungle.visuals.setForm(1);     // …and skip the growth, which is slow on purpose
+  }, altitude);
+  await shot(name, 3000);
+  console.log('  form state:', JSON.stringify(await page.evaluate(() => window.jungle.visuals.debugForm())));
+}
+// and one frame proving it is ABSENT where it is supposed to be — the half of
+// "spent, not sprinkled" that a picture of the thing can never show
+await page.evaluate(() => window.jungle.visuals.setForm(null));
+await page.click('button:has-text("groove")').catch(() => {});
+await page.waitForTimeout(1500);
+console.log('  form outside peak:', JSON.stringify(await page.evaluate(() => window.jungle.visuals.debugForm())));
+await page.evaluate(() => {
+  window.jungle.visuals.setLateral(null);
+  window.jungle.visuals.setStyles(null);
+});
 
 // high-tension shot: manual override pushes the whole system toward the climax
 await page.evaluate(() => {

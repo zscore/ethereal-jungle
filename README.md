@@ -71,6 +71,15 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   kick ducks the ether. Plus the living layer: flocking fireflies, phyllotaxis
   leaves, rain and a caustic pool, a signalling mycelial net, and a near field
   of dust and fronds at the lens (the parallax gradient the frame lacked).
+- `visuals/motif.js` — the recurring form (D40), pure and tested
+  (`test/motif.mjs`): the visual sibling of the set's single melodic cell,
+  **grown from a rule rather than drawn**. The same eight notes as `MOTIF` in
+  `generators.js`, wearing one of the music's own transforms per track, branch
+  angles from the cell's intervals and branch planes from its degrees. Segments
+  come out breadth-first, so depth is a *zoom level* — the reason the one figure
+  can be 2.5× among the litter and 9× over the canopy, which is the constraint
+  D28 removed the first attempt for failing. Spent in `peak` sections only,
+  takes no event, and grows in trunk-first over ~4 s.
 - `visuals/weather.js` — the shared atmosphere, pure and tested
   (`test/weather.mjs`): one analytic wind field that **every** biome samples at
   its own position, so a gust crosses the floor, tips the shafts, shears the
@@ -82,7 +91,10 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   back the world's own last bar, chopped by `permuteBreak` — the break's σ, the
   break's anchors, the break's wildness, on frames instead of drum slices.
 - `visuals/look.js` — the renderer seam, pure and tested (`test/look.mjs`): bus
-  params + frame state → every post-chain uniform (ground-only depth of field,
+  params + frame state → every post-chain uniform (ground-only depth of field —
+  which since D41 has a **resting aperture**, so the leaves at the lens are a
+  smear and the focal plane sits on the trunks, spent only at altitudes where
+  there is a near field to be about,
   bloom, anamorphic streak, god rays, shimmer, the perform-rail twins, artifact
   operators) plus the camera's orbit, the per-band colour grade, each seam
   flavor's staging, and `styleAt` — which decides what *kind* of picture the

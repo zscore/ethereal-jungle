@@ -225,6 +225,30 @@ what actually ships, so applied verdicts can be checked in place.
    visual sibling. The slot is now empty and stays open. D28 lists the three
    constraints a replacement has to clear, the first being that it must read at
    both 2.5× and 9× — which a literal creature outline never did.
+   👁 **The slot is filled again — needs your eye. D40.** Not another drawing:
+   `src/visuals/motif.js` grows the figure from a **rule**, and each of D28's
+   three constraints is answered by construction rather than by taste.
+   - **It is the music's cell.** The same eight notes as `MOTIF` in
+     `generators.js`, wearing four of the music's own five transforms — one per
+     track, and no two tracks ever get the same one on any seed. The visuals
+     still import nothing from the music, so the two copies are bound by a test
+     that fails if they ever drift.
+   - **Depth is zoom, not a redraw.** Segments come out breadth-first, so
+     growing it one level deeper never moves a line that was already there. That
+     is what lets the same figure be 2.5× among the litter and 9× over the
+     canopy — D28's own two numbers, spent as the costume's extremes — with two
+     more generations of the rule resolved at the big end.
+   - **It grows in, trunk first**, over about four seconds, and it is drawn by
+     revealing a prefix of one buffer. It takes no event and never will: the
+     test walks it at 100 Hz for 40 s and the largest step it makes is 0.003
+     world units, which is a stronger statement than "we didn't call it from the
+     drum handler".
+   - **What has NOT been checked is the only thing that killed the last one:
+     whether it looks good, in motion.** The stills are in `shots/` —
+     `form-small` (undergrowth) and `form-vast` (canopy). Jump to it with the
+     transport: any track, then the `peak` button. If it reads as a plant the
+     branch angle is one constant; if it reads as clip-art it should go the way
+     of the moth and the slot reopens, which is what D28 was written to allow.
 10. ~~that fill going into the seam is very cheesy and should be a bit better~~
     🎧 **candidate landed — needs your ear.** The countdown was
     `sd sd*2 sd*4 sd*8` under a rising gain ramp: a pure power-of-two doubling,
@@ -417,3 +441,39 @@ that stopped.
       second before the downbeat, which is an argument rather than evidence.
       That one is for your ears. Jump to it with the transport: track 3, then
       the `seam` section button.
+
+18. ~~implement the rest of the visual stuff — anything that's left over~~
+    👁 **the leftovers are done — needs your eye. D40 and D41.** The three
+    proposal docs (tiers A–E, F–J, K–M) were all shipped and D39 had just
+    rebuilt the world as one forest, so "left over" was a short and specific
+    list. The big one is item 9 above (the recurring form). The other three:
+    - **The world has a resting aperture now.** K5 hung leaves 3 units from the
+      lens and they had rendered *sharp* the whole time, because the
+      depth-of-field pass idled at "off" and only woke when a hand touched the
+      rail — the pizzaz doc listed this under *what is not done* and called it a
+      decision rather than a bug. It is: the focal plane now sits on the trunks
+      (~26 units) so the leaf at the lens is a smear, which is what a forest at
+      eye level actually looks like. It is spent **only where there is a near
+      field** — above the last leaf nothing is within 40 units of the camera,
+      the focal length goes back to exactly what it was, and the top band keeps
+      the horizon D39 built it for. If the understory now reads as too soft,
+      `APERTURE_REST` in `look.js` is the one number.
+    - **The fireflies stopped being quadratic.** A spatial hash, one cell per
+      interaction radius, rebuilt each frame in preallocated arrays. The boid
+      rules are untouched and every candidate faces the same radius test, so it
+      is the same swarm — about a twentieth of the distance tests.
+    - **Two lights that lit nothing are gone.** Every material in this world is
+      `MeshBasicMaterial`, which is unlit by definition, so the
+      `DirectionalLight` and `AmbientLight` had never reached a pixel — and the
+      frame loop was spending three lines a frame moving one of them. D39
+      spotted this and declined to fix it. The one job they were really doing
+      has an heir: a lightning strike used to set that light's position from the
+      bearing the storm chose, and that bearing now moves the **god-ray origin**
+      instead, so a strike comes *from* somewhere for the first time.
+    - **Still not done, and not fixable from here:** none of this has been seen
+      on **WebGPU** by a human eye. The headless chromium on this machine loses
+      the WebGPU device a few seconds into every run — it does that on a
+      baseline predating all the visual work too, so it is the environment — and
+      the style tier and now the aperture have only ever been photographed on
+      the software rasterizer. Open it in a real browser window before trusting
+      appearance or frame rate there.
