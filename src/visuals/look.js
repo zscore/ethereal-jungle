@@ -65,6 +65,27 @@ export const TINT_THIN = [0.62, 0.67, 0.78];
 export const FOCAL_SHARP = 1200;
 export const POSTERIZE_STEPS = 64; // "off" for an 8-bit-ish frame
 
+// The world's own resting aperture, as a divisor of FOCAL_SHARP — so ~26 world
+// units of focal length under the crowns, and the rail's own terms stack on top
+// of it rather than replacing it.
+//
+// K5 hung fronds at 2.8–3.4 units from the lens and they have rendered SHARP
+// ever since, because the focal length idled at "off" and the depth-of-field
+// pass was a no-op until a hand touched the rail. The pizzaz doc listed this
+// under *what is not done* and called it a decision rather than a bug, which
+// was right: giving the world an aperture breaks F–J's promise that at rest the
+// frame is indistinguishable from the one before the optics landed. It is made
+// here deliberately. A forest at eye level has almost no depth of field — the
+// leaf at your face is a smear and you cannot make it not be — and a frame
+// where 3 units and 40 units are equally sharp is a diagram, not a look.
+//
+// 26 units puts the focal plane on the TRUNKS (the look-at target rides ~14
+// units out, and the fog under the crowns has eaten everything past ~15
+// anyway), which says the right thing: the forest is what is in focus, and the
+// leaf at the lens is not. It is spent only where there is something near
+// enough to defocus — see `nearFieldAt`.
+export const APERTURE_REST = 45; // FOCAL_SHARP / (1 + 45) ≈ 26 units
+
 // ---------- the light budget: the forest as one extinction curve (D39) ----------
 // What makes a tropical rainforest one place rather than four stacked scenes is
 // not that the same plants grow at every height — it is that every height is
@@ -122,6 +143,19 @@ export function beamAt(a) {
   const x = clamp01(a);
   if (x >= CANOPY_TOP) return 0;
   return 1 - canopyLight(x);
+}
+
+/**
+ * How much near field there is at altitude a — 1 under the crowns, 0 above the
+ * last leaf. Two things read this and they must never disagree: the fronds at
+ * the lens (K5, biomes.js) and the world's resting aperture (`look`), because
+ * an aperture is only honest where there is something close enough for it to
+ * be about. Above the crowns there is nothing within 40 units of the camera and
+ * the frame goes sharp again, which is also what keeps "flying above" the one
+ * band in the set with a legible horizon.
+ */
+export function nearFieldAt(a) {
+  return 1 - clamp01((clamp01(a) - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE));
 }
 
 /**
@@ -201,7 +235,17 @@ export function look(params = {}, env = {}) {
 
   // ---- optics (G1): DRR rendered as depth of field. Focus rides the camera's
   // own look-at target; the focal length closes as the world goes away.
-  const focal = FOCAL_SHARP / (1 + 90 * lp + 20 * space) * (1 + 0.8 * exhale);
+  //
+  // The resting aperture is the first term in the divisor and the rail's are
+  // the rest, which is exactly the relationship: the world was shot at some
+  // aperture and the hand is working on an already-shot picture. It is a
+  // divisor rather than a floor so the two compose — a filter dive still
+  // multiplies the defocus it finds instead of arguing with it — and it is
+  // scaled by the near field so that at the top of the set, where nothing is
+  // close, `focal` is back at FOCAL_SHARP and the rail's idle is once again
+  // bit-identical to the frame F–J shipped.
+  const aperture = APERTURE_REST * nearFieldAt(alt);
+  const focal = FOCAL_SHARP / (1 + aperture + 90 * lp + 20 * space) * (1 + 0.8 * exhale);
   const bokeh = 1 + 2.5 * lp + 1.5 * space;
   const focus = Math.max(0.1, env.focusDist ?? 14);
 

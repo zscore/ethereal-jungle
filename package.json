@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --import ./test/register.mjs test/seams.mjs && node --import ./test/register.mjs test/roll.mjs && node --import ./test/register.mjs test/palette.mjs && node --import ./test/register.mjs test/groove.mjs && node test/osc.mjs && node test/perform.mjs && node test/look.mjs && node test/weather.mjs && node test/docs.mjs",
+    "test": "node --import ./test/register.mjs test/seams.mjs && node --import ./test/register.mjs test/roll.mjs && node --import ./test/register.mjs test/palette.mjs && node --import ./test/register.mjs test/groove.mjs && node test/osc.mjs && node test/perform.mjs && node test/look.mjs && node test/weather.mjs && node --import ./test/register.mjs test/motif.mjs && node test/docs.mjs",
     "smoke": "node smoke.mjs",
     "docs": "node tools/gen_docs.mjs",
     "docs:watch": "node tools/gen_docs.mjs --watch",

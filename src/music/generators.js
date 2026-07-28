@@ -569,7 +569,10 @@ export function layerPresenceAt(name, phraseIndex, seed) {
 // across tracks, it converts a sequence of tracks into an argument. Every
 // characteristic instrument added by D22 states THIS cell — new faces, no new
 // tunes; that is what keeps four casts sounding like one piece.
-const MOTIF = [0, 2, 1, 4, 3, 2, 4, 0]; // scale-degree offsets — the set's single cell
+// Exported only so it can be *checked against* — `src/visuals/motif.js` keeps
+// its own copy (the visuals import nothing from the music) and `test/motif.mjs`
+// fails if the two ever drift apart. Nothing reads this at runtime.
+export const MOTIF = [0, 2, 1, 4, 3, 2, 4, 0]; // scale-degree offsets — the set's single cell
 
 const TRANSFORMS = [
   (m) => m,                                        // literal recall
