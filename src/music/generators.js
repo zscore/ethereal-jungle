@@ -15,7 +15,7 @@
  * from `TRACKS[i].palette` / `.warmth` / `.tuning` in bus.js. That split is the
  * point: variation by re-casting, not by re-coding (§7.3, docs/track_identities.md).
  */
-import { makeRng, phraseStateAt, seamVariant, warmthAt, PHRASE_BARS, SEAM_BARS, AMB_CHUNKS } from '../bus.js';
+import { makeRng, phraseStateAt, seamVariant, warmthAt, PHRASE_BARS, SEAM_BARS, SET_BARS, AMB_CHUNKS } from '../bus.js';
 import { modeAt, padVoicing, bassNotes, BASS_DEGREES, leadNotes, degreeToMidi, tune } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
@@ -184,8 +184,19 @@ export const SNARE_GHOSTS = SNARE_BAGS.shipped;
  */
 export const GROOVE_BAGS = { kick: null, snare: null };
 
+// AD5 — the second telling is more confident: on later passes of the set each
+// groove bag steps to a busier neighbour. sparse stays a temperament (it only
+// rises to shipped), and nothing ladders twice — pass 2 and beyond hold where
+// pass 1 arrived, so the loop settles rather than escalating forever.
+const BAG_NEIGHBOUR = { sparse: 'shipped', shipped: 'busy', busy: 'pushed', pushed: 'busy', laidback: 'shipped' };
+
 /** Resolve which bag a track draws from: lab override, else its cast, else shipped. */
-const bagFor = (library, override, name) => override ?? library[name] ?? library.shipped;
+const bagFor = (library, override, name, pass = 0) => {
+  if (override) return override;
+  let resolved = library[name] ? name : 'shipped';
+  if (pass > 0 && BAG_NEIGHBOUR[resolved]) resolved = BAG_NEIGHBOUR[resolved];
+  return library[resolved] ?? library.shipped;
+};
 
 // How much filling-in each section wants: the intro keeps the heartbeat bare,
 // the peak fills in. Form decides, tension only shades — same rule as D11.
@@ -310,8 +321,10 @@ export const DROP_VARIANTS = [
   { name: 'late',        break: '[0 1 1 1]/4', bass: '[0 1 1 1]/4' },
 ];
 
-export function dropVariantFor(trackIndex, seed) {
-  const rng = makeRng(((seed ^ 0xd80b) + trackIndex * 6151) >>> 0);
+export function dropVariantFor(trackIndex, seed, pass = 0) {
+  // AD5 — the pass folds into the seed, so the second hearing of the set deals
+  // four fresh drops; pass 0 is bit-identical to the pre-ladder draw.
+  const rng = makeRng(((seed ^ 0xd80b) + trackIndex * 6151 + pass * 7451) >>> 0);
   return DROP_VARIANTS[Math.floor(rng() * DROP_VARIANTS.length)];
 }
 
@@ -354,9 +367,12 @@ const TURN_LIFT = {
  * Draw a phrase's turnaround, or null. Deterministic in (seed, phraseIndex) and
  * hashed away from the shared stream, the `squawkLayer` idiom.
  */
-export function turnaroundFor(phraseIndex, seed, sec) {
-  const lift = TURN_LIFT[sec] ?? 0.3;
-  if (lift <= 0) return null;
+export function turnaroundFor(phraseIndex, seed, sec, pass = 0) {
+  // AD5 — the drummer has warmed up: later passes turn phrases around a
+  // little more often. The base appetite per section is unchanged.
+  const base = TURN_LIFT[sec] ?? 0.3;
+  if (base <= 0) return null;
+  const lift = Math.min(1, base + (pass > 0 ? 0.15 : 0));
   const rng = makeRng(((seed ^ 0x7a17) + phraseIndex * 2311) >>> 0);
   if (rng() > lift) return null;
   return TURNAROUNDS[Math.floor(rng() * TURNAROUNDS.length)];
@@ -486,11 +502,16 @@ export const FILL_VOICES = ['snare', 'break', 'pitch', 'weather'];
  * not which snare roll got there. Keeping a second bag would have meant half
  * the boundaries in a set never hearing the new material.
  */
-export const seamFillFor = (toIndex, seed) => {
-  const rot = Math.abs(strHash(`fillvoice:${seed}`)) % FILL_VOICES.length;
+export const seamFillFor = (toIndex, seed, pass = 0) => {
+  // AD5 — the pass XORs into the seed: a later pass re-deals where the voice
+  // rotation starts and which figures are drawn (the no-two-boundaries-alike
+  // guarantee holds within every pass), and pass 0 is bit-identical to the
+  // pre-ladder deal.
+  const s = (seed ^ (pass * 0x9e37)) >>> 0;
+  const rot = Math.abs(strHash(`fillvoice:${s}`)) % FILL_VOICES.length;
   const voice = FILL_VOICES[(((toIndex + rot) % FILL_VOICES.length) + FILL_VOICES.length) % FILL_VOICES.length];
   const bag = SEAM_FILLS.filter((f) => f.voice === voice);
-  return bag[Math.abs(strHash(`fill:${toIndex}:${seed}`)) % bag.length];
+  return bag[Math.abs(strHash(`fill:${toIndex}:${s}`)) % bag.length];
 };
 
 /**
@@ -736,16 +757,30 @@ const TRANSFORMS = [
   (m) => m.map((d) => 4 - d),                      // inversion about the cell's center
   (m, rng) => { const r = 1 + Math.floor(rng() * (m.length - 1)); return m.map((_, i) => m[(i + r) % m.length]); }, // rotation
   (m, rng) => m.map((d) => d + (rng() < 0.5 ? 1 : 2)), // diatonic transposition
+  // AD15 — fragmentation: the first three notes, augmented — the cell
+  // remembered in pieces, the way the granular ghost remembers the break.
+  // Diet-only: no track draws it unless its palette asks (the zenith's does).
+  (m) => m.slice(0, 3).flatMap((d) => [d, d]),
 ];
+
+// AD15 — the standard bag: everything except fragmentation, which is a
+// dissolution device and must be asked for by name.
+const TRANSFORM_DIET = [0, 1, 2, 3, 4];
 
 /**
  * §3 contour-then-quantize: 80% a transformation of the motif, 20% a fresh
  * smooth contour. Shape is generated apart from pitch set, so mode changes
  * re-color a held shape — motivic identity surviving harmonic change.
+ *
+ * AD15 — `diet` (indices into TRANSFORMS) authors the variation POLICY per
+ * track: the cell was varied identically in minute 1 and minute 11, so the
+ * motif had a distribution but no arc. Undergrowth barely dares move it,
+ * the canopy is permitted everything, the zenith remembers it in pieces —
+ * exposition, development, permission, dissolution.
  */
-export function leadContour(rng, w) {
+export function leadContour(rng, w, diet = TRANSFORM_DIET) {
   if (rng() < 0.8) {
-    const tf = TRANSFORMS[Math.floor(rng() * TRANSFORMS.length)];
+    const tf = TRANSFORMS[diet[Math.floor(rng() * diet.length)] ?? 0];
     return tf(MOTIF, rng);
   }
   // fresh material: a bounded smooth walk (novelty budget, §5)
@@ -921,9 +956,9 @@ function stridulateLayer(ctx, st, phraseIndex, seed, rs) {
  * an oscillator the voice has usually already released — one console error per
  * note. Stacking our own noise costs nothing and lets it be filtered apart.
  */
-function breathLayer(ctx, br, mode, tuning, rng, w, tension, rs) {
+function breathLayer(ctx, br, mode, tuning, rng, w, diet, tension, rs) {
   const { note, s } = ctx;
-  const contour = leadContour(rng, w); // the set's cell, not a new tune
+  const contour = leadContour(rng, w, diet); // the set's cell, not a new tune
   const scale = leadNotes(mode, br.oct ?? 1, tuning);
   const mask = euclid(3, 8, Math.floor(rng() * 8));
   let ci = 0;
@@ -1092,6 +1127,12 @@ export function makeSetPattern(ctx, p, signals) {
         barInTrack: ps.barInTrack,
         phraseIndex: idx,
         baseSeed: p.seed,
+        // AD5 — which telling of the set this phrase belongs to. The loop used
+        // to loop exactly; the pass index is the free variable R7 named, and
+        // the devices that read it (bags, turnarounds, drops, seam fills) make
+        // minute 12 a more confident telling of minute 3 while staying exactly
+        // as deterministic — same seed, same set, every pass.
+        pass: Math.max(0, Math.floor((idx * PHRASE_BARS) / SET_BARS)),
       };
       pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, seamInfo, ps.section,
         {
@@ -1204,7 +1245,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // R3 — which drop this track gets, and therefore what is withheld from its
   // drop bar. Null everywhere except the peak's first phrase.
   const drop = (sec === 'peak' && firstPhraseOf && !silent)
-    ? dropVariantFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed)
+    ? dropVariantFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed, voice.pass ?? 0)
     : null;
   /** Apply a drop variant's mask for one layer family, if it has one. */
   const held = (pat, family) => (drop?.[family] ? pat.mask(drop[family]) : pat);
@@ -1283,7 +1324,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // here has the phrase index and the track index folded in, so keying to it
     // would re-roll the rotation at every boundary and the guarantee that a set
     // hears four different materials would quietly stop holding.
-    const fill = seamFillFor(seam?.toIndex ?? 0, voice.baseSeed ?? p.seed);
+    const fill = seamFillFor(seam?.toIndex ?? 0, voice.baseSeed ?? p.seed, voice.pass ?? 0);
     const track = { palette: pal, ambience: ambience?.current };
     layers.push(seamFillLayer(ctx, fill, {
       snd: seamFillSound(fill, track),
@@ -1310,7 +1351,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // coupling constant between the two media (§3.3) and the visual duck is
       // on beat 1 — one pump per bar in both worlds, whatever else the floor
       // is doing down there.
-      const kx = placements(bagFor(KICK_BAGS, GROOVE_BAGS.kick, pal.kick?.bag), pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
+      const kx = placements(bagFor(KICK_BAGS, GROOVE_BAGS.kick, pal.kick?.bag, voice.pass ?? 0), pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
       if (kx) {
         layers.push(gate(
           steps(s, pal.kick?.s ?? 'bd', kx.at)
@@ -1338,7 +1379,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // bar, not seven). Skipped in the dropout bar, which is already a
       // gesture, and at the seam, which has a much bigger one of its own.
       const turn = (!dropout && !seamLate && !seamEarly)
-        ? turnaroundFor(voice.phraseIndex ?? 0, voice.baseSeed ?? p.seed, sec)
+        ? turnaroundFor(voice.phraseIndex ?? 0, voice.baseSeed ?? p.seed, sec, voice.pass ?? 0)
         : null;
       if (turn) {
         layers.push(gate(
@@ -1354,7 +1395,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // D23: ghosts stay OFF the dub rail. The 3/16 feedback is answering one
       // transient per bar (§9.3); answering six would be mud, and the rail's
       // job is to be heard as an echo, not as a texture.
-      const gh = placements(bagFor(SNARE_BAGS, GROOVE_BAGS.snare, pal.snare?.bag), pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
+      const gh = placements(bagFor(SNARE_BAGS, GROOVE_BAGS.snare, pal.snare?.bag, voice.pass ?? 0), pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
       if (gh) {
         layers.push(gate(
           steps(s, pal.snare?.s ?? 'sd', gh.at)
@@ -1454,7 +1495,19 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // the drop and the landing restore the floor whole: the figure is rotated
       // so it starts ON the downbeat rather than wherever the phrase seed fell
       const anchored = landingArrival || (sec === 'peak' && firstPhraseOf);
-      let talea = euclid(k, 16, Math.floor(rng() * 16));
+      // AD8 — the talea develops instead of re-dealing. Seventeen unrelated
+      // figures per track was variety without memory; the rotation is now drawn
+      // once per SECTION (hashed away from the shared stream, the squawkLayer
+      // idiom) and advances one step per phrase inside it: the same figure,
+      // turning against the bar. A genuinely new deal happens only at section
+      // boundaries, where new deals belong. The shared draw is kept and burned
+      // so every layer downstream keeps its deal — the D43 constraint: adding
+      // or removing a draw here re-deals the whole phrase after this point.
+      void Math.floor(rng() * 16);
+      const taleaRng = makeRng(strHash(
+        `talea:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}:${sec}`));
+      const taleaRot = (Math.floor(taleaRng() * 16) + (section?.phraseInSection ?? 0)) % 16;
+      let talea = euclid(k, 16, taleaRot);
       if (anchored && !talea[0]) {
         const hit = talea.indexOf(1);
         talea = talea.map((_, i) => talea[(i + hit) % 16]);
@@ -1486,6 +1539,9 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const top = colors.length - 1;
       let ci = talea[0] ? centreIdx : Math.floor(rng() * colors.length);
       let first = true;
+      // AD7 — the release lets go: gravity toward the centre doubles, so the
+      // lines audibly sag home instead of wandering right up to the seam
+      const gravity = sec === 'release' ? 0.9 : 0.45;
       const seq = talea.map((v, i) => {
         if (!v) return null;
         if (first) { first = false; return colors[ci]; }
@@ -1493,15 +1549,43 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         // N2 — gravity toward the phrase's centre, not always toward the tonic.
         // Reduces to the old `0.55 - 0.5 * (ci / top)` when the centre IS the
         // tonic, which is most phrases: this bends the line, it does not replace it.
-        const up = rng() < 0.5 - 0.45 * ((ci - centreIdx) / top);
+        const up = rng() < 0.5 - gravity * ((ci - centreIdx) / top);
         ci = Math.max(0, Math.min(top, ci + (up ? mag : -mag)));
         return colors[ci];
       });
-      const str = (off) => seq.map((n) => (n == null ? '~' : fmt(n + off))).join(' ');
+      // AD10 — the octave lift: at most once per phrase, the strongest
+      // non-anchor onset jumps +12 — the classic jungle sub-jump. The whole
+      // split-band stack follows (every body copy and the sub read this seq),
+      // which is what makes it a jump rather than a harmony. Probability rises
+      // with the track's own arc; hashed rng, so the shared stream never
+      // notices it happened.
+      const liftRng = makeRng(strHash(
+        `lift:${voice.phraseIndex ?? 0}:${voice.baseSeed ?? p.seed}`));
+      if (liftRng() < 0.2 + 0.55 * tNorm) {
+        let liftAt = -1;
+        for (let i = 0; i < 16; i++) {
+          if (seq[i] == null || ANCHORS.has(i)) continue;
+          if (liftAt < 0 || INDISPENSABILITY[i] > INDISPENSABILITY[liftAt]) liftAt = i;
+        }
+        if (liftAt >= 0) seq[liftAt] += 12;
+      }
+      // AD7 — build2 is the one section that changes what the floor DOES. The
+      // walk is replaced by the pulse: driving eighths on the phrase's centre
+      // (16 slots under the half-time slow(2)), filter opening across the
+      // section — the genre's pre-drop, and the first time build2's floor
+      // differs from groove's underfoot. The walk above is still computed and
+      // discarded: its draws keep the shared stream aligned for every layer
+      // after the bass (the same D43 constraint AD8 cites).
+      const pulse = sec === 'build2';
+      const line = pulse ? Array.from({ length: 16 }, () => colors[centreIdx]) : seq;
+      const str = (off) => line.map((n) => (n == null ? '~' : fmt(n + off))).join(' ');
       const [lo, span] = bp.lpf ?? [140, 260];
       const g = bp.gain ?? 0.5;
+      const bassCut = pulse
+        ? Math.round(lo + span * Math.min(1, 0.45 + 0.7 * secProgress))
+        : lo + span * tension;
       const body = (offset, gain) => {
-        let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(lo + span * tension).gain(gain);
+        let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(bassCut).gain(gain);
         // P1 — the Reese finally moves. `track_identities.md` §4.1 describes
         // this patch as "stasis outside, seething inside", but its cutoff was
         // one number per phrase, held: a Reese without motion is a chorus. A
@@ -1551,6 +1635,27 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
             .slow(4)                 // one tone per phrase: the harmony, not a riff
             .orbit(2),
         ));
+      }
+      // AD9 — spent once per track: the floor states the cell. MOTIF had never
+      // sounded below octave 0 — the set's one melody and its floor were never
+      // the same voice. On the drop bar the bass plays the cell as driving
+      // eighths in its own register (the degree offsets 0–4 map straight onto
+      // the pentatonic set), so the drop gains a MELODIC signature on top of
+      // R3's textural variants — and respects them: a variant that withholds
+      // the floor from the drop bar withholds this too (`held`).
+      if (sec === 'peak' && firstPhraseOf) {
+        const cell = MOTIF.map((d) => colors[Math.max(0, Math.min(top, d))]);
+        const cellSeq = Array.from({ length: 16 },
+          (_, i) => (i % 2 ? '~' : fmt(cell[i / 2]))).join(' ');
+        layers.push(gate(held(
+          note(cellSeq)
+            .s(bp.s ?? 'sawtooth')
+            .attack(0.004).decay(0.22).sustain(0.3).release(0.15)
+            .lpf(lo + span)          // the drop opens the floor's filter fully
+            .gain(g * 0.9)
+            .mask('[1 0 0 0]/4')     // the drop bar, and nowhere else in the track
+            .orbit(2),
+          'bass')));
       }
     }
   }
@@ -1762,14 +1867,31 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   }
 
   // ---- lead: the set's one melodic cell, transformed (80/20) ----
+  // AD15 — the melody policy is authored per track (palette.motif.transforms,
+  // indices into TRANSFORMS), and the release pins every track's bag to
+  // literal recall: §6.4's argument resolving on recall, four times a set.
+  const diet = sec === 'release' ? [0] : pal.motif?.transforms;
   if (leadPresent) {
     const lp = pal.lead ?? {};
     const featured = sec === 'breakdown';
-    const contour = leadContour(rng, w);
+    // AD16 — the answer phrase. Contours were independent draws: variety with
+    // no conversation. Phrases now pair — the even phrase of each pair states
+    // a contour (from a hashed stream keyed to the PAIR, so both members see
+    // the same statement), and the odd phrase answers with its
+    // retrograde-inversion at reduced density. Eight bars become a sentence.
+    // The old shared-rng call is burned so every later layer keeps its deal.
+    const pairIdx = Math.floor((voice.phraseIndex ?? 0) / 2);
+    const answering = ((voice.phraseIndex ?? 0) % 2 + 2) % 2 === 1;
+    const pairRng = makeRng(strHash(
+      `contour:${pairIdx}:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}`));
+    let contour = leadContour(pairRng, w, diet);
+    if (answering) contour = [...contour].reverse().map((d) => 4 - d);
+    void leadContour(rng, w, diet);
     const scale = leadNotes(mode, 2, tuning);
     // sparse placement: E(k,16) with k breathing with tension — the lead is a
-    // guest in the ether, not a soloist (visual doc §5's economy applies here too)
-    const k = featured ? 5 : 3 + Math.round(tension * 3);
+    // guest in the ether, not a soloist (visual doc §5's economy applies here
+    // too); the answer sits one onset thinner than its statement
+    const k = Math.max(2, (featured ? 5 : 3 + Math.round(tension * 3)) - (answering ? 1 : 0));
     const mask = euclid(k, 16, Math.floor(rng() * 16));
     let ci = 0;
     const seq = mask.map((v) => {
@@ -1831,7 +1953,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     if (chirp) layers.push(chirp);
   }
   if (pal.breath && castIn && sec !== 'intro') {
-    for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, tension, rs)) layers.push(gate(l));
+    for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, diet, tension, rs)) layers.push(gate(l));
   }
   // P3 — the stab, on its OWN rng. Drawing from the shared one here would
   // re-deal every layer built after it (the squawk's hashed-rng idiom, applied
