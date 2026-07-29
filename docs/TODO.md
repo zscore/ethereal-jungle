@@ -225,7 +225,18 @@ what actually ships, so applied verdicts can be checked in place.
    visual sibling. The slot is now empty and stays open. D28 lists the three
    constraints a replacement has to clear, the first being that it must read at
    both 2.5× and 9× — which a literal creature outline never did.
-   👁 **The slot is filled again — needs your eye. D40.** Not another drawing:
+   ✅ **Emptied a second time, 2026-07-29 — D42.** You called the replacement
+   "that floating golden L-system hedge" and asked for it gone, so it is gone,
+   along with `src/visuals/motif.js` and its test. Worth recording *what the
+   second failure taught*, since the first one bought us three constraints and
+   this one buys a fourth: the growth met all three of D28's demands by
+   construction and still read as an object stuck in front of the camera. So the
+   missing constraint is **placement** — a figure that hangs at a fixed offset
+   from the lens for a whole section reads as an overlay however it is drawn.
+   The slot is open again and should stay open until someone has a form that
+   lives *somewhere in the world* and gets approached. See item 19.
+   The D40 write-up is kept below for that reason.
+   👁 ~~**The slot is filled again — needs your eye. D40.**~~ Not another drawing:
    `src/visuals/motif.js` grows the figure from a **rule**, and each of D28's
    three constraints is answered by construction rather than by taste.
    - **It is the music's cell.** The same eight notes as `MOTIF` in
@@ -476,4 +487,32 @@ that stopped.
       baseline predating all the visual work too, so it is the environment — and
       the style tier and now the aperture have only ever been photographed on
       the software rasterizer. Open it in a real browser window before trusting
-      appearance or frame rate there.
+      appearance or frame rate there.19. ~~remove some of the visual elements: the rectangular TV screen at the
+    beginning, the spiky black thing that just sits in the foreground, and that
+    floating golden L-system hedge~~
+    ✅ **done 2026-07-29 — all three deleted, not gated. D42.**
+    - **The TV screen** was the **corpus shrine** (D25): a plane in the
+      undergrowth playing back the world's own last bar, chopped by the break's
+      own σ-permutation. The idea was that the visuals should quote themselves
+      the way the music does; what it looks like is a monitor propped up in the
+      litter, and the quotation isn't legible at the size the frame gives it.
+      `src/visuals/shrine.js` is gone, and with it `?shrine=0`, the governor
+      tier and the `shrine` screenshot. The σ machinery in `bus.js` — which the
+      *break* uses — is untouched.
+    - **The spiky black thing** was K5's **fronds**: three dark leaf
+      silhouettes parented to the camera, framing three corners, swaying on the
+      shared wind. They were the near end of the parallax gradient, and they
+      were also in the same corners forever, which is why they read as dirt on
+      the lens. **The near-field dust stays** — same job, but it wraps around
+      the camera and moves *past* you, which is the part that says you are
+      inside something.
+    - **The hedge** was the recurring form — see item 9 for what its removal
+      taught, which is the useful part.
+    - **What this costs:** roadmap items 4 and 6 in `scene_plan.md` go back to
+      open, and the visual set now has no self-quotation and no recurring form.
+      §5 says both are what turn four tracks into an argument, so that is a real
+      loss taken deliberately. Both slots are better empty than filled with what
+      was in them.
+    - **Unchanged on purpose:** `nearFieldAt` and the D41 resting aperture. The
+      curve describes the world's near *content* — trunks, undergrowth, dust —
+      and the fronds were one item of it, not its definition.

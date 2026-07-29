@@ -412,10 +412,12 @@ console.log('the air brightens and blues as you climb; the LIGHT warms (D39)');
 
 console.log('the world has a resting aperture, and it is spent where the near field is');
 {
-  // K5 hung fronds 2.8–3.4 units from the lens and they rendered sharp for as
-  // long as the rail was idle, because the focal length idled at "off". An
-  // aperture is only honest where there is something close enough for it to be
-  // about, so it rides the same curve the fronds do — one number, two readers.
+  // The frame used to render sharp for as long as the rail was idle, because
+  // the focal length idled at "off". An aperture is only honest where there is
+  // something close enough for it to be about — trunks, undergrowth and dust
+  // under the crowns, and nothing at all within 40 units above them. D42 took
+  // K5's fronds away and this curve did not move: what it describes is the
+  // world's near content, and the fronds were only ever one item of it.
   check(nearFieldAt(0) === 1 && nearFieldAt(CANOPY_BASE) === 1,
     'the near field is full anywhere under the crowns');
   check(nearFieldAt(CANOPY_TOP) === 0 && nearFieldAt(1) === 0,

@@ -44,8 +44,8 @@
  *
  * plus the LIVING layer (pizzaz proposal K): fireflies flocking through the
  * floor and canopy, leaves on the growing branches, rain and a black pool, a
- * mycelial net signalling under the roots, and a near field of motes and
- * fronds right at the lens — the depth cue the frame never had.
+ * mycelial net signalling under the roots, and a near field of motes right at
+ * the lens — the depth cue the frame never had.
  *
  * Every biome is GROUND stream: soft, slow, continuous. Rhythm touches the
  * ground in exactly two licensed places: downbeat blooms (growth's "events on
@@ -63,7 +63,7 @@
  * place*. Any new biome should sample the field rather than invent a clock.
  */
 import * as THREE from 'three';
-import { canopyLight, beamAt, nearFieldAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
+import { canopyLight, beamAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
 
 export const WORLD_TOP = 62;
 
@@ -164,35 +164,6 @@ function leafTexture() {
 }
 
 /**
- * A frond cluster growing in from one corner — the near field's framing (K5).
- * Drawn WHITE, because it is used as an `alphaMap`: the mask supplies the
- * shape and the material's `color` supplies the darkness. Feeding a dark
- * sprite in as a normal `map` looks equivalent and is not — the RGB then runs
- * the colour-space gauntlet (an unmanaged CanvasTexture is treated as linear
- * data, not sRGB) and the silhouette comes out as a pale card instead of a
- * leaf. Shape from the mask, colour from the material: no gauntlet.
- */
-function frondTexture() {
-  return sprite('frond', 256, (g, s) => {
-    g.clearRect(0, 0, s, s);
-    g.fillStyle = 'rgba(255,255,255,1)';
-    for (let i = 0; i < 9; i++) {
-      const a = (i / 9) * 1.25 + 0.12;          // fan out from the corner
-      const len = s * (0.62 + 0.34 * Math.sin(i * 2.4));
-      g.save();
-      g.translate(4, s - 4);
-      g.rotate(-a);
-      g.beginPath();
-      g.moveTo(0, 0);
-      g.quadraticCurveTo(len * 0.55, -s * 0.075, len, 0);
-      g.quadraticCurveTo(len * 0.55, s * 0.075, 0, 0);
-      g.fill();
-      g.restore();
-    }
-  });
-}
-
-/**
  * One tree crown, as an alpha mask (D39). Drawn by a RULE rather than as a
  * shape: a lobe, then a ring of lobes around it, then a ring around each of
  * those, three levels deep at a constant ratio. D28's first constraint on
@@ -202,8 +173,13 @@ function frondTexture() {
  * the honest home for §3.4's self-similar family now that the nested shells are
  * gone: a canopy IS the fractal, and it is one this world can be made of.
  *
- * White, like the frond, because it is used as an `alphaMap` — see the note
- * there about the colour-space gauntlet.
+ * Drawn WHITE, because it is used as an `alphaMap`: the mask supplies the shape
+ * and the material's `color` supplies the darkness. Feeding a dark sprite in as
+ * a normal `map` looks equivalent and is not — the RGB then runs the
+ * colour-space gauntlet (an unmanaged CanvasTexture is treated as linear data,
+ * not sRGB) and the silhouette comes out as a pale card instead of a leaf.
+ * Shape from the mask, colour from the material: no gauntlet. (The note used to
+ * live on `frondTexture`, which D42 deleted along with the fronds.)
  */
 function crownTexture() {
   return sprite('crown', 256, (g, s) => {
@@ -1416,15 +1392,16 @@ function makeMycelium(rng) {
 // The frame's real deficiency, and the cheapest thing on this list to fix:
 // everything in the world lives 12–90 units out, so there is no parallax
 // gradient and therefore no depth — and the depth-of-field pass built in G1
-// had nothing close enough to blur. Two parts:
-//   motes  — world-space dust in a box that WRAPS around the camera, so it
-//            parallaxes hard against a world that barely moves;
-//   fronds — silhouettes parented to the camera itself, framing the corners
-//            and swaying on the shared wind. They are the only objects in the
-//            world that are darker than the sky, which is what makes them read
-//            as *in front of* rather than *far away*.
-// Both are ground stream and neither articulates anything.
-function makeNearField(rng, camera) {
+// had nothing close enough to blur. What answers it now is dust: world-space
+// motes in a box that WRAPS around the camera, so they parallax hard against a
+// world that barely moves. Ground stream; articulates nothing.
+//
+// There was a second part — fronds, dark leaf silhouettes parented to the
+// camera and swaying on the shared wind, framing three corners. D42 removed
+// them. They did the parallax job and they did it by sitting still in the same
+// place forever, which is what a viewer sees: not a leaf you are standing
+// behind but a black shape stuck to the lens. Dust moves, so dust stays.
+function makeNearField(rng) {
   const group = new THREE.Group();
 
   const N = 260, BOX = 9;
@@ -1440,44 +1417,11 @@ function makeNearField(rng, camera) {
   const m4 = new THREE.Matrix4();
   const tmp = new THREE.Color();
 
-  // fronds ride the camera: three corners, so the frame is never symmetric
-  const fronds = [];
-  if (camera) {
-    const tex = frondTexture();
-    // Framing, not filling: each frond hangs into one corner and the middle of
-    // the frame stays the world's. The camera's frustum at z=-2.8 is ~3.2
-    // units tall, so a 1.7-unit blade at these offsets reads as a leaf at the
-    // edge of vision — which is the entire job. (It is very easy to make these
-    // twice this size and end up photographing a hedge.)
-    const layout = [
-      { pos: [-1.95, -1.15, -2.8], rot: 0.0, scale: 1.05 },
-      { pos: [2.20, -1.35, -3.1], rot: -Math.PI / 2, scale: 1.20 },
-      { pos: [-2.35, 1.45, -3.4], rot: Math.PI / 2, scale: 1.00 },
-    ];
-    for (const l of layout) {
-      const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.7, 1.7),
-        new THREE.MeshBasicMaterial({
-          alphaMap: tex, color: 0x070c0a, transparent: true, opacity: 0.95,
-          depthWrite: false, side: THREE.DoubleSide, fog: false,
-        }),
-      );
-      m.position.set(...l.pos);
-      m.rotation.z = l.rot;
-      m.scale.setScalar(l.scale);
-      m.renderOrder = 2;
-      camera.add(m);
-      fronds.push({ mesh: m, rot0: l.rot, phase: rng() * 9 });
-    }
-  }
-  let frondsWanted = true; // the isolation switch, kept apart from the altitude gate
-
   return {
     name: 'nearfield',
     group,
     update(dt, env) {
       const cam = env.cam ?? { x: 0, y: 0, z: 0 };
-      const alt = cam.y / WORLD_TOP;
       const wind = windAtOr(env, cam.x, cam.y, cam.z);
       const drawn = Math.max(70, Math.floor(N * (env.quality ?? 1)));
       if (motes.count !== drawn) motes.count = drawn;
@@ -1506,37 +1450,17 @@ function makeNearField(rng, camera) {
       }
       motes.instanceMatrix.needsUpdate = true;
       if (motes.instanceColor) motes.instanceColor.needsUpdate = true;
-
-      // D39 — the near field is a function of altitude, and it is the cheapest
-      // altitude cue in the whole world: leaves at the lens down among the
-      // trunks, and nothing at all at the lens once you are over the crowns.
-      // "What is near you" is the difference between being in a forest and
-      // being above one, and it costs one number.
-      // …and it is now the same number the world's resting aperture is scaled
-      // by (`nearFieldAt` in look.js), which is what makes the defocus at rest
-      // honest: the frame is only ever soft up close where there is in fact
-      // something up close. Two copies of this curve would have drifted.
-      const nearness = nearFieldAt(alt);
-      for (const f of fronds) {
-        f.mesh.visible = frondsWanted && nearness > 0.02;
-        // the same gust that bends the grove moves the leaf at the lens —
-        // that agreement across 40 units of depth is the whole illusion
-        f.mesh.rotation.z = f.rot0 + wind.x * 0.09 + Math.sin(env.t * 1.1 + f.phase) * 0.02 * (1 + wind.gust * 3);
-        f.mesh.material.opacity = 0.9 * nearness * (1 - env.duck * 0.15);
-      }
     },
-    /** The fronds live on the camera, so isolation has to reach them too. */
-    setVisible(v) { frondsWanted = v; for (const f of fronds) f.mesh.visible = v; },
   };
 }
 
 /** Build the whole world into `scene`; returns per-frame updaters + hooks. */
-export function buildWorld(scene, rng, camera) {
+export function buildWorld(scene, rng) {
   const biomes = [
     // built bottom-up, which is also the order the set climbs them
     makeAir(), makeRoots(rng), makeMycelium(rng), makePool(rng), makeFloor(rng),
     makeForest(rng), makeCanopy(), makeUpperAir(), makeShafts(rng), makeMist(rng),
-    makeFireflies(rng), makeRain(rng), makeNearField(rng, camera),
+    makeFireflies(rng), makeRain(rng), makeNearField(rng),
   ];
   for (const b of biomes) scene.add(b.group);
   return {
@@ -1546,7 +1470,6 @@ export function buildWorld(scene, rng, camera) {
       for (const b of biomes) {
         const on = !name || b.name === name;
         b.group.visible = on;
-        b.setVisible?.(on); // parts that live on the camera, not in the scene
       }
     },
     /** Stream fusion (proposal B3): the figure ignites the ether. Canopy only. */

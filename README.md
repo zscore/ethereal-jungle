@@ -70,16 +70,7 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   motion signature continuous. Figure flashes spent only on kicks/snares; the
   kick ducks the ether. Plus the living layer: flocking fireflies, phyllotaxis
   leaves, rain and a caustic pool, a signalling mycelial net, and a near field
-  of dust and fronds at the lens (the parallax gradient the frame lacked).
-- `visuals/motif.js` — the recurring form (D40), pure and tested
-  (`test/motif.mjs`): the visual sibling of the set's single melodic cell,
-  **grown from a rule rather than drawn**. The same eight notes as `MOTIF` in
-  `generators.js`, wearing one of the music's own transforms per track, branch
-  angles from the cell's intervals and branch planes from its degrees. Segments
-  come out breadth-first, so depth is a *zoom level* — the reason the one figure
-  can be 2.5× among the litter and 9× over the canopy, which is the constraint
-  D28 removed the first attempt for failing. Spent in `peak` sections only,
-  takes no event, and grows in trunk-first over ~4 s.
+  of dust wrapping the camera (the parallax gradient the frame lacked).
 - `visuals/weather.js` — the shared atmosphere, pure and tested
   (`test/weather.mjs`): one analytic wind field that **every** biome samples at
   its own position, so a gust crosses the floor, tips the shafts, shears the
@@ -87,13 +78,10 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   weather axis (mist/rain/wind/storm) crossfaded across seams; and lightning on
   a seeded, time-addressable slot schedule. Weather is never rhythm — that is
   what makes it legal on the ground stream.
-- `visuals/shrine.js` — the corpus family: a screen in the undergrowth playing
-  back the world's own last bar, chopped by `permuteBreak` — the break's σ, the
-  break's anchors, the break's wildness, on frames instead of drum slices.
 - `visuals/look.js` — the renderer seam, pure and tested (`test/look.mjs`): bus
   params + frame state → every post-chain uniform (ground-only depth of field —
-  which since D41 has a **resting aperture**, so the leaves at the lens are a
-  smear and the focal plane sits on the trunks, spent only at altitudes where
+  which since D41 has a **resting aperture**, so the focal plane sits on the
+  trunks and what is nearer than them is a smear, spent only at altitudes where
   there is a near field to be about,
   bloom, anamorphic streak, god rays, shimmer, the perform-rail twins, artifact
   operators) plus the camera's orbit, the per-band colour grade, each seam
@@ -212,7 +200,7 @@ gate — `npm test` is the gate.
 
 The screenshot sweep captures the four storeys, the two forestscape frames
 (among the trunks, and out over the crown sea), the climax, the
-corpus shrine, one shot per perform-rail knob, both seam flavors, the weather
+litter, one shot per perform-rail knob, both seam flavors, the weather
 (rain, a held lightning strike), each new nature biome in isolation, and each
 style tier, into `shots/<backend>-<name>.png`. Run it on **both** backends
 before trusting a visual change — that is how the WebGPU point-size bug got
@@ -223,13 +211,13 @@ PNGs come out black, and the run *does* print errors. It certifies that the
 chain compiles and the world boots on that backend, and nothing more —
 appearance and frame rate there need a real browser window.
 
-Escape hatches while looking: `?altitude=0.6`, `?biome=forest`, `?shrine=0`,
+Escape hatches while looking: `?altitude=0.6`, `?biome=forest`,
 `?dof=0`, `?style=0`, `?weather={"rain":1}`, and `window.jungle.visuals` in the
 console — `setAltitude(a, snap)`, `setLateral(x)` (pins the sway + band orbit so
-a shot repeats), `isolate(biome)`, `shrine(true|false|null)`,
+a shot repeats), `isolate(biome)`,
 `setStyles(true|false|null)`, `setWeather({mist,rain,wind,storm}|null)`,
-`strike(0..1|null)`, and the readouts `debugStyle()` / `debugNearField()` /
-`debugShrine()`. `null` hands a tier back to the quality governor.
+`strike(0..1|null)`, and the readout `debugStyle()`. `null` hands a tier back to
+the quality governor.
 
 **The pins matter.** The governor sheds the style tier within seconds on a
 software rasterizer, so anything photographing ink/halftone/the fold must call

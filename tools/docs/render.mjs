@@ -34,7 +34,7 @@ export const GROUPS = [
     id: 'visuals',
     name: 'Visuals',
     blurb: 'One continuous world whose altitude is the mode brightness. Ground stream (slow, soft, continuous) and figure stream (sharp, near, discrete), plus the pure modules — look, weather — whose claims are unit tests rather than paragraphs.',
-    files: ['src/visuals/scene.js', 'src/visuals/biomes.js', 'src/visuals/look.js', 'src/visuals/weather.js', 'src/visuals/figure.js', 'src/visuals/shrine.js'],
+    files: ['src/visuals/scene.js', 'src/visuals/biomes.js', 'src/visuals/look.js', 'src/visuals/weather.js', 'src/visuals/figure.js'],
   },
   {
     id: 'surface',
