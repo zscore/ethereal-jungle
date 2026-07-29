@@ -351,11 +351,32 @@ console.log('the spent gestures are spent (§5: a first appearance is an event)'
   const sticks = values(0, SET_BARS).filter(stick);
   check(sticks.length === 1, `exactly one dry stick in the whole set (found ${sticks.length})`);
   check(values(0, 1).some(stick), 'and it lands in the very first bar');
-  // the hoover: one bar, one track
-  const hoovers = onsets(0, SET_BARS).filter((h) => (h.value?.penv ?? 0) < 0);
-  const dropBar = sectionBar(2, 'peak');
-  check(hoovers.length > 0 && hoovers.every((h) => Math.floor(h.whole.begin.valueOf()) === dropBar),
+  // the two pitch-envelope gestures: each one bar, each one track, opposite
+  // signs at opposite ends of the set. `penv < 0` alone no longer identifies
+  // the hoover — P5's trapdoor dives on the same control — so they are told
+  // apart by the orbit they are spent on (the hoover is a near-stream weapon,
+  // the trapdoor opens under the floor).
+  const dives = onsets(0, SET_BARS).filter((h) => (h.value?.penv ?? 0) < 0);
+  const hoovers = dives.filter((h) => h.value.orbit === 1);
+  const trapdoors = dives.filter((h) => h.value.orbit === 2);
+  check(dives.length === hoovers.length + trapdoors.length,
+    'every pitch dive in the set is one of the two authored gestures');
+  const canopyDrop = sectionBar(2, 'peak');
+  check(hoovers.length > 0 && hoovers.every((h) => Math.floor(h.whole.begin.valueOf()) === canopyDrop),
     'the hoover exists only on the canopy’s drop bar');
+  const undergrowthDrop = sectionBar(0, 'peak');
+  check(trapdoors.length > 0 && trapdoors.every((h) => Math.floor(h.whole.begin.valueOf()) === undergrowthDrop),
+    'and the trapdoor only on the undergrowth’s — the same gesture, opposite end');
+  // the thunderclap: reversed into the emptied bar, forward on the drop, and
+  // nowhere else. Reversal is the tell — nothing else in the set plays backwards.
+  const thunder = onsets(0, SET_BARS).filter((h) => h.value?.s === 'ambthunder' && h.value.speed != null);
+  const ffTrack = [trackStartBar(1), trackStartBar(1) + TRACKS[1].bars];
+  check(thunder.length > 0 && thunder.every((h) => {
+    const b = h.whole.begin.valueOf();
+    return b >= ffTrack[0] && b < ffTrack[1];
+  }), 'the thunderclap belongs to the forest floor alone');
+  check(thunder.some((h) => h.value.speed < 0) && thunder.some((h) => h.value.speed > 0),
+    'and it arrives backwards into the emptied bar, then forwards on the drop');
   // the dub bloom: feedback past anything else, once
   const fbs = values(0, SET_BARS).map((v) => v.delayfeedback ?? 0);
   const bloom = fbs.filter((f) => f > 0.9);

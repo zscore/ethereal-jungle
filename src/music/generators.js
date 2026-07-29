@@ -1637,6 +1637,51 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   if (pal.hoover && sec === 'peak' && firstPhraseOf && !silent) {
     layers.push(hooverLayer(ctx, pal.hoover, mode, tuning, rs));
   }
+  // P5 — spent once: the trapdoor, on the UNDERGROWTH's drop bar. The hoover's
+  // opposite sign at the opposite end of the set: a pitch envelope diving two
+  // octaves instead of screaming up one, on the only track that had no gesture
+  // of its own at its own peak. `penv` is negative, so `pattack` is the fall.
+  if (pal.trapdoor && sec === 'peak' && firstPhraseOf && !silent) {
+    const td = pal.trapdoor;
+    layers.push(
+      note(fmt(tune(degreeToMidi(1, mode, td.oct ?? 0), tuning)))
+        .s(td.s ?? 'sawtooth')
+        .penv(td.penv ?? -24).pattack(td.pattack ?? 0.5).pcurve(1)
+        .attack(0.004).decay(1.6).sustain(0).release(0.9)
+        .lpf(td.lpf ?? 700).resonance(td.resonance ?? 9)
+        .room(td.room ?? 0.35).roomsize(rs(3))
+        .gain(td.gain ?? 0.34).pan(0.5)
+        .mask('[1 0 0 0]/4')       // the drop bar, and nowhere else in the set
+        .orbit(2),
+    );
+  }
+  // P4 — spent once: the thunderclap. `ambthunder` already ships as one of the
+  // forest floor's ambience accents, where it is weather you half-notice; this
+  // promotes it to a gesture. It lands reversed across the build2 dropout bar —
+  // the one bar the form deliberately empties, so it crowds nothing — and
+  // forward on the drop. A roll into a hole, then the hole fills.
+  if (pal.thunder && !silent) {
+    const th = pal.thunder;
+    if (dropout) {
+      layers.push(
+        s('ambthunder').speed(-(th.speed ?? 0.85))   // reversed: it arrives backwards
+          .begin(0).end(th.end ?? 0.22)
+          .room(th.room ?? 0.6).roomsize(rs(3))
+          .gain(th.gain ?? 0.5).pan(0.5)
+          .mask('[0 0 0 1]/4')     // the emptied bar itself
+          .orbit(3),
+      );
+    } else if (sec === 'peak' && firstPhraseOf) {
+      layers.push(
+        s('ambthunder').speed(th.speed ?? 0.85)
+          .begin(0).end(th.end ?? 0.22)
+          .room(0.35).roomsize(rs(3))
+          .gain((th.gain ?? 0.5) * 1.15).pan(0.5)
+          .mask('[1 0 0 0]/4')
+          .orbit(3),
+      );
+    }
+  }
 
   return stack(...layers);
 }

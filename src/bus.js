@@ -180,6 +180,10 @@ export const TRACKS = [
       // arrives and leaves in episodes rather than playing every phrase.
       stridulate: { bandf: 3600, bandq: 22, rate: 14, depth: 0.85, k: 5,
         decay: 0.18, room: 0.25, gain: 0.16, threshold: 0.42, pan: 0.28 },
+      // P5 — spent once, on this track's drop bar: the hoover's opposite sign
+      // at the opposite end of the set. Two octaves DOWN instead of one up.
+      trapdoor: { s: 'sawtooth', oct: 0, penv: -24, pattack: 0.5, lpf: 700,
+        resonance: 9, room: 0.35, gain: 0.34 },
     },
   },
   {
@@ -218,6 +222,10 @@ export const TRACKS = [
       // which is how the floor gets an accent without becoming lit.
       stab: { s: 'sawtooth', k: 2, voices: 4, decay: 0.16, lpf: 900, resonance: 11,
         lpenv: 2.6, lpdecay: 0.09, room: 0.22, gain: 0.2 },
+      // P4 — the thunderclap. `ambthunder` already ships as an ambience accent
+      // here; this promotes it from weather you half-notice to a gesture:
+      // reversed into the build2 dropout bar, forward on the drop.
+      thunder: { speed: 0.85, end: 0.22, room: 0.6, gain: 0.5 },
     },
   },
   {
