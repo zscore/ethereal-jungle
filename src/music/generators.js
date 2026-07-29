@@ -1498,6 +1498,9 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const top = colors.length - 1;
       let ci = talea[0] ? centreIdx : Math.floor(rng() * colors.length);
       let first = true;
+      // AD7 — the release lets go: gravity toward the centre doubles, so the
+      // lines audibly sag home instead of wandering right up to the seam
+      const gravity = sec === 'release' ? 0.9 : 0.45;
       const seq = talea.map((v, i) => {
         if (!v) return null;
         if (first) { first = false; return colors[ci]; }
@@ -1505,15 +1508,27 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         // N2 — gravity toward the phrase's centre, not always toward the tonic.
         // Reduces to the old `0.55 - 0.5 * (ci / top)` when the centre IS the
         // tonic, which is most phrases: this bends the line, it does not replace it.
-        const up = rng() < 0.5 - 0.45 * ((ci - centreIdx) / top);
+        const up = rng() < 0.5 - gravity * ((ci - centreIdx) / top);
         ci = Math.max(0, Math.min(top, ci + (up ? mag : -mag)));
         return colors[ci];
       });
-      const str = (off) => seq.map((n) => (n == null ? '~' : fmt(n + off))).join(' ');
+      // AD7 — build2 is the one section that changes what the floor DOES. The
+      // walk is replaced by the pulse: driving eighths on the phrase's centre
+      // (16 slots under the half-time slow(2)), filter opening across the
+      // section — the genre's pre-drop, and the first time build2's floor
+      // differs from groove's underfoot. The walk above is still computed and
+      // discarded: its draws keep the shared stream aligned for every layer
+      // after the bass (the same D43 constraint AD8 cites).
+      const pulse = sec === 'build2';
+      const line = pulse ? Array.from({ length: 16 }, () => colors[centreIdx]) : seq;
+      const str = (off) => line.map((n) => (n == null ? '~' : fmt(n + off))).join(' ');
       const [lo, span] = bp.lpf ?? [140, 260];
       const g = bp.gain ?? 0.5;
+      const bassCut = pulse
+        ? Math.round(lo + span * Math.min(1, 0.45 + 0.7 * secProgress))
+        : lo + span * tension;
       const body = (offset, gain) => {
-        let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(lo + span * tension).gain(gain);
+        let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(bassCut).gain(gain);
         // P1 — the Reese finally moves. `track_identities.md` §4.1 describes
         // this patch as "stasis outside, seething inside", but its cutoff was
         // one number per phrase, held: a Reese without motion is a chorus. A
