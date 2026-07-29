@@ -844,6 +844,12 @@ export function makeSetPattern(ctx, p, signals) {
         tuning: ps.track.tuning,
         rooms: ps.track.rooms,          // D35 — one reverb size per orbit
 
+        // P0 — the track's own tension range, so gates can ask "how far into
+        // THIS track's arc are we" instead of comparing a rescaled curve to an
+        // absolute number (see `leadPresent` in buildArrangement)
+        floor: ps.track.floor,
+        ceiling: ps.track.peak,
+
         trackIndex: ps.trackIndex,
         barInTrack: ps.barInTrack,
         phraseIndex: idx,
@@ -934,8 +940,18 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   const kickIn = !seamLate && sec !== 'breakdown' && !silent;
   const snareIn = !seamLate && !ambient && !silent;
   const bassIn = !seamLate && !ambient && !silent;
+  // P0 — tension, normalised into THIS track's own authored range. The set's
+  // tension curve is already rescaled per track into [floor, peak], so a gate
+  // written against an absolute number silently means something different in
+  // every track. It meant the most in the undergrowth, whose peak is 0.70: with
+  // a `tension > 0.3` gate and a gain of `(tension - 0.3) / 0.3`, the darkest
+  // track in the set sat at gain ≤ 0.12 everywhere except its own peak and was
+  // gated off entirely in intro and build. The darkest track having no melody
+  // is a bug, not an aesthetic.
+  const tSpan = (voice.ceiling ?? 1) - (voice.floor ?? 0);
+  const tNorm = tSpan > 0 ? Math.max(0, Math.min(1, (tension - (voice.floor ?? 0)) / tSpan)) : tension;
   const leadPresent = !seamLate && !silent &&
-    (sec === 'breakdown' || (tension > 0.3 && sec !== 'intro' && sec !== 'build'));
+    (sec === 'breakdown' || (tNorm > 0.28 && sec !== 'intro' && sec !== 'build'));
   // the characteristic layers leave with the drums at the late seam: the seam
   // strips to the common tone, whoever is currently playing it (§6.1)
   const castIn = !seamLate && !silent;
@@ -1444,7 +1460,9 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       .room(lp.room ?? 0.8).roomsize(rs(4)) // drowned: the pluck problem's legal resolution (§7.2)
       .lpf(llo + lspan * tension)
       // featured (breakdown, D11): the ether becomes figure, tension gate waived
-      .gain(featured ? 0.34 : 0.28 * Math.min(1, (tension - 0.3) / 0.3))
+      // P0 — the ramp reads the track's own arc too, and floors at a level that
+      // is actually audible rather than tapering to nothing
+      .gain(featured ? 0.34 : 0.28 * (0.55 + 0.45 * Math.min(1, (tNorm - 0.28) / 0.32)))
       .pan(0.5)
       .slow(2)                     // half-time layer: lyrical, not rhythmic
       .orbit(4);
