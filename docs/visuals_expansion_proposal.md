@@ -68,7 +68,7 @@ white-hot and unbloomed (figure pass).
 *Accept:* drums are watchable with the sound off; nothing fires on break
 interior hits.
 
-### B2. The recurring glyph (M) — shipped, then removed (D28)
+### B2. The recurring glyph (M) — shipped, removed (D28), regrown as a rule (D40)
 §5's repetition budget: ONE silhouette — proposal: a long-tailed moth/bird
 line-figure, drawn as a few dozen line segments so it reads at any scale —
 that appears only in each track's `peak` section (the bus now knows sections,
@@ -78,6 +78,12 @@ outline in the shell lattice. Three appearances make it an institution; it is
 the visual sibling of the music's `MOTIF`.
 *Accept:* same silhouette recognizable in all four tracks; absent outside
 peak sections.
+*Landed on the second attempt (D40), and the acceptance criterion is what
+changed.* "The same silhouette under a costume" is what produced clip-art; what
+recurs now is the same **rule** applied to the same **cell** under the music's
+own transforms, which is recognizable in a stronger sense and is the only form
+of it that can survive being drawn at 2.5× and at 9×. See `src/visuals/motif.js`
+and open decision 1 below, which this answers.
 
 ### B3. Stream fusion at the set climax (S, spent once)
 At the canopy track's golden-ratio bar (computable exactly from the
@@ -160,9 +166,13 @@ Rough total: E+A+B ≈ a focused week of sessions; C+D on top ≈ another.
 
 ## Open decisions (need a call before their item starts)
 
-1. **Glyph identity (B2):** moth? bird-of-paradise? something abstract? It
-   recurs all set — worth choosing deliberately, ideally with the music
-   agent so the motif and glyph feel like the same character.
+1. ~~**Glyph identity (B2):** moth? bird-of-paradise? something abstract?~~
+   **answered (D40)** — and the answer is that the question was the problem.
+   Every candidate on that list is a *silhouette*, and a silhouette drawn as
+   line segments has exactly one scale in it, which is what D28 removed the moth
+   for. The identity is now the growth rule itself, and the "same character as
+   the motif" wish is satisfied literally rather than by feel: it is grown from
+   the motif, under the motif's own transform bag.
 2. **Corpus footage source (D1):** curated CC0 pack vs. procedurally
    degraded renders of our own world (self-corpus — no licensing surface at
    all, and thematically strong: the jungle dreaming of itself).

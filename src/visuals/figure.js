@@ -9,11 +9,14 @@
  * hard-edged shards, one-frame attack, fast decay. Both stay white-hot and
  * live on the figure render layer (no bloom, no softness).
  *
- * There was a third member here — the recurring glyph (proposal B2), a moth
- * silhouette in each track's peak section. It was removed in D28: the concept
- * survives, the moth did not. See design_decisions.md before adding a new one.
+ * The third member is the recurring FORM (proposal B2, second attempt). The
+ * first attempt was a moth silhouette and D28 removed it; the slot it left is
+ * filled here by a rule instead of a drawing — see `motif.js`, which owns the
+ * growth and the argument, and holds neither three.js nor state. Everything
+ * below is assignment.
  */
 import * as THREE from 'three';
+import { growMotif, segmentCount, revealCount } from './motif.js';
 
 export function initFigure(scene, layer) {
   // ---- kick rings ----
@@ -51,6 +54,27 @@ export function initFigure(scene, layer) {
   const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
   for (let i = 0; i < BURSTS * PER; i++) shardMesh.setMatrixAt(i, ZERO);
 
+  // ---- the recurring form (B2 again; D28's slot) ----
+  // One buffer, allocated for the deepest costume and never reallocated — every
+  // appearance is a rewrite of the same vertices and a draw range over them.
+  // The reveal is that draw range: because motif.js emits breadth-first, a
+  // prefix of the buffer is the same form at a coarser depth, so the form grows
+  // trunk-first instead of fading in. Fading in would make it weather; growing
+  // makes it a thing that arrives.
+  const MAX_DEPTH = 8;
+  const formGeo = new THREE.BufferGeometry();
+  formGeo.setAttribute('position',
+    new THREE.BufferAttribute(new Float32Array(segmentCount(MAX_DEPTH) * 6), 3));
+  formGeo.setDrawRange(0, 0);
+  const formMesh = new THREE.LineSegments(formGeo, new THREE.LineBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0, depthWrite: false,
+  }));
+  formMesh.frustumCulled = false;
+  formMesh.visible = false;
+  formMesh.layers.set(layer);   // figure pass: white-hot, unbloomed, sharp
+  scene.add(formMesh);
+  let formKey = '';             // the (cell, depth) currently in the buffer
+
   return {
     /** Kick: shockwave ring at altitude y. During fusion it runs gold. */
     kick(x, y, z, gain, fusion) {
@@ -60,6 +84,58 @@ export function initFigure(scene, layer) {
       r.mesh.position.set(x, y - 1.2, z);
       r.mesh.material.color.set(fusion ? '#ffd9a0' : '#ffffff');
       r.gain = gain;
+    },
+
+    /**
+     * The recurring form. `state` is whatever `formAt` returned this frame,
+     * `amount` the caller's smoothed 0..1 presence, and `cam` the camera the
+     * form hangs in front of. Called every frame from the frame loop — never
+     * from an event, which is the whole of D28's second constraint.
+     */
+    form(state, amount, cam) {
+      if (amount <= 0.001) { formMesh.visible = false; return; }
+      const depth = Math.min(MAX_DEPTH, state.depth);
+      const key = `${state.cell.join(',')}|${depth}`;
+      if (key !== formKey) {
+        // the cell or the costume changed: one regrow per track, not per frame
+        const segs = growMotif(state.cell, { depth, length: 1 });
+        // Centre it on its own bounding box before upload, so `state.pos` means
+        // where the FORM goes rather than where its base does. The rule grows
+        // upward from the origin and its height depends on the cell, so a base
+        // offset that frames one transform hangs the next one out of shot —
+        // which is exactly what the first pass did at 9×, where the figure was
+        // 23 units tall and every one of them was above the top of the frame.
+        let lo = Infinity, hi = -Infinity, lx = Infinity, hx = -Infinity;
+        for (let i = 0; i < segs.length; i += 3) {
+          if (segs[i + 1] < lo) lo = segs[i + 1];
+          if (segs[i + 1] > hi) hi = segs[i + 1];
+          if (segs[i] < lx) lx = segs[i];
+          if (segs[i] > hx) hx = segs[i];
+        }
+        const cy = (lo + hi) / 2, cx = (lx + hx) / 2;
+        for (let i = 0; i < segs.length; i += 3) { segs[i] -= cx; segs[i + 1] -= cy; }
+        formGeo.attributes.position.array.set(segs);
+        formGeo.attributes.position.needsUpdate = true;
+        formKey = key;
+      }
+      formGeo.setDrawRange(0, revealCount(depth, amount) * 2); // vertices, not segments
+      formMesh.visible = true;
+      formMesh.position.set(cam.x + state.pos.x, cam.y + state.pos.y, cam.z + state.pos.z);
+      formMesh.rotation.y = state.spin;
+      formMesh.scale.setScalar(state.scale);
+      // opacity trails the reveal so the last twigs are not hard-edged the
+      // instant they exist; the form is never fully solid, because a figure
+      // that opaque at 9× would be a wall rather than a drawing
+      formMesh.material.opacity = Math.pow(amount, 1.4) * 0.85;
+    },
+
+    /** What the form is actually drawing: segments on screen, not intent. */
+    formDrawn() {
+      return {
+        visible: formMesh.visible,
+        segments: formMesh.visible ? formGeo.drawRange.count / 2 : 0,
+        opacity: +formMesh.material.opacity.toFixed(3),
+      };
     },
 
     /** Snare: shard scatter — one-frame attack, fast decay. */

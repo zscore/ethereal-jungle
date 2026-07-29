@@ -53,6 +53,7 @@ import { radialBlur } from 'three/addons/tsl/display/radialBlur.js';
 import * as B from '../bus.js';
 import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
 import { initFigure } from './figure.js';
+import { formAt, FORM_RISE, FORM_FALL } from './motif.js';
 import { initShrine } from './shrine.js';
 import {
   look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt,
@@ -86,9 +87,18 @@ export async function initScene(canvas) {
   const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7), camera);
   scene.add(camera); // …so the fronds are in the graph even when nothing else moves it
 
-  const light = new THREE.DirectionalLight(0xffffff, 1.2);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x223344, 0.6));
+  // There were a DirectionalLight and an AmbientLight here, and they had never
+  // lit anything: every material in this world is `MeshBasicMaterial`, which
+  // is unlit by definition, so both lamps were pure scene-graph cost and — far
+  // worse — a lie in the frame loop, where three lines a frame moved a light
+  // whose colour, position and lightning-driven intensity could not reach a
+  // single pixel. D39 flagged them and declined to fix them; this is the fix.
+  // The world is lit analytically instead, and that is a decision rather than
+  // an omission: `canopyLight` in look.js is the extinction curve the whole
+  // forest is shaded by, the trunks bake it into their vertex colours, and the
+  // strike (K7) reaches the eye through the exposure and the streak. Restoring
+  // real lighting means giving every material a lit path, which D39 correctly
+  // priced as a renderer project.
 
   // ---- FIGURE: rings, shards, and the shrine ----
   const figure = initFigure(scene, FIGURE_LAYER);
@@ -279,6 +289,7 @@ export async function initScene(canvas) {
   let wasSeam = false;
   let quality = 1;     // the governor's dial, read by the heavy biomes (J1)
   let inkAmt = 0;      // smoothed style target: a medium fades in, it never cuts (L3)
+  let formAmt = 0;     // smoothed presence of the recurring form (B2/D28)
   let camFov = FOV_BASE;               // smoothed dolly zoom on landings (M1)
   let lastSection = 'groove';          // exposed for the harness's style assertions
   const SUN = new THREE.Vector3();     // scratch: the god-ray origin, projected
@@ -305,6 +316,8 @@ export async function initScene(canvas) {
   let weatherOverride = null; // pins the weather (K/M2) so a rain shot repeats
   let flashOverride = null;   // holds a strike open long enough to photograph
   let styleForce = null;      // pins the style tier against the quality governor
+  let formForce = null;       // pins the recurring form's reveal (it takes ~4 s)
+  let lastForm = null;        // the form's state this frame, for the harness
   if (qp.has('altitude')) altitudeOverride = parseFloat(qp.get('altitude'));
   if (qp.get('biome')) world.isolate(qp.get('biome'));
   if (qp.has('weather')) {
@@ -353,6 +366,27 @@ export async function initScene(canvas) {
         godrays: +fx.godrays.value.toFixed(3), shimmer: +fx.shimmer.value.toFixed(3),
       };
     },
+    /**
+     * The recurring form (B2/D28). Same reasoning as `debugStyle`: "it is in
+     * the peak section" is easy to believe while the draw range sits at zero,
+     * and the previous occupant of this slot was removed for looking wrong in
+     * a screenshot — so what the harness photographs, it also asserts.
+     */
+    debugForm() {
+      return {
+        section: lastSection, amount: +formAmt.toFixed(3),
+        transform: lastForm?.transform, depth: lastForm?.depth,
+        scale: lastForm?.scale, cell: lastForm?.cell,
+        drawn: figure.formDrawn(),
+      };
+    },
+    /**
+     * Pin the form's presence (0..1), or null to hand it back to the section.
+     * The reveal takes ~4 s of wall clock by design, and on a software
+     * rasterizer that is a minute of real time — the same trap the style pin
+     * exists for.
+     */
+    setForm(a) { formForce = a; },
     /**
      * The near field's fronds (K5) — the only objects in the world that live
      * in camera space, which makes them the only ones you cannot inspect by
@@ -526,19 +560,23 @@ export async function initScene(canvas) {
     world.update(dt, env);
     figure.update(dt);
 
+    // ---- the recurring form (B2, D28's slot): peak sections only ----
+    // Smoothed for the same reason `inkAmt` is: the section boundary is a hard
+    // edge, and a form that appears on one frame has articulated that frame.
+    // Slower than the ink on the way in, because this one is a growth and the
+    // reveal walks the buffer trunk-first; faster on the way out, because it
+    // has to be gone by the release section and a growth stops faster than it
+    // grows. The two rates and the argument for them live in motif.js.
+    const formState = formAt({
+      section, trackIndex: trackInfo.index, t, drift, seed: bus.params.seed,
+    });
+    lastForm = formState;
+    const formRate = formState.target > formAmt ? FORM_RISE : FORM_FALL;
+    formAmt = formForce ?? formAmt + (formState.target - formAmt) * Math.min(1, dt * formRate);
+    figure.form(formState, formAmt, camera.position);
+
     // palette center of gravity + fog: the continuity layer (§4.2)
     const col = paletteAt(alt);
-    light.color = col;
-    light.position.set(0, 5 + b * 25, 5);             // phrygian roots … lydian sky
-    // K7: a strike is a second light source, from a bearing the storm chose —
-    // brief, hard, and from the side, which is what makes the world read as
-    // solid for the one frame it lasts
-    if (flash > 0.001) {
-      light.intensity = 1.2 + flash * 7;
-      light.position.set(Math.cos(strike.azimuth) * 60, 30 + b * 25, Math.sin(strike.azimuth) * 60);
-    } else {
-      light.intensity = 1.2;
-    }
 
     // the whole look, from one pure function (G2): bus params + env in,
     // uniforms out. Nothing here decides anything; it only assigns.
@@ -607,7 +645,19 @@ export async function initScene(canvas) {
         // the god-ray origin is the top of the world, projected. Behind the
         // camera or far off-screen it fades out rather than smearing from an
         // edge — a light source you cannot see does not scatter toward you.
-        SUN.set(0, WORLD_TOP + 6, 0).project(camera);
+        //
+        // …except while a strike is up, when the origin moves to the bearing
+        // the storm chose. This is the one job the deleted DirectionalLight was
+        // really doing — a second light source, from the side, briefly — and it
+        // was doing it into materials that cannot be lit. Here the same bearing
+        // reaches the eye, because the rays scatter from wherever this point
+        // is: a strike now comes FROM somewhere, for the first time.
+        if (flash > 0.001) {
+          SUN.set(Math.cos(strike.azimuth) * 60, 30 + b * 25, Math.sin(strike.azimuth) * 60);
+        } else {
+          SUN.set(0, WORLD_TOP + 6, 0);
+        }
+        SUN.project(camera);
         fx.sunUV.value.set(SUN.x * 0.5 + 0.5, SUN.y * 0.5 + 0.5);
         const offScreen = Math.max(Math.abs(SUN.x), Math.abs(SUN.y));
         const visible = SUN.z < 1 ? Math.max(0, 1 - Math.max(0, offScreen - 0.8) * 2.5) : 0;

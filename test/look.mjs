@@ -8,7 +8,7 @@ import {
   look, railSplit, orbitAt, seamPush, seamFlashes, seamExhale, seamFov,
   gradeAt, styleAt, BAND_ORBITS, BAND_GRADES, FOCAL_SHARP, POSTERIZE_STEPS,
   TINT_UNDER, TINT_THIN, INK_SECTIONS, HALFTONE_KNEE, FOV_BASE, FOV_DOLLY,
-  canopyLight, beamAt, pitchAt, BAND_PITCH,
+  canopyLight, beamAt, pitchAt, BAND_PITCH, nearFieldAt, APERTURE_REST,
   CANOPY_BASE, CANOPY_TOP, FLOOR_LIGHT,
 } from '../src/visuals/look.js';
 import { PERFORM_DEFAULTS } from '../src/perform.js';
@@ -41,7 +41,14 @@ console.log('the rail at rest is the frame we already had');
   check(L.sat === 1, 'no desaturation');
   check(L.tintAmt === 0, 'no tint');
   check(L.steps === POSTERIZE_STEPS, 'posterize is off');
-  check(L.focal === FOCAL_SHARP, 'depth of field is a no-op (focal past the world)');
+  // The rail's idle-is-identity property is now stated against the WORLD's
+  // resting aperture rather than against "off": the frame is shot at some
+  // aperture and the rail works on an already-shot picture. Above the crowns,
+  // where nothing is near enough to defocus, it is still literally off.
+  check(look(PERFORM_DEFAULTS, { ...ENV, alt: 0.95 }).focal === FOCAL_SHARP,
+    'over the canopy the depth of field is a no-op (focal past the world)');
+  check(Math.abs(L.focal - FOCAL_SHARP / (1 + APERTURE_REST)) < 1e-9,
+    'under the crowns it idles at the world\'s own aperture, and nothing more');
   check(L.bokeh === 1, 'bokeh at unity');
   check(Math.abs(L.smear) < 1e-9 && Math.abs(L.shift) < 1e-9, 'artifact ops silent at w=0');
   check(L.vignette > 0 && L.vignette < 0.25, 'a base vignette only');
@@ -78,9 +85,9 @@ console.log('the twins say the same sentence as the audio (H1)');
   check(thin.dim < 0.7 && look({ ...PERFORM_DEFAULTS, lpf: 0 }, ENV).dim === 1,
     'HP kill subtracts picture; LP kill submerges it without subtracting');
   check(look({ ...PERFORM_DEFAULTS, crush: 1 }, ENV).dim === 1, 'crush never touches exposure');
-  check(thin.focal > 200, 'HP kill never defocuses (that is the LP percept)');
+  check(thin.focal === idle().focal, 'HP kill never defocuses (that is the LP percept)');
   const crushed = look({ ...PERFORM_DEFAULTS, crush: 1 }, ENV);
-  check(crushed.steps <= 3.001 && crushed.focal === FOCAL_SHARP,
+  check(crushed.steps <= 3.001 && crushed.focal === idle().focal,
     'crush degrades the medium and leaves the world where it stands');
   const echoed = look({ ...PERFORM_DEFAULTS, echo: 1 }, ENV);
   check(echoed.smear > 0.5 && echoed.fogDensity === idle().fogDensity,
@@ -401,6 +408,47 @@ console.log('the air brightens and blues as you climb; the LIGHT warms (D39)');
   check(BAND_GRADES[1].gain[1] === Math.max(...BAND_GRADES.map((g) => g.gain[1])) ||
         BAND_GRADES[1].gain[1] >= BAND_GRADES[0].gain[1] + 0.2,
     'and the understory is the green one — leaves absorb red and blue and pass green, which is what a gloom is');
+}
+
+console.log('the world has a resting aperture, and it is spent where the near field is');
+{
+  // K5 hung fronds 2.8–3.4 units from the lens and they rendered sharp for as
+  // long as the rail was idle, because the focal length idled at "off". An
+  // aperture is only honest where there is something close enough for it to be
+  // about, so it rides the same curve the fronds do — one number, two readers.
+  check(nearFieldAt(0) === 1 && nearFieldAt(CANOPY_BASE) === 1,
+    'the near field is full anywhere under the crowns');
+  check(nearFieldAt(CANOPY_TOP) === 0 && nearFieldAt(1) === 0,
+    'and gone above the last leaf, where nothing is within 40 units of the camera');
+  let mono = true, prev = nearFieldAt(0);
+  for (let i = 1; i <= 1000; i++) {
+    const v = nearFieldAt(i / 1000);
+    if (v > prev + 1e-12) { mono = false; break; }
+    prev = v;
+  }
+  check(mono, 'it only ever falls as you climb — the leaves leave the lens once and stay gone');
+
+  const low = look(PERFORM_DEFAULTS, { ...ENV, alt: 0.2 });
+  const high = look(PERFORM_DEFAULTS, { ...ENV, alt: 0.95 });
+  check(low.focal < 30, 'under the crowns the focal plane sits on the trunks (~26 units)');
+  check(high.focal === FOCAL_SHARP, 'over them the frame is sharp again, which is what gives it a horizon');
+  check(low.focal < high.focal, 'so the frame is only ever soft up close where there IS an up close');
+
+  // the aperture composes with the rail rather than arguing with it: a filter
+  // dive still multiplies the defocus it finds, and each knob keeps the
+  // direction §9.1 promises it has, at every altitude
+  for (const alt of [0.1, 0.4, 0.6, 0.8, 0.99]) {
+    const env = { ...ENV, alt };
+    const rest = look(PERFORM_DEFAULTS, env).focal;
+    const dived = look({ ...PERFORM_DEFAULTS, lpf: 0 }, env).focal;
+    if (!(dived < rest || (rest === FOCAL_SHARP && dived < rest))) {
+      check(false, `the LP dive always defocuses further than rest (alt ${alt})`); break;
+    }
+    if (alt === 0.99) check(true, 'the LP dive defocuses further than rest at every altitude');
+  }
+  check(look(PERFORM_DEFAULTS, { ...ENV, alt: 0.2 }).focal ===
+        FOCAL_SHARP / (1 + APERTURE_REST * nearFieldAt(0.2)),
+    'and the aperture is the first term of the divisor, the rail\'s the rest');
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall checks passed');
