@@ -98,10 +98,29 @@ export const PAD_DEGREES = {
  */
 export const PAD_COLOUR = { glad: 14, neutral: 13, hollow: null };
 
-export function padDegrees(warmth = 0.4) {
-  if (warmth >= 0.6) return PAD_DEGREES.glad;
-  if (warmth < 0.3) return PAD_DEGREES.hollow;
-  return PAD_DEGREES.neutral;
+/**
+ * N3 — `step` planes the whole stack up the mode, diatonically.
+ *
+ * Because the offset is applied to *degrees* rather than semitones, the pitch
+ * collection never changes and there is no voice-leading problem by
+ * construction: this is the theory doc's "nothing clashes with a pedal tone"
+ * argument, generalised from one note to the whole chord. It is also the one
+ * harmonic device that costs the warmth axis nothing — planing a third-less
+ * quartal stack produces more third-less quartal stacks.
+ *
+ * The undergrowth, D phrygian, `hollow`:
+ *
+ *   step 0   1 2 4 5 8    D  Eb G  A  D    the standing chord
+ *   step +1  2 3 5 6 9    Eb F  A  Bb Eb   Ebmaj7#11 over a D floor
+ *   step +2  3 4 6 7 10   F  G  Bb C  F    Dm11
+ *
+ * Three chords, no third anywhere, warmth 0.15 preserved exactly.
+ */
+export function padDegrees(warmth = 0.4, step = 0) {
+  const base = warmth >= 0.6 ? PAD_DEGREES.glad
+    : warmth < 0.3 ? PAD_DEGREES.hollow
+      : PAD_DEGREES.neutral;
+  return step ? base.map((d) => d + step) : base;
 }
 
 /** The colour voice's degree for this warmth, or null where the stack sees the change already. */
@@ -118,13 +137,16 @@ export function padColour(warmth = 0.4) {
  * control is not used (superdough maps it to the supersaw's freqspread, which a
  * stock oscillator does not have).
  */
-export function padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0 } = {}) {
-  const voices = padDegrees(warmth).map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
+export function padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0, step = 0 } = {}) {
+  const voices = padDegrees(warmth, step).map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
   const colour = padColour(warmth);
   // the colour voice is appended AFTER the width split, so it stays single and
   // beatless — one clean tone on top of a chorusing stack (see PAD_COLOUR)
   const stack = width ? voices.flatMap((n) => [n - width / 200, n + width / 200]) : voices;
   if (colour == null) return stack;
+  // the colour voice deliberately does NOT take `step`: it stays put while the
+  // stack planes underneath it, which keeps the register lid where each track's
+  // brief put it and buys an upper pedal for free
   return [...stack, tune(degreeToMidi(colour, mode, oct), tuning)];
 }
 

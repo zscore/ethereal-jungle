@@ -162,7 +162,10 @@ export const TRACKS = [
       // the darkest move available without leaving the mode.
       bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: 8, sub: true, lpf: [130, 220], gain: 0.46,
         roots: [1, 1, 6, 1, 1, 3, 1, 5] },
-      pad: { s: 'sawtooth', oct: 0, width: 6, lpf: [700, 2000], attack: 1.4, release: 4, gain: 0.32 },
+      // N3 — five phrases against seventeen and against N2's eight: the pad,
+      // the floor and the form never line up the same way twice
+      pad: { s: 'sawtooth', oct: 0, width: 6, lpf: [700, 2000], attack: 1.4, release: 4, gain: 0.32,
+        plane: [0, 0, 1, 0, 2] },
       lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8 },
       // the migrating pluck at its near/dry extreme: wooden tuned percussion,
       // struck on the break's non-anchor positions and locked to the grid
@@ -186,7 +189,10 @@ export const TRACKS = [
       // phrase in the track
       bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42,
         roots: [1, 1, 3, 1, 6, 1, 3, 2] },
-      pad: { s: 'sawtooth', oct: 1, width: 9, lpf: [900, 2600], attack: 1.2, release: 4, gain: 0.32 },
+      // step +2 on the neutral stack is Fmaj9 — the relative major, from the
+      // track that used to voice one chord for all 68 of its bars
+      pad: { s: 'sawtooth', oct: 1, width: 9, lpf: [900, 2600], attack: 1.2, release: 4, gain: 0.32,
+        plane: [0, 2, 0] },
       lead: { s: 'triangle', lpf: [1200, 2400], room: 0.8 },
       pluck: { fmh: 3.5, fmi: 2.2, oct: 0, k: 3, decay: 0.16, room: 0.4, offGrid: 0.33, gain: 0.28, orbit: 1 },
       // characteristic 1: bamboo/duduk-ish breath — sine + noise, living pitch
@@ -222,7 +228,10 @@ export const TRACKS = [
       // the glad track gets the glad centres: the 5th and the 6th
       bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5,
         roots: [1, 1, 5, 1, 6, 1, 3, 1] },
-      pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2 },
+      // the glad track already re-voices twice as often, so it planes lightly —
+      // gladness is a place to arrive at, not a place to wander around in
+      pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2,
+        plane: [0, 0, 0, 1] },
       lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7 },
       pluck: { fmh: 3.5, fmi: 1.8, oct: 1, k: 3, decay: 0.35, room: 0.75, offGrid: 0.6, gain: 0.26, orbit: 4 },
       // characteristic 1: FM bells doubling the lead an octave up — inharmonic
@@ -275,7 +284,9 @@ export const TRACKS = [
       // the harmonic version of "nothing underneath you"
       bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45,
         roots: [1, 1, 1, 5, 1, 1, 1, 2] },
-      pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3 },
+      // one departure in four phrases: up here the chord moving at all is an event
+      pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3,
+        plane: [0, 0, 0, 2] },
       lead: { s: 'sine', lpf: [2000, 1500], room: 0.9 },
       // D34 — the pluck's own ceiling: fmh 3.5 puts sidebands at 4.5× the
       // fundamental, and this is the cast that plays them into the biggest room

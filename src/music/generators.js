@@ -1240,7 +1240,15 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // this is where "bright but not happy" is actually implemented.
   const pp = pal.pad ?? {};
   const swell = sec === 'breakdown';
-  const chord = padVoicing(mode, warmth, { oct: pp.oct ?? 1, tuning, width: pp.width ?? 0 });
+  // N3 — the plane cycle. `palette.pad.plane` lists diatonic step offsets and
+  // advances one per phrase; because the offset is in DEGREES the collection
+  // never changes, so the undergrowth's third-less quartal stack planes into
+  // more third-less quartal stacks and warmth 0.15 costs nothing. Cycle lengths
+  // are coprime with the 2-phrase sections and with N2's 8-phrase root cycle,
+  // so the pad, the floor and the form align only at lcm distances (§7, Eno).
+  const plane = pp.plane ?? [0];
+  const step = plane[(voice.phraseIndex ?? 0) % plane.length];
+  const chord = padVoicing(mode, warmth, { oct: pp.oct ?? 1, tuning, width: pp.width ?? 0, step });
   const motion = PAD_MOTION[sec] ?? 0.4;
   if (!silent) {
     const [plo, pspan] = pp.lpf ?? [900, 2600];

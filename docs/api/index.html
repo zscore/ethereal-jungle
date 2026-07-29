@@ -324,8 +324,8 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>18</b><span>modules</span></div>
       <div><b>153</b><span>exports</span></div>
-      <div><b>6,695</b><span>lines</span></div>
-      <div><b>83%</b><span>commented</span></div>
+      <div><b>6,736</b><span>lines</span></div>
+      <div><b>84%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
     <p>Lifted from <code>README.md</code> at generation time, so the two cannot disagree.</p>
@@ -584,7 +584,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <header class="mod-head">
       <h3>bus.js</h3>
       <a class="srcref" href="../../src/bus.js">src/bus.js</a>
-      <span class="muted">607 lines · 26 exported</span>
+      <span class="muted">618 lines · 26 exported</span>
     </header>
     <div class="doc lead"><p>bus.js — the shared control bus. THE architectural core.</p>
 <pre class="diagram">Both media are functions of these signals, never of each other:
@@ -828,7 +828,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
             in-tune-and-glad, out-of-tune-and-bright</pre>
 <p>Palette fields are read by generators.js; every sound named here is either a superdough synth or a sample this repo ships (public/samples/strudel.json), so the whole cast survives the remote pack being unavailable (README §licensing — the caveat <a class="ref adr" href="../design_decisions.md#d12-per-track-instrumentation-palette-2026-07-26" title="Per-track instrumentation palette (2026-07-26)">D12</a> raised about its own palette).</p></div>
     
-    <details class="source"><summary>source <span class="muted">190 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">116
+    <details class="source"><summary>source <span class="muted">201 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">116
 117
 118
 119
@@ -1017,7 +1017,18 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 302
 303
 304
-305</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> TRACKS = [
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> TRACKS = [
   {
     name: <span class="s">'undergrowth'</span>, bars: <span class="n">68</span>, floor: <span class="n">0.10</span>, peak: <span class="n">0.70</span>, brightness: [<span class="n">0.10</span>, <span class="n">0.30</span>],
     <span class="c">// D37 — `ambglint` is the dark sparkle: drips inside an ice-filled lava</span>
@@ -1066,7 +1077,10 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="c">// the darkest move available without leaving the mode.</span>
       bass: { s: <span class="s">'sawtooth'</span>, oct: -<span class="n">1</span>, k: <span class="n">5</span>, kSpan: <span class="n">2</span>, detune: <span class="n">8</span>, sub: <span class="l">true</span>, lpf: [<span class="n">130</span>, <span class="n">220</span>], gain: <span class="n">0.46</span>,
         roots: [<span class="n">1</span>, <span class="n">1</span>, <span class="n">6</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">3</span>, <span class="n">1</span>, <span class="n">5</span>] },
-      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">0</span>, width: <span class="n">6</span>, lpf: [<span class="n">700</span>, <span class="n">2000</span>], attack: <span class="n">1.4</span>, release: <span class="n">4</span>, gain: <span class="n">0.32</span> },
+      <span class="c">// N3 — five phrases against seventeen and against N2's eight: the pad,</span>
+      <span class="c">// the floor and the form never line up the same way twice</span>
+      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">0</span>, width: <span class="n">6</span>, lpf: [<span class="n">700</span>, <span class="n">2000</span>], attack: <span class="n">1.4</span>, release: <span class="n">4</span>, gain: <span class="n">0.32</span>,
+        plane: [<span class="n">0</span>, <span class="n">0</span>, <span class="n">1</span>, <span class="n">0</span>, <span class="n">2</span>] },
       lead: { s: <span class="s">'triangle'</span>, lpf: [<span class="n">1000</span>, <span class="n">2000</span>], room: <span class="n">0.8</span> },
       <span class="c">// the migrating pluck at its near/dry extreme: wooden tuned percussion,</span>
       <span class="c">// struck on the break's non-anchor positions and locked to the grid</span>
@@ -1090,7 +1104,10 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="c">// phrase in the track</span>
       bass: { s: <span class="s">'square'</span>, oct: -<span class="n">1</span>, k: <span class="n">7</span>, kSpan: <span class="n">4</span>, lpf: [<span class="n">180</span>, <span class="n">320</span>], release: <span class="n">0.22</span>, gain: <span class="n">0.42</span>,
         roots: [<span class="n">1</span>, <span class="n">1</span>, <span class="n">3</span>, <span class="n">1</span>, <span class="n">6</span>, <span class="n">1</span>, <span class="n">3</span>, <span class="n">2</span>] },
-      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">1</span>, width: <span class="n">9</span>, lpf: [<span class="n">900</span>, <span class="n">2600</span>], attack: <span class="n">1.2</span>, release: <span class="n">4</span>, gain: <span class="n">0.32</span> },
+      <span class="c">// step +2 on the neutral stack is Fmaj9 — the relative major, from the</span>
+      <span class="c">// track that used to voice one chord for all 68 of its bars</span>
+      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">1</span>, width: <span class="n">9</span>, lpf: [<span class="n">900</span>, <span class="n">2600</span>], attack: <span class="n">1.2</span>, release: <span class="n">4</span>, gain: <span class="n">0.32</span>,
+        plane: [<span class="n">0</span>, <span class="n">2</span>, <span class="n">0</span>] },
       lead: { s: <span class="s">'triangle'</span>, lpf: [<span class="n">1200</span>, <span class="n">2400</span>], room: <span class="n">0.8</span> },
       pluck: { fmh: <span class="n">3.5</span>, fmi: <span class="n">2.2</span>, oct: <span class="n">0</span>, k: <span class="n">3</span>, decay: <span class="n">0.16</span>, room: <span class="n">0.4</span>, offGrid: <span class="n">0.33</span>, gain: <span class="n">0.28</span>, orbit: <span class="n">1</span> },
       <span class="c">// characteristic 1: bamboo/duduk-ish breath — sine + noise, living pitch</span>
@@ -1126,7 +1143,10 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="c">// the glad track gets the glad centres: the 5th and the 6th</span>
       bass: { s: <span class="s">'sawtooth'</span>, oct: -<span class="n">1</span>, k: <span class="n">5</span>, kSpan: <span class="n">3</span>, shape: <span class="n">0.2</span>, lpf: [<span class="n">160</span>, <span class="n">340</span>], gain: <span class="n">0.5</span>,
         roots: [<span class="n">1</span>, <span class="n">1</span>, <span class="n">5</span>, <span class="n">1</span>, <span class="n">6</span>, <span class="n">1</span>, <span class="n">3</span>, <span class="n">1</span>] },
-      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">1</span>, width: <span class="n">12</span>, lpf: [<span class="n">1100</span>, <span class="n">2800</span>], attack: <span class="n">1.1</span>, release: <span class="n">4</span>, gain: <span class="n">0.34</span>, slow: <span class="n">2</span> },
+      <span class="c">// the glad track already re-voices twice as often, so it planes lightly —</span>
+      <span class="c">// gladness is a place to arrive at, not a place to wander around in</span>
+      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">1</span>, width: <span class="n">12</span>, lpf: [<span class="n">1100</span>, <span class="n">2800</span>], attack: <span class="n">1.1</span>, release: <span class="n">4</span>, gain: <span class="n">0.34</span>, slow: <span class="n">2</span>,
+        plane: [<span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">1</span>] },
       lead: { s: <span class="s">'triangle'</span>, lpf: [<span class="n">1400</span>, <span class="n">2600</span>], room: <span class="n">0.7</span> },
       pluck: { fmh: <span class="n">3.5</span>, fmi: <span class="n">1.8</span>, oct: <span class="n">1</span>, k: <span class="n">3</span>, decay: <span class="n">0.35</span>, room: <span class="n">0.75</span>, offGrid: <span class="n">0.6</span>, gain: <span class="n">0.26</span>, orbit: <span class="n">4</span> },
       <span class="c">// characteristic 1: FM bells doubling the lead an octave up — inharmonic</span>
@@ -1179,7 +1199,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="c">// the harmonic version of &quot;nothing underneath you&quot;</span>
       bass: { s: <span class="s">'sine'</span>, oct: <span class="n">0</span>, k: <span class="n">5</span>, kSpan: <span class="n">1</span>, lpf: [<span class="n">400</span>, <span class="n">400</span>], gain: <span class="n">0.3</span>, absence: <span class="n">0.45</span>,
         roots: [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">5</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">2</span>] },
-      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">1</span>, width: <span class="n">18</span>, lpf: [<span class="n">1400</span>, <span class="n">2400</span>], attack: <span class="n">2.2</span>, release: <span class="n">6</span>, gain: <span class="n">0.3</span> },
+      <span class="c">// one departure in four phrases: up here the chord moving at all is an event</span>
+      pad: { s: <span class="s">'sawtooth'</span>, oct: <span class="n">1</span>, width: <span class="n">18</span>, lpf: [<span class="n">1400</span>, <span class="n">2400</span>], attack: <span class="n">2.2</span>, release: <span class="n">6</span>, gain: <span class="n">0.3</span>,
+        plane: [<span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">2</span>] },
       lead: { s: <span class="s">'sine'</span>, lpf: [<span class="n">2000</span>, <span class="n">1500</span>], room: <span class="n">0.9</span> },
       <span class="c">// D34 — the pluck's own ceiling: fmh 3.5 puts sidebands at 4.5× the</span>
       <span class="c">// fundamental, and this is the cast that plays them into the biggest room</span>
@@ -1213,94 +1235,94 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind constant">constant</span>
       <h4><a href="#src-bus-js--SEAM_BARS">SEAM_BARS</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:310</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:321</a>
     </header>
     <pre class="sig"><code>SEAM_BARS = 2 * PHRASE_BARS</code></pre>
     <div class="doc"><p>Seam window at the end of every track (<span class="ref sec" title="a section of the theory docs in docs/">§6.3</span>), in whole phrases: two phrases of window, of which the LAST phrase is the late phase (drums die, countdown).</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">310</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_BARS = <span class="n">2</span> * PHRASE_BARS;</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">321</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_BARS = <span class="n">2</span> * PHRASE_BARS;</code></pre></div></details>
   </article>
   <article class="item" id="src-bus-js--SEAM_LATE_BARS" data-name="seam_late_bars" data-text="">
     <header class="item-head">
       <span class="kind constant">constant</span>
       <h4><a href="#src-bus-js--SEAM_LATE_BARS">SEAM_LATE_BARS</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:311</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:322</a>
     </header>
     <pre class="sig"><code>SEAM_LATE_BARS = PHRASE_BARS</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">311</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_LATE_BARS = PHRASE_BARS;</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">322</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_LATE_BARS = PHRASE_BARS;</code></pre></div></details>
   </article>
   <article class="item" id="src-bus-js--SEAM_SECONDS" data-name="seam_seconds" data-text="">
     <header class="item-head">
       <span class="kind constant">constant</span>
       <h4><a href="#src-bus-js--SEAM_SECONDS">SEAM_SECONDS</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:312</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:323</a>
     </header>
     <pre class="sig"><code>SEAM_SECONDS = SEAM_BARS * BAR_SECONDS</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">312</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_SECONDS = SEAM_BARS * BAR_SECONDS;</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">323</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_SECONDS = SEAM_BARS * BAR_SECONDS;</code></pre></div></details>
   </article>
   <article class="item" id="src-bus-js--SET_BARS" data-name="set_bars" data-text="">
     <header class="item-head">
       <span class="kind constant">constant</span>
       <h4><a href="#src-bus-js--SET_BARS">SET_BARS</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:314</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:325</a>
     </header>
     <pre class="sig"><code>SET_BARS = TRACKS.reduce((s, tr) =&gt; s + tr.bars, 0)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">314</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SET_BARS = TRACKS.reduce((s, tr) =&gt; s + tr.bars, <span class="n">0</span>);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">325</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SET_BARS = TRACKS.reduce((s, tr) =&gt; s + tr.bars, <span class="n">0</span>);</code></pre></div></details>
   </article>
   <article class="item" id="src-bus-js--SET_SECONDS" data-name="set_seconds" data-text="">
     <header class="item-head">
       <span class="kind constant">constant</span>
       <h4><a href="#src-bus-js--SET_SECONDS">SET_SECONDS</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:315</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:326</a>
     </header>
     <pre class="sig"><code>SET_SECONDS = TRACKS.reduce((s, tr) =&gt; s + tr.seconds, 0)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">315</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SET_SECONDS = TRACKS.reduce((s, tr) =&gt; s + tr.seconds, <span class="n">0</span>);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">326</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SET_SECONDS = TRACKS.reduce((s, tr) =&gt; s + tr.seconds, <span class="n">0</span>);</code></pre></div></details>
   </article>
   <article class="item" id="src-bus-js--lerp" data-name="lerp" data-text="">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--lerp">lerp</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:317</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:328</a>
     </header>
     <pre class="sig"><code>lerp(a, b, x)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">317</pre><pre class="src"><code><span class="k">function</span> lerp(a, b, x) { <span class="k">return</span> a + (b - a) * x; }</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">328</pre><pre class="src"><code><span class="k">function</span> lerp(a, b, x) { <span class="k">return</span> a + (b - a) * x; }</code></pre></div></details>
   </article>
   <article class="item" id="src-bus-js--sampleBreakpoints" data-name="samplebreakpoints" data-text="piecewise-linear sample of a [[phase, v]...] breakpoint list.">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--sampleBreakpoints">sampleBreakpoints</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:320</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:331</a>
     </header>
     <pre class="sig"><code>sampleBreakpoints(points, phase)</code></pre>
     <div class="doc"><p>Piecewise-linear sample of a [[phase, v]...] breakpoint list.</p></div>
     
-    <details class="source"><summary>source <span class="muted">11 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> sampleBreakpoints(points, phase) {
+    <details class="source"><summary>source <span class="muted">11 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> sampleBreakpoints(points, phase) {
   <span class="k">if</span> (phase &lt;= points[<span class="n">0</span>][<span class="n">0</span>]) <span class="k">return</span> points[<span class="n">0</span>][<span class="n">1</span>];
   <span class="k">for</span> (<span class="k">let</span> i = <span class="n">1</span>; i &lt; points.length; i++) {
     <span class="k">if</span> (phase &lt;= points[i][<span class="n">0</span>]) {
@@ -1317,23 +1339,23 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--trackAt">trackAt</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:333</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:344</a>
     </header>
     <pre class="sig"><code>trackAt(t)</code></pre>
     <div class="doc"><p>Which track is playing at set-time t (looped), with local phase.</p></div>
     
-    <details class="source"><summary>source <span class="muted">12 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">333
-334
-335
-336
-337
-338
-339
-340
-341
-342
-343
-344</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> trackAt(t) {
+    <details class="source"><summary>source <span class="muted">12 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> trackAt(t) {
   <span class="k">const</span> tSet = ((t % SET_SECONDS) + SET_SECONDS) % SET_SECONDS;
   <span class="k">let</span> acc = <span class="n">0</span>;
   <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; TRACKS.length; i++) {
@@ -1351,24 +1373,24 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--seamAt">seamAt</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:350</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:361</a>
     </header>
     <pre class="sig"><code>seamAt(t)</code></pre>
     <div class="doc"><p>Seam info at set-time t (<span class="ref sec" title="a section of the theory docs in docs/">§6.3</span>). Active in the last SEAM_SECONDS of a track. progress ∈ [0,1) across the window; <code>to</code> is the incoming track.</p></div>
     
-    <details class="source"><summary>source <span class="muted">13 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">350
-351
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> seamAt(t) {
+    <details class="source"><summary>source <span class="muted">13 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> seamAt(t) {
   <span class="k">const</span> { track, index, tLocal } = trackAt(t);
   <span class="k">const</span> remaining = track.seconds - tLocal;
   <span class="k">if</span> (remaining &gt; SEAM_SECONDS) <span class="k">return</span> { active: <span class="l">false</span>, progress: <span class="n">0</span>, <span class="k">from</span>: track, to: track, toIndex: index };
@@ -1387,20 +1409,20 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--warmthAt">warmthAt</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:375</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:386</a>
     </header>
     <pre class="sig"><code>warmthAt(t)</code></pre>
     <div class="doc"><p><a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a> — warmth at set-time t: the second harmonic axis. Brightness picks the mode; warmth picks how much gladness the arrangement extracts from it. It is a pure function of the authored timeline (no knob, deliberately — this is form, not performance), blended across seams by the same smoothstep as brightness so the palette crossfades the way the ether already does.</p>
 <p>The zenith is the one place the two axes move AGAINST each other — brightness still climbing, warmth falling off a cliff — which is what makes the last track read as awe rather than triumph (scene_plan <span class="ref sec" title="a section of the theory docs in docs/">§6</span>'s unexplored move).</p></div>
     
-    <details class="source"><summary>source <span class="muted">8 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">375
-376
-377
-378
-379
-380
-381
-382</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> warmthAt(t) {
+    <details class="source"><summary>source <span class="muted">8 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">386
+387
+388
+389
+390
+391
+392
+393</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> warmthAt(t) {
   <span class="k">const</span> { track } = trackAt(t);
   <span class="k">const</span> w = track.warmth ?? <span class="n">0.4</span>;
   <span class="k">const</span> seam = seamAt(t);
@@ -1414,14 +1436,14 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--seamVariant">seamVariant</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:391</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:402</a>
     </header>
     <pre class="sig"><code>seamVariant(intoIndex, seed)</code></pre>
     <div class="doc"><p><a class="ref adr" href="../design_decisions.md#d18-seeded-seam-variants-the-landing-and-the-dissolve-2026-07-26" title="Seeded seam variants: the landing and the dissolve (2026-07-26)">D18</a> — seam flavor for the boundary INTO TRACKS[intoIndex], seeded per set: 'landing' (countdown → arrival hit → intro as decaying aftermath) or 'dissolve' (the roll unwinds, tension exhales — the ambient arrival is what the gesture prepared). <span class="ref sec" title="a section of the theory docs in docs/">§5</span>'s &quot;predictable time, withheld content&quot; applied to the seams themselves; both media read the choice from this one function.</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">391
-392
-393</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> seamVariant(intoIndex, seed) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">402
+403
+404</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> seamVariant(intoIndex, seed) {
   <span class="k">return</span> makeRng(((seed ^ 0xd17) + intoIndex * <span class="n">7919</span>) &gt;&gt;&gt; <span class="n">0</span>)() &lt; <span class="n">0.5</span> ? <span class="s">'landing'</span> : <span class="s">'dissolve'</span>;
 }</code></pre></div></details>
   </article>
@@ -1433,20 +1455,20 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind table">table</span>
       <h4><a href="#src-bus-js--SECTION_LAYOUT">SECTION_LAYOUT</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:400</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:411</a>
     </header>
     <pre class="sig"><code>SECTION_LAYOUT = [ …</code></pre>
     <div class="doc"><p>One shared section form per track (like SHAPE, <a class="ref adr" href="../design_decisions.md#d1-set-timeline-as-authored-tracks-with-one-shared-tension-shape-2026-07-26" title="Set timeline as authored tracks with one shared tension shape (2026-07-26)">D1</a>): proportional phrase weights over the track's non-seam phrases. Edges snap to whole phrases, so sections inherit <a class="ref adr" href="../design_decisions.md#d9-bar-exact-seams-cycle-keyed-set-compiler-bar-quantized-timeline-2026-07-26" title="Bar-exact seams: cycle-keyed set compiler, bar-quantized timeline (2026-07-26)">D9</a>'s bar-exactness. The seam (last 2 phrases) is owned by the seam machinery and never allocated here.</p></div>
     
-    <details class="source"><summary>source <span class="muted">9 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">400
-401
-402
-403
-404
-405
-406
-407
-408</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SECTION_LAYOUT = [
+    <details class="source"><summary>source <span class="muted">9 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">411
+412
+413
+414
+415
+416
+417
+418
+419</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SECTION_LAYOUT = [
   [<span class="s">'intro'</span>, <span class="n">2</span>],      <span class="c">// ether only: pads establish the world</span>
   [<span class="s">'build'</span>, <span class="n">2</span>],      <span class="c">// thin break, reduced anchor, floor enters</span>
   [<span class="s">'groove'</span>, <span class="n">2</span>],     <span class="c">// the full arrangement</span>
@@ -1461,25 +1483,25 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--sectionSpans">sectionSpans</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:415</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:426</a>
     </header>
     <pre class="sig"><code>sectionSpans(trackBars)</code></pre>
     <div class="doc"><p>Section spans for a track of trackBars bars: [{ name, startBar, bars }] in order, seam last, tiling the track exactly. This is the one place the proportional allocation runs — sectionAt and the transport UI both read it.</p></div>
     
-    <details class="source"><summary>source <span class="muted">14 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">415
-416
-417
-418
-419
-420
-421
-422
-423
-424
-425
-426
+    <details class="source"><summary>source <span class="muted">14 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">426
 427
-428</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> sectionSpans(trackBars) {
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> sectionSpans(trackBars) {
   <span class="k">const</span> nAlloc = (trackBars - SEAM_BARS) / PHRASE_BARS; <span class="c">// whole by construction (D9)</span>
   <span class="k">const</span> totalW = SECTION_LAYOUT.reduce((s, [, w]) =&gt; s + w, <span class="n">0</span>);
   <span class="k">const</span> spans = [];
@@ -1499,22 +1521,22 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--sectionAt">sectionAt</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:435</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:446</a>
     </header>
     <pre class="sig"><code>sectionAt(barInTrack, trackBars)</code></pre>
     <div class="doc"><p>Section for the phrase containing barInTrack (integer bar arithmetic only). Returns { name, phraseInSection, sectionPhrases }. Phrases inside the seam window return name 'seam' — callers should keep using seam phase info.</p></div>
     
-    <details class="source"><summary>source <span class="muted">11 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">435
-436
-437
-438
-439
-440
-441
-442
-443
-444
-445</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> sectionAt(barInTrack, trackBars) {
+    <details class="source"><summary>source <span class="muted">11 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> sectionAt(barInTrack, trackBars) {
   <span class="k">for</span> (<span class="k">const</span> sp <span class="k">of</span> sectionSpans(trackBars)) {
     <span class="k">if</span> (barInTrack &lt; sp.startBar + sp.bars) {
       <span class="k">return</span> {
@@ -1531,16 +1553,16 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--trackStartBar">trackStartBar</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:448</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:459</a>
     </header>
     <pre class="sig"><code>trackStartBar(index)</code></pre>
     <div class="doc"><p>First absolute set-bar of TRACKS[index] — transport targets.</p></div>
     
-    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">448
-449
-450
-451
-452</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> trackStartBar(index) {
+    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">459
+460
+461
+462
+463</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> trackStartBar(index) {
   <span class="k">let</span> acc = <span class="n">0</span>;
   <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; index; i++) acc += TRACKS[i].bars;
   <span class="k">return</span> acc;
@@ -1551,23 +1573,12 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-bus-js--phraseStateAt">phraseStateAt</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:462</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:473</a>
     </header>
     <pre class="sig"><code>phraseStateAt(phraseIndex)</code></pre>
     <div class="doc"><p>Bar-exact phrase state for the phrase starting at bar phraseIndex*PHRASE_BARS. Integer bar arithmetic only — no float drift at boundaries. This is what the engine compiles patterns from: because SEAM_BARS and SEAM_LATE_BARS are whole phrases and track lengths are whole phrases, every seam phase edge lands exactly on a phrase line (<a class="ref adr" href="../design_decisions.md#d9-bar-exact-seams-cycle-keyed-set-compiler-bar-quantized-timeline-2026-07-26" title="Bar-exact seams: cycle-keyed set compiler, bar-quantized timeline (2026-07-26)">D9</a>). <code>tStart</code> is the phrase's set-time (unwrapped, matching the scheduler's absolute cycle clock).</p></div>
     
-    <details class="source"><summary>source <span class="muted">28 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">462
-463
-464
-465
-466
-467
-468
-469
-470
-471
-472
-473
+    <details class="source"><summary>source <span class="muted">28 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">473
 474
 475
 476
@@ -1583,7 +1594,18 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 486
 487
 488
-489</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> phraseStateAt(phraseIndex) {
+489
+490
+491
+492
+493
+494
+495
+496
+497
+498
+499
+500</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> phraseStateAt(phraseIndex) {
   <span class="k">const</span> setBar = ((phraseIndex * PHRASE_BARS) % SET_BARS + SET_BARS) % SET_BARS;
   <span class="k">let</span> acc = <span class="n">0</span>;
   <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; TRACKS.length; i++) {
@@ -1620,7 +1642,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind table">table</span>
       <h4><a href="#src-bus-js--bus">bus</a></h4>
       
-      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:492</a>
+      <a class="srcref" href="../../src/bus.js" title="open the source file">bus.js:503</a>
     </header>
     <pre class="sig"><code>bus = { …</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
@@ -1629,31 +1651,20 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <h5>Walkthrough <span class="muted">— the annotated steps inside this function</span></h5>
       
         <div class="step">
-          <div class="step-head"><span class="step-title">event stream (published by the music scheduler, ahead of time)</span><span class="muted">line 602</span></div>
+          <div class="step-head"><span class="step-title">event stream (published by the music scheduler, ahead of time)</span><span class="muted">line 613</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">602
-603
-604
-605
-606</pre><pre class="src"><code>
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">613
+614
+615
+616
+617</pre><pre class="src"><code>
   _subs: <span class="k">new</span> Set(),
   subscribe(fn) { <span class="k">this</span>._subs.add(fn); <span class="k">return</span> () =&gt; <span class="k">this</span>._subs.<span class="k">delete</span>(fn); },
   publish(evt) { <span class="k">for</span> (<span class="k">const</span> fn <span class="k">of</span> <span class="k">this</span>._subs) fn(evt); },
 }</code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">115 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">492
-493
-494
-495
-496
-497
-498
-499
-500
-501
-502
-503
+    <details class="source"><summary>source <span class="muted">115 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">503
 504
 505
 506
@@ -1756,7 +1767,18 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 603
 604
 605
-606</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> bus = {
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> bus = {
   <span class="c">// knobs (UI / MIDI-writable). *Mix knobs blend authored curve vs manual knob.</span>
   params: {
     tensionMix: <span class="n">0</span>,       <span class="c">// 0 = authored timeline, 1 = manual knob</span>
@@ -1883,7 +1905,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>generators.js</h3>
       <a class="srcref" href="../../src/music/generators.js">src/music/generators.js</a>
-      <span class="muted">1437 lines · 16 exported</span>
+      <span class="muted">1445 lines · 16 exported</span>
     </header>
     <div class="doc lead"><p>generators.js — the machine room (music doc <span class="ref sec" title="a section of the theory docs in docs/">§4</span>).</p>
 <p>Every generator is a pure function of (bus params, seeded rng) → Strudel pattern. ENGINE DISCIPLINE: generators emit <em>events with abstract params</em> (sample slot, note, orbit, dynamics). superdough is merely the current renderer of those events — keep renderer-specific hacks out of here so the whole layer can be re-pointed at SuperDirt/scsynth over OSC without touching composition logic.</p>
@@ -4228,10 +4250,26 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1262
 1263
 1264
-1265</pre><pre class="src"><code>
+1265
+1266
+1267
+1268
+1269
+1270
+1271
+1272
+1273</pre><pre class="src"><code>
   <span class="k">const</span> pp = pal.pad ?? {};
   <span class="k">const</span> swell = sec === <span class="s">'breakdown'</span>;
-  <span class="k">const</span> chord = padVoicing(mode, warmth, { oct: pp.oct ?? <span class="n">1</span>, tuning, width: pp.width ?? <span class="n">0</span> });
+  <span class="c">// N3 — the plane cycle. `palette.pad.plane` lists diatonic step offsets and</span>
+  <span class="c">// advances one per phrase; because the offset is in DEGREES the collection</span>
+  <span class="c">// never changes, so the undergrowth's third-less quartal stack planes into</span>
+  <span class="c">// more third-less quartal stacks and warmth 0.15 costs nothing. Cycle lengths</span>
+  <span class="c">// are coprime with the 2-phrase sections and with N2's 8-phrase root cycle,</span>
+  <span class="c">// so the pad, the floor and the form align only at lcm distances (§7, Eno).</span>
+  <span class="k">const</span> plane = pp.plane ?? [<span class="n">0</span>];
+  <span class="k">const</span> step = plane[(voice.phraseIndex ?? <span class="n">0</span>) % plane.length];
+  <span class="k">const</span> chord = padVoicing(mode, warmth, { oct: pp.oct ?? <span class="n">1</span>, tuning, width: pp.width ?? <span class="n">0</span>, step });
   <span class="k">const</span> motion = PAD_MOTION[sec] ?? <span class="n">0.4</span>;
   <span class="k">if</span> (!silent) {
     <span class="k">const</span> [plo, pspan] = pp.lpf ?? [<span class="n">900</span>, <span class="n">2600</span>];
@@ -4256,17 +4294,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1265</span></div>
+          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1273</span></div>
           <p>The block chord is the continuity layer and must stay a block — it is the common tone across the seam (<span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>), so it cannot start arpeggiating. The movement therefore goes to a SEPARATE quiet voice an octave up, walking the same chord tones one at a time. Same harmony, but something is audibly moving. Loudest exactly where the complaint was — the early sections, where the arrangement is otherwise a held pad and a heartbeat.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1271
-1272
-1273
-1274
-1275
-1276
-1277
-1278
-1279
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1279
 1280
 1281
 1282
@@ -4283,7 +4313,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1293
 1294
 1295
-1296</pre><pre class="src"><code>
+1296
+1297
+1298
+1299
+1300
+1301
+1302
+1303
+1304</pre><pre class="src"><code>
     <span class="k">if</span> (motion &gt; <span class="n">0.5</span>) {
       <span class="k">const</span> tones = padVoicing(mode, warmth, { oct: (pp.oct ?? <span class="n">1</span>) + <span class="n">1</span>, tuning, width: <span class="n">0</span> });
       layers.push(
@@ -4311,17 +4349,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1296</span></div>
+          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1304</span></div>
           <p>ambience.current = [bed, ...accents]: 32-bar field recordings played one phrase-long slice at a time — chunk <code>c</code> advances with the phrase index, so consecutive phrases play consecutive audio and the loop only repeats every AMB_BARS. Retriggers stay phrase-aligned (slow(4) at absolute cycles), which is what keeps biome changes and the seam crossfade landing on their bars. The bed is always on — loud where the ether is figure (intro/breakdown/seam), tucked under the full arrangement elsewhere. Accent layers ride slow presence walks: below threshold they rest, above it their gain follows the walk (the walk is continuous through the threshold, so entries fade rather than pop). During the seam the INCOMING biome's bed crossfades in early — <span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>'s infiltrating ether. Envelopes are deliberately near-instant: superdough keeps the source playing for <code>release</code> past the event end, and since the next chunk starts on that same audio, any real release would sum the recording with itself.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1310
-1311
-1312
-1313
-1314
-1315
-1316
-1317
-1318
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1318
 1319
 1320
 1321
@@ -4356,7 +4386,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1350
 1351
 1352
-1353</pre><pre class="src"><code>
+1353
+1354
+1355
+1356
+1357
+1358
+1359
+1360
+1361</pre><pre class="src"><code>
   <span class="k">if</span> (ambience?.current?.length) {
     <span class="k">const</span> chunk = ((ambience.phraseIndex ?? <span class="n">0</span>) % AMB_CHUNKS + AMB_CHUNKS) % AMB_CHUNKS;
     <span class="c">// D30 — how loud, and how often, the biome is: part of the cast like</span>
@@ -4402,17 +4440,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1353</span></div>
+          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1361</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1353
-1354
-1355
-1356
-1357
-1358
-1359
-1360
-1361
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1361
 1362
 1363
 1364
@@ -4446,7 +4476,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1392
 1393
 1394
-1395</pre><pre class="src"><code>
+1395
+1396
+1397
+1398
+1399
+1400
+1401
+1402
+1403</pre><pre class="src"><code>
   <span class="k">if</span> (leadPresent) {
     <span class="k">const</span> lp = pal.lead ?? {};
     <span class="k">const</span> featured = sec === <span class="s">'breakdown'</span>;
@@ -4491,17 +4529,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1395</span></div>
+          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1403</span></div>
           <p>The migrating pluck plays everywhere except the ambient sections (where the ether is the figure) — and its costume is what changes across the set.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1397
-1398
-1399
-1400
-1401
-1402
-1403
-1404
-1405
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1405
 1406
 1407
 1408
@@ -4533,7 +4563,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1434
 1435
 1436
-1437</pre><pre class="src"><code>
+1437
+1438
+1439
+1440
+1441
+1442
+1443
+1444
+1445</pre><pre class="src"><code>
   <span class="k">if</span> (pal.pluck &amp;&amp; castIn &amp;&amp; !ambient) {
     <span class="k">const</span> pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng, rs);
     <span class="k">if</span> (pluck) layers.push(gate(pluck));
@@ -4576,7 +4614,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 </code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">564 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">874
+    <details class="source"><summary>source <span class="muted">572 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">874
 875
 876
 877
@@ -5139,7 +5177,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1434
 1435
 1436
-1437</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
+1437
+1438
+1439
+1440
+1441
+1442
+1443
+1444
+1445</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
   <span class="k">const</span> { s, note, stack } = ctx;
   <span class="k">const</span> rng = makeRng(p.seed);
   <span class="k">const</span> mode = modeAt(brightness);
@@ -5508,7 +5554,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   <span class="c">// this is where &quot;bright but not happy&quot; is actually implemented.</span>
   <span class="k">const</span> pp = pal.pad ?? {};
   <span class="k">const</span> swell = sec === <span class="s">'breakdown'</span>;
-  <span class="k">const</span> chord = padVoicing(mode, warmth, { oct: pp.oct ?? <span class="n">1</span>, tuning, width: pp.width ?? <span class="n">0</span> });
+  <span class="c">// N3 — the plane cycle. `palette.pad.plane` lists diatonic step offsets and</span>
+  <span class="c">// advances one per phrase; because the offset is in DEGREES the collection</span>
+  <span class="c">// never changes, so the undergrowth's third-less quartal stack planes into</span>
+  <span class="c">// more third-less quartal stacks and warmth 0.15 costs nothing. Cycle lengths</span>
+  <span class="c">// are coprime with the 2-phrase sections and with N2's 8-phrase root cycle,</span>
+  <span class="c">// so the pad, the floor and the form align only at lcm distances (§7, Eno).</span>
+  <span class="k">const</span> plane = pp.plane ?? [<span class="n">0</span>];
+  <span class="k">const</span> step = plane[(voice.phraseIndex ?? <span class="n">0</span>) % plane.length];
+  <span class="k">const</span> chord = padVoicing(mode, warmth, { oct: pp.oct ?? <span class="n">1</span>, tuning, width: pp.width ?? <span class="n">0</span>, step });
   <span class="k">const</span> motion = PAD_MOTION[sec] ?? <span class="n">0.4</span>;
   <span class="k">if</span> (!silent) {
     <span class="k">const</span> [plo, pspan] = pp.lpf ?? [<span class="n">900</span>, <span class="n">2600</span>];
@@ -5710,7 +5764,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>scales.js</h3>
       <a class="srcref" href="../../src/music/scales.js">src/music/scales.js</a>
-      <span class="muted">151 lines · 14 exported</span>
+      <span class="muted">173 lines · 14 exported</span>
     </header>
     <div class="doc lead"><p>scales.js — the brightness axis (music doc <span class="ref sec" title="a section of the theory docs in docs/">§2.2</span>) and the warmth axis (<a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>).</p>
 <p>The seven diatonic modes, totally ordered by brightness. Each adjacent step changes exactly one degree by a semitone, so <code>modeBrightness</code> behaves as a continuous-feeling one-dimensional affect knob over a fixed root.</p>
@@ -5899,24 +5953,32 @@ ionian→lydian move.</pre></div>
     
     <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">99</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> PAD_COLOUR = { glad: <span class="n">14</span>, neutral: <span class="n">13</span>, hollow: <span class="l">null</span> }</code></pre></div></details>
   </article>
-  <article class="item" id="src-music-scales-js--padDegrees" data-name="paddegrees" data-text="">
+  <article class="item" id="src-music-scales-js--padDegrees" data-name="paddegrees" data-text="n3 — step planes the whole stack up the mode, diatonically.">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--padDegrees">padDegrees</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:101</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:119</a>
     </header>
-    <pre class="sig"><code>padDegrees(warmth = 0.4)</code></pre>
-    <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
+    <pre class="sig"><code>padDegrees(warmth = 0.4, step = 0)</code></pre>
+    <div class="doc"><p>N3 — <code>step</code> planes the whole stack up the mode, diatonically.</p>
+<p>Because the offset is applied to <em>degrees</em> rather than semitones, the pitch collection never changes and there is no voice-leading problem by construction: this is the theory doc's &quot;nothing clashes with a pedal tone&quot; argument, generalised from one note to the whole chord. It is also the one harmonic device that costs the warmth axis nothing — planing a third-less quartal stack produces more third-less quartal stacks.</p>
+<p>The undergrowth, D phrygian, <code>hollow</code>:</p>
+<pre class="diagram">step 0   1 2 4 5 8    D  Eb G  A  D    the standing chord
+step +1  2 3 5 6 9    Eb F  A  Bb Eb   Ebmaj7#11 over a D floor
+step +2  3 4 6 7 10   F  G  Bb C  F    Dm11</pre>
+<p>Three chords, no third anywhere, warmth 0.15 preserved exactly.</p></div>
     
-    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">101
-102
-103
-104
-105</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padDegrees(warmth = <span class="n">0.4</span>) {
-  <span class="k">if</span> (warmth &gt;= <span class="n">0.6</span>) <span class="k">return</span> PAD_DEGREES.glad;
-  <span class="k">if</span> (warmth &lt; <span class="n">0.3</span>) <span class="k">return</span> PAD_DEGREES.hollow;
-  <span class="k">return</span> PAD_DEGREES.neutral;
+    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">119
+120
+121
+122
+123
+124</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padDegrees(warmth = <span class="n">0.4</span>, step = <span class="n">0</span>) {
+  <span class="k">const</span> base = warmth &gt;= <span class="n">0.6</span> ? PAD_DEGREES.glad
+    : warmth &lt; <span class="n">0.3</span> ? PAD_DEGREES.hollow
+      : PAD_DEGREES.neutral;
+  <span class="k">return</span> step ? base.map((d) =&gt; d + step) : base;
 }</code></pre></div></details>
   </article>
   <article class="item" id="src-music-scales-js--padColour" data-name="padcolour" data-text="the colour voice's degree for this warmth, or null where the stack sees the change already.">
@@ -5924,16 +5986,16 @@ ionian→lydian move.</pre></div>
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--padColour">padColour</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:108</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:127</a>
     </header>
     <pre class="sig"><code>padColour(warmth = 0.4)</code></pre>
     <div class="doc"><p>The colour voice's degree for this warmth, or null where the stack sees the change already.</p></div>
     
-    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">108
-109
-110
-111
-112</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padColour(warmth = <span class="n">0.4</span>) {
+    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">127
+128
+129
+130
+131</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padColour(warmth = <span class="n">0.4</span>) {
   <span class="k">if</span> (warmth &gt;= <span class="n">0.6</span>) <span class="k">return</span> PAD_COLOUR.glad;
   <span class="k">if</span> (warmth &lt; <span class="n">0.3</span>) <span class="k">return</span> PAD_COLOUR.hollow;
   <span class="k">return</span> PAD_COLOUR.neutral;
@@ -5944,33 +6006,39 @@ ionian→lydian move.</pre></div>
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--padVoicing">padVoicing</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:121</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:140</a>
     </header>
-    <pre class="sig"><code>padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0 } = {})</code></pre>
+    <pre class="sig"><code>padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0, step = 0 } = {})</code></pre>
     <div class="doc"><p>The ethereal chord vocabulary: high lushness, zero tendency (<span class="ref sec" title="a section of the theory docs in docs/">§2.1</span> rule 3), now warmth-gated and per-track tuned. <code>width</code> (cents) splits every voice into a beating pair — the pad's own chorus, and the reason the plain <code>detune</code> control is not used (superdough maps it to the supersaw's freqspread, which a stock oscillator does not have).</p></div>
     
-    <details class="source"><summary>source <span class="muted">16 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padVoicing(mode, warmth = <span class="n">0.4</span>, { oct = <span class="n">1</span>, tuning, width = <span class="n">0</span> } = {}) {
-  <span class="k">const</span> voices = padDegrees(warmth).map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
+    <details class="source"><summary>source <span class="muted">19 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padVoicing(mode, warmth = <span class="n">0.4</span>, { oct = <span class="n">1</span>, tuning, width = <span class="n">0</span>, step = <span class="n">0</span> } = {}) {
+  <span class="k">const</span> voices = padDegrees(warmth, step).map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
   <span class="k">const</span> colour = padColour(warmth);
   <span class="c">// the colour voice is appended AFTER the width split, so it stays single and</span>
   <span class="c">// beatless — one clean tone on top of a chorusing stack (see PAD_COLOUR)</span>
   <span class="k">const</span> stack = width ? voices.flatMap((n) =&gt; [n - width / <span class="n">200</span>, n + width / <span class="n">200</span>]) : voices;
   <span class="k">if</span> (colour == <span class="l">null</span>) <span class="k">return</span> stack;
+  <span class="c">// the colour voice deliberately does NOT take `step`: it stays put while the</span>
+  <span class="c">// stack planes underneath it, which keeps the register lid where each track's</span>
+  <span class="c">// brief put it and buys an upper pedal for free</span>
   <span class="k">return</span> [...stack, tune(degreeToMidi(colour, mode, oct), tuning)];
 }
 
@@ -5986,26 +6054,26 @@ ionian→lydian move.</pre></div>
       <span class="kind table">table</span>
       <h4><a href="#src-music-scales-js--BASS_DEGREES">BASS_DEGREES</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:136</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:158</a>
     </header>
     <pre class="sig"><code>BASS_DEGREES = [1, 2, 3, 5, 6]</code></pre>
     <div class="doc"><p>Pentatonic subset for the bass color loop (maximally even E(5,12) inside the mode). Exported as degrees too, because N2's <code>palette.bass.roots</code> cycle is authored in scale degrees and has to index into this exact set.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">136</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> BASS_DEGREES = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">5</span>, <span class="n">6</span>];</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">158</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> BASS_DEGREES = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">5</span>, <span class="n">6</span>];</code></pre></div></details>
   </article>
   <article class="item" id="src-music-scales-js--bassNotes" data-name="bassnotes" data-text="">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--bassNotes">bassNotes</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:138</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:160</a>
     </header>
     <pre class="sig"><code>bassNotes(mode, oct = -1, tuning)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">138
-139
-140</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> bassNotes(mode, oct = -<span class="n">1</span>, tuning) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">160
+161
+162</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> bassNotes(mode, oct = -<span class="n">1</span>, tuning) {
   <span class="k">return</span> BASS_DEGREES.map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
 }</code></pre></div></details>
   </article>
@@ -6014,14 +6082,14 @@ ionian→lydian move.</pre></div>
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--leadNotes">leadNotes</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:143</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:165</a>
     </header>
     <pre class="sig"><code>leadNotes(mode, oct = 2, tuning)</code></pre>
     <div class="doc"><p>Lead pitch set: one octave of the mode, registered high (<span class="ref sec" title="a section of the theory docs in docs/">§2.3</span>: ether ≥ octave 4).</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">143
-144
-145</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> leadNotes(mode, oct = <span class="n">2</span>, tuning) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">165
+166
+167</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> leadNotes(mode, oct = <span class="n">2</span>, tuning) {
   <span class="k">return</span> [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>, <span class="n">7</span>].map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
 }</code></pre></div></details>
   </article>
@@ -6030,14 +6098,14 @@ ionian→lydian move.</pre></div>
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--hasMajorThird">hasMajorThird</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:148</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:170</a>
     </header>
     <pre class="sig"><code>hasMajorThird(voices)</code></pre>
     <div class="doc"><p>True if any voice sits a major third (mod octave) above the root — the joy test.</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">148
-149
-150</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> hasMajorThird(voices) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">170
+171
+172</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> hasMajorThird(voices) {
   <span class="k">return</span> voices.some((n) =&gt; (((Math.round(n) - ROOT) % <span class="n">12</span>) + <span class="n">12</span>) % <span class="n">12</span> === <span class="n">4</span>);
 }</code></pre></div></details>
   </article>
@@ -17471,10 +17539,10 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 
   <section id="coverage">
     <h2>Coverage</h2>
-    <p>127 of 153 exports carry a comment. The rest are listed here,
+    <p>128 of 153 exports carry a comment. The rest are listed here,
       which is the honest version of a documentation tool: the page cannot invent an explanation, so
       it says where one is missing.</p>
-    <ul class="gaps"><li><a href="#src-bus-js--makeRng"><code>makeRng</code></a> <span class="muted">src/bus.js:18</span></li><li><a href="#src-bus-js--makeDrift"><code>makeDrift</code></a> <span class="muted">src/bus.js:45</span></li><li><a href="#src-bus-js--SEAM_LATE_BARS"><code>SEAM_LATE_BARS</code></a> <span class="muted">src/bus.js:311</span></li><li><a href="#src-bus-js--SEAM_SECONDS"><code>SEAM_SECONDS</code></a> <span class="muted">src/bus.js:312</span></li><li><a href="#src-bus-js--SET_BARS"><code>SET_BARS</code></a> <span class="muted">src/bus.js:314</span></li><li><a href="#src-bus-js--SET_SECONDS"><code>SET_SECONDS</code></a> <span class="muted">src/bus.js:315</span></li><li><a href="#src-bus-js--bus"><code>bus</code></a> <span class="muted">src/bus.js:492</span></li><li><a href="#src-midi-js--initMidi"><code>initMidi</code></a> <span class="muted">src/midi.js:53</span></li><li><a href="#src-music-engine-js--initEngine"><code>initEngine</code></a> <span class="muted">src/music/engine.js:25</span></li><li><a href="#src-music-engine-js--toggle"><code>toggle</code></a> <span class="muted">src/music/engine.js:152</span></li><li><a href="#src-music-engine-js--stopEngine"><code>stopEngine</code></a> <span class="muted">src/music/engine.js:163</span></li><li><a href="#src-music-generators-js--euclid"><code>euclid</code></a> <span class="muted">src/music/generators.js:22</span></li><li><a href="#src-music-generators-js--SNARE_BAGS"><code>SNARE_BAGS</code></a> <span class="muted">src/music/generators.js:167</span></li><li><a href="#src-music-generators-js--SNARE_GHOSTS"><code>SNARE_GHOSTS</code></a> <span class="muted">src/music/generators.js:177</span></li><li><a href="#src-music-scales-js--padDegrees"><code>padDegrees</code></a> <span class="muted">src/music/scales.js:101</span></li><li><a href="#src-music-scales-js--bassNotes"><code>bassNotes</code></a> <span class="muted">src/music/scales.js:138</span></li><li><a href="#src-osc-js--initOsc"><code>initOsc</code></a> <span class="muted">src/osc.js:51</span></li><li><a href="#src-perform-js--PERFORM_KEYS"><code>PERFORM_KEYS</code></a> <span class="muted">src/perform.js:40</span></li><li><a href="#src-perform-js--EQ_MID_HZ"><code>EQ_MID_HZ</code></a> <span class="muted">src/perform.js:96</span></li><li><a href="#src-ui-js--initUI"><code>initUI</code></a> <span class="muted">src/ui.js:10</span></li><li><a href="#src-visuals-biomes-js--WORLD_TOP"><code>WORLD_TOP</code></a> <span class="muted">src/visuals/biomes.js:68</span></li><li><a href="#src-visuals-figure-js--initFigure"><code>initFigure</code></a> <span class="muted">src/visuals/figure.js:18</span></li><li><a href="#src-visuals-look-js--TINT_THIN"><code>TINT_THIN</code></a> <span class="muted">src/visuals/look.js:59</span></li><li><a href="#src-visuals-look-js--pitchAt"><code>pitchAt</code></a> <span class="muted">src/visuals/look.js:138</span></li><li><a href="#src-visuals-look-js--FOV_DOLLY"><code>FOV_DOLLY</code></a> <span class="muted">src/visuals/look.js:401</span></li><li><a href="#src-visuals-weather-js--WORLD_TOP_DEFAULT"><code>WORLD_TOP_DEFAULT</code></a> <span class="muted">src/visuals/weather.js:75</span></li></ul>
+    <ul class="gaps"><li><a href="#src-bus-js--makeRng"><code>makeRng</code></a> <span class="muted">src/bus.js:18</span></li><li><a href="#src-bus-js--makeDrift"><code>makeDrift</code></a> <span class="muted">src/bus.js:45</span></li><li><a href="#src-bus-js--SEAM_LATE_BARS"><code>SEAM_LATE_BARS</code></a> <span class="muted">src/bus.js:322</span></li><li><a href="#src-bus-js--SEAM_SECONDS"><code>SEAM_SECONDS</code></a> <span class="muted">src/bus.js:323</span></li><li><a href="#src-bus-js--SET_BARS"><code>SET_BARS</code></a> <span class="muted">src/bus.js:325</span></li><li><a href="#src-bus-js--SET_SECONDS"><code>SET_SECONDS</code></a> <span class="muted">src/bus.js:326</span></li><li><a href="#src-bus-js--bus"><code>bus</code></a> <span class="muted">src/bus.js:503</span></li><li><a href="#src-midi-js--initMidi"><code>initMidi</code></a> <span class="muted">src/midi.js:53</span></li><li><a href="#src-music-engine-js--initEngine"><code>initEngine</code></a> <span class="muted">src/music/engine.js:25</span></li><li><a href="#src-music-engine-js--toggle"><code>toggle</code></a> <span class="muted">src/music/engine.js:152</span></li><li><a href="#src-music-engine-js--stopEngine"><code>stopEngine</code></a> <span class="muted">src/music/engine.js:163</span></li><li><a href="#src-music-generators-js--euclid"><code>euclid</code></a> <span class="muted">src/music/generators.js:22</span></li><li><a href="#src-music-generators-js--SNARE_BAGS"><code>SNARE_BAGS</code></a> <span class="muted">src/music/generators.js:167</span></li><li><a href="#src-music-generators-js--SNARE_GHOSTS"><code>SNARE_GHOSTS</code></a> <span class="muted">src/music/generators.js:177</span></li><li><a href="#src-music-scales-js--bassNotes"><code>bassNotes</code></a> <span class="muted">src/music/scales.js:160</span></li><li><a href="#src-osc-js--initOsc"><code>initOsc</code></a> <span class="muted">src/osc.js:51</span></li><li><a href="#src-perform-js--PERFORM_KEYS"><code>PERFORM_KEYS</code></a> <span class="muted">src/perform.js:40</span></li><li><a href="#src-perform-js--EQ_MID_HZ"><code>EQ_MID_HZ</code></a> <span class="muted">src/perform.js:96</span></li><li><a href="#src-ui-js--initUI"><code>initUI</code></a> <span class="muted">src/ui.js:10</span></li><li><a href="#src-visuals-biomes-js--WORLD_TOP"><code>WORLD_TOP</code></a> <span class="muted">src/visuals/biomes.js:68</span></li><li><a href="#src-visuals-figure-js--initFigure"><code>initFigure</code></a> <span class="muted">src/visuals/figure.js:18</span></li><li><a href="#src-visuals-look-js--TINT_THIN"><code>TINT_THIN</code></a> <span class="muted">src/visuals/look.js:59</span></li><li><a href="#src-visuals-look-js--pitchAt"><code>pitchAt</code></a> <span class="muted">src/visuals/look.js:138</span></li><li><a href="#src-visuals-look-js--FOV_DOLLY"><code>FOV_DOLLY</code></a> <span class="muted">src/visuals/look.js:401</span></li><li><a href="#src-visuals-weather-js--WORLD_TOP_DEFAULT"><code>WORLD_TOP_DEFAULT</code></a> <span class="muted">src/visuals/weather.js:75</span></li></ul>
   </section>
 
   <footer>
