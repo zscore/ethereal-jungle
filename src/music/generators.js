@@ -1810,11 +1810,24 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   if (leadPresent) {
     const lp = pal.lead ?? {};
     const featured = sec === 'breakdown';
-    const contour = leadContour(rng, w, diet);
+    // AD16 — the answer phrase. Contours were independent draws: variety with
+    // no conversation. Phrases now pair — the even phrase of each pair states
+    // a contour (from a hashed stream keyed to the PAIR, so both members see
+    // the same statement), and the odd phrase answers with its
+    // retrograde-inversion at reduced density. Eight bars become a sentence.
+    // The old shared-rng call is burned so every later layer keeps its deal.
+    const pairIdx = Math.floor((voice.phraseIndex ?? 0) / 2);
+    const answering = ((voice.phraseIndex ?? 0) % 2 + 2) % 2 === 1;
+    const pairRng = makeRng(strHash(
+      `contour:${pairIdx}:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}`));
+    let contour = leadContour(pairRng, w, diet);
+    if (answering) contour = [...contour].reverse().map((d) => 4 - d);
+    void leadContour(rng, w, diet);
     const scale = leadNotes(mode, 2, tuning);
     // sparse placement: E(k,16) with k breathing with tension — the lead is a
-    // guest in the ether, not a soloist (visual doc §5's economy applies here too)
-    const k = featured ? 5 : 3 + Math.round(tension * 3);
+    // guest in the ether, not a soloist (visual doc §5's economy applies here
+    // too); the answer sits one onset thinner than its statement
+    const k = Math.max(2, (featured ? 5 : 3 + Math.round(tension * 3)) - (answering ? 1 : 0));
     const mask = euclid(k, 16, Math.floor(rng() * 16));
     let ci = 0;
     const seq = mask.map((v) => {

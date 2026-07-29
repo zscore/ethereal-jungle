@@ -346,7 +346,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>21</b><span>modules</span></div>
       <div><b>197</b><span>exports</span></div>
-      <div><b>9,324</b><span>lines</span></div>
+      <div><b>9,337</b><span>lines</span></div>
       <div><b>86%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
@@ -2142,7 +2142,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>generators.js</h3>
       <a class="srcref" href="../../src/music/generators.js">src/music/generators.js</a>
-      <span class="muted">1965 lines · 21 exported</span>
+      <span class="muted">1978 lines · 21 exported</span>
     </header>
     <div class="doc lead"><p>generators.js — the machine room (music doc <span class="ref sec" title="a section of the theory docs in docs/">§4</span>).</p>
 <p>Every generator is a pure function of (bus params, seeded rng) → Strudel pattern. ENGINE DISCIPLINE: generators emit <em>events with abstract params</em> (sample slot, note, orbit, dynamics). superdough is merely the current renderer of those events — keep renderer-specific hacks out of here so the whole layer can be re-pointed at SuperDirt/scsynth over OSC without touching composition logic.</p>
@@ -5439,16 +5439,42 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1850
 1851
 1852
-1853</pre><pre class="src"><code>
+1853
+1854
+1855
+1856
+1857
+1858
+1859
+1860
+1861
+1862
+1863
+1864
+1865
+1866</pre><pre class="src"><code>
   <span class="k">const</span> diet = sec === <span class="s">'release'</span> ? [<span class="n">0</span>] : pal.motif?.transforms;
   <span class="k">if</span> (leadPresent) {
     <span class="k">const</span> lp = pal.lead ?? {};
     <span class="k">const</span> featured = sec === <span class="s">'breakdown'</span>;
-    <span class="k">const</span> contour = leadContour(rng, w, diet);
+    <span class="c">// AD16 — the answer phrase. Contours were independent draws: variety with</span>
+    <span class="c">// no conversation. Phrases now pair — the even phrase of each pair states</span>
+    <span class="c">// a contour (from a hashed stream keyed to the PAIR, so both members see</span>
+    <span class="c">// the same statement), and the odd phrase answers with its</span>
+    <span class="c">// retrograde-inversion at reduced density. Eight bars become a sentence.</span>
+    <span class="c">// The old shared-rng call is burned so every later layer keeps its deal.</span>
+    <span class="k">const</span> pairIdx = Math.floor((voice.phraseIndex ?? <span class="n">0</span>) / <span class="n">2</span>);
+    <span class="k">const</span> answering = ((voice.phraseIndex ?? <span class="n">0</span>) % <span class="n">2</span> + <span class="n">2</span>) % <span class="n">2</span> === <span class="n">1</span>;
+    <span class="k">const</span> pairRng = makeRng(strHash(
+      <span class="s">`contour:${pairIdx}:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}`</span>));
+    <span class="k">let</span> contour = leadContour(pairRng, w, diet);
+    <span class="k">if</span> (answering) contour = [...contour].reverse().map((d) =&gt; <span class="n">4</span> - d);
+    <span class="k">void</span> leadContour(rng, w, diet);
     <span class="k">const</span> scale = leadNotes(mode, <span class="n">2</span>, tuning);
     <span class="c">// sparse placement: E(k,16) with k breathing with tension — the lead is a</span>
-    <span class="c">// guest in the ether, not a soloist (visual doc §5's economy applies here too)</span>
-    <span class="k">const</span> k = featured ? <span class="n">5</span> : <span class="n">3</span> + Math.round(tension * <span class="n">3</span>);
+    <span class="c">// guest in the ether, not a soloist (visual doc §5's economy applies here</span>
+    <span class="c">// too); the answer sits one onset thinner than its statement</span>
+    <span class="k">const</span> k = Math.max(<span class="n">2</span>, (featured ? <span class="n">5</span> : <span class="n">3</span> + Math.round(tension * <span class="n">3</span>)) - (answering ? <span class="n">1</span> : <span class="n">0</span>));
     <span class="k">const</span> mask = euclid(k, <span class="n">16</span>, Math.floor(rng() * <span class="n">16</span>));
     <span class="k">let</span> ci = <span class="n">0</span>;
     <span class="k">const</span> seq = mask.map((v) =&gt; {
@@ -5487,22 +5513,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1853</span></div>
+          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1866</span></div>
           <p>The migrating pluck plays everywhere except the ambient sections (where the ether is the figure) — and its costume is what changes across the set.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1855
-1856
-1857
-1858
-1859
-1860
-1861
-1862
-1863
-1864
-1865
-1866
-1867
-1868
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1868
 1869
 1870
 1871
@@ -5599,7 +5612,20 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1962
 1963
 1964
-1965</pre><pre class="src"><code>
+1965
+1966
+1967
+1968
+1969
+1970
+1971
+1972
+1973
+1974
+1975
+1976
+1977
+1978</pre><pre class="src"><code>
   <span class="k">if</span> (pal.pluck &amp;&amp; castIn &amp;&amp; !ambient) {
     <span class="k">const</span> pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng, rs);
     <span class="k">if</span> (pluck) layers.push(gate(pluck));
@@ -5712,7 +5738,7 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 </code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">823 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1143
+    <details class="source"><summary>source <span class="muted">836 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1143
 1144
 1145
 1146
@@ -6534,7 +6560,20 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1962
 1963
 1964
-1965</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
+1965
+1966
+1967
+1968
+1969
+1970
+1971
+1972
+1973
+1974
+1975
+1976
+1977
+1978</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
   <span class="k">const</span> { s, note, stack } = ctx;
   <span class="k">const</span> rng = makeRng(p.seed);
   <span class="k">const</span> mode = modeAt(brightness);
@@ -7204,11 +7243,24 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   <span class="k">if</span> (leadPresent) {
     <span class="k">const</span> lp = pal.lead ?? {};
     <span class="k">const</span> featured = sec === <span class="s">'breakdown'</span>;
-    <span class="k">const</span> contour = leadContour(rng, w, diet);
+    <span class="c">// AD16 — the answer phrase. Contours were independent draws: variety with</span>
+    <span class="c">// no conversation. Phrases now pair — the even phrase of each pair states</span>
+    <span class="c">// a contour (from a hashed stream keyed to the PAIR, so both members see</span>
+    <span class="c">// the same statement), and the odd phrase answers with its</span>
+    <span class="c">// retrograde-inversion at reduced density. Eight bars become a sentence.</span>
+    <span class="c">// The old shared-rng call is burned so every later layer keeps its deal.</span>
+    <span class="k">const</span> pairIdx = Math.floor((voice.phraseIndex ?? <span class="n">0</span>) / <span class="n">2</span>);
+    <span class="k">const</span> answering = ((voice.phraseIndex ?? <span class="n">0</span>) % <span class="n">2</span> + <span class="n">2</span>) % <span class="n">2</span> === <span class="n">1</span>;
+    <span class="k">const</span> pairRng = makeRng(strHash(
+      <span class="s">`contour:${pairIdx}:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}`</span>));
+    <span class="k">let</span> contour = leadContour(pairRng, w, diet);
+    <span class="k">if</span> (answering) contour = [...contour].reverse().map((d) =&gt; <span class="n">4</span> - d);
+    <span class="k">void</span> leadContour(rng, w, diet);
     <span class="k">const</span> scale = leadNotes(mode, <span class="n">2</span>, tuning);
     <span class="c">// sparse placement: E(k,16) with k breathing with tension — the lead is a</span>
-    <span class="c">// guest in the ether, not a soloist (visual doc §5's economy applies here too)</span>
-    <span class="k">const</span> k = featured ? <span class="n">5</span> : <span class="n">3</span> + Math.round(tension * <span class="n">3</span>);
+    <span class="c">// guest in the ether, not a soloist (visual doc §5's economy applies here</span>
+    <span class="c">// too); the answer sits one onset thinner than its statement</span>
+    <span class="k">const</span> k = Math.max(<span class="n">2</span>, (featured ? <span class="n">5</span> : <span class="n">3</span> + Math.round(tension * <span class="n">3</span>)) - (answering ? <span class="n">1</span> : <span class="n">0</span>));
     <span class="k">const</span> mask = euclid(k, <span class="n">16</span>, Math.floor(rng() * <span class="n">16</span>));
     <span class="k">let</span> ci = <span class="n">0</span>;
     <span class="k">const</span> seq = mask.map((v) =&gt; {
