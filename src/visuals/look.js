@@ -65,6 +65,13 @@ export const TINT_THIN = [0.62, 0.67, 0.78];
 export const FOCAL_SHARP = 1200;
 export const POSTERIZE_STEPS = 64; // "off" for an 8-bit-ish frame
 
+// X1 — the darkest the gater's strobe may ever take the frame. A safety cap,
+// not a taste setting: eighths at 168 BPM is 5.6 Hz, inside the band that
+// provokes photosensitive seizures, and modulation depth is what governs the
+// risk. The strobe therefore never approaches black and its edges are smoothed.
+// Do not raise this because a shot looked tame.
+export const GATE_FLOOR = 0.45;
+
 // The world's own resting aperture, as a divisor of FOCAL_SHARP — so ~26 world
 // units of focal length under the crowns, and the rail's own terms stack on top
 // of it rather than replacing it.
@@ -194,6 +201,10 @@ export function pitchAt(a) {
  *   focusDist,    world distance from camera to what it is looking at
  *   flash,        lightning, 0..1, decaying (K7 — weather, not meter)
  *   fusionAmt,    0..1 closeness to the fusion climax's center (L5)
+ *   t, bar,       set-time and the bar length — the gater and the roll are the
+ *                 only twins that need a clock, because they are the only rail
+ *                 knobs that are themselves rhythmic (X1/X4)
+ *   tuning,       the track's { stretch, just } (W2 — beating as misregistration)
  * }
  */
 export function look(params = {}, env = {}) {
@@ -201,6 +212,20 @@ export function look(params = {}, env = {}) {
   const echo = params.echo ?? 0;
   const crush = params.crush ?? 0;
   const space = params.space ?? 0;
+
+  // ---- X: the six rail knobs that had no eye ----
+  // H1's promise, in this file's own header, is that the twins "say the same
+  // sentence the audio effect says, one sense-organ over". It said it about
+  // five of the rail's eleven knobs. These are the other six, and they keep the
+  // same discipline: every one is exactly zero at its knob's rest position, so
+  // an untouched rail still renders a bit-identical frame.
+  const gate = params.gate ?? 0;
+  const drive = params.drive ?? 0;
+  const roll = params.roll ?? 0;
+  // the EQ kills idle at unity, not at zero — so the KILL is what we want
+  const lowKill = clamp01(1 - (params.eqLow ?? 1));
+  const midKill = clamp01(1 - (params.eqMid ?? 1));
+  const highKill = clamp01(1 - (params.eqHigh ?? 1));
 
   const T = env.T ?? 0, Tf = env.Tf ?? T;
   const duck = env.duck ?? 0, w = env.w ?? 0;
@@ -214,27 +239,90 @@ export function look(params = {}, env = {}) {
   // brightness keeps the things that are about harmony.
   const alt = env.alt ?? b;
 
+  // ---- X4: the roll, rendered. `roll` is launch-quantized drum stutter
+  // (×2/×3/×4 by quartile, D19) and it was the most literal twin available and
+  // the one that was missing: a stutter is a repeated frame.
+  //
+  // Honest about what this is. A true frame stutter needs a ping-pong render
+  // target to hold and re-show one composite, which is a renderer change; what
+  // is available on the existing chain is the afterimage's damp, driven hard
+  // and RE-TRIGGERED on the subdivision. So the frame smears toward a hold and
+  // releases on each stutter edge, which reads as the picture catching. Not the
+  // same thing as a real hold, and the day this chain grows a spare target it
+  // should become one.
+  const rollDiv = roll <= 0 ? 0 : Math.min(4, 1 + Math.floor(roll * 4)); // quartiles → ×2..×4
+  const bar = env.bar ?? (240 / 168);
+  const tNow = env.t ?? 0;
+  const rollPhase = rollDiv > 1 ? ((tNow / (bar / rollDiv)) % 1 + 1) % 1 : 0;
+  // a sawtooth per subdivision: hold hard right after the edge, release into it
+  const rollHold = rollDiv > 1 ? (1 - rollPhase) * 0.85 : 0;
+
   // ---- artifact operators (§3.6): wildness, plus the rail's frame-level jokes
   const bloom = Math.max(0,
-    (0.4 + 0.5 * Tf) * (1 - duck * 0.6)   // the kick dips the bloom (§2.1)
+    ((0.4 + 0.5 * Tf) * (1 - duck * 0.6)   // the kick dips the bloom (§2.1)
     + fusion * 0.15                        // the ether ignites, once per set
     + space * 0.6                          // the wash makes the world glow far
     + arrival * 0.9                        // the landing's exposure spike
     + flash * 1.6                          // lightning (K7): the sky overexposes
-    - hp * 0.25);                          // HP kill: nothing left to bloom
-  const smear = Math.max(0, w - 0.55) * 1.8 + echo * 0.6;   // stasis smear + dub echo
-  const shift = w * w * 0.004 + echo * 0.006;
-  const grain = 0.05 + 0.3 * w + crush * 0.45;
+    - hp * 0.25)                           // HP kill: nothing left to bloom
+    * (1 - 0.75 * lowKill)                 // X3: the low kill takes the mass out
+    + drive * 0.5);                        // X2: pushing the mix blooms the picture
+  const smear = Math.max(0, w - 0.55) * 1.8 + echo * 0.6 + rollHold;
+  // W2 — tuning as chromatic register. Every track carries a `tuning` field and
+  // no pixel had ever read it. Beating is what an out-of-tune stack DOES, and
+  // misregistration is what an out-of-register picture does: two channels that
+  // ought to coincide and do not. So the stretch drives a small persistent
+  // chroma displacement, and `just` drives it to zero — which makes the canopy,
+  // the one glad, locked, in-tune track in the set, the one band where the
+  // picture's colour channels are in register. The undergrowth sags and the
+  // zenith stretches, in opposite directions, exactly as the tuning table says.
+  const tuning = env.tuning ?? {};
+  const detune = Math.min(1, Math.abs(tuning.stretch ?? 0) / 4) * (1 - clamp01(tuning.just ?? 0));
+  // 0.0022 was the first value and it was far too much: the figure stream is
+  // composited before the artifact operators, so the shift lands hardest on the
+  // sharpest, brightest thing in the frame, and the undergrowth's snare shards
+  // came out rainbow-edged. At 0.0009 it is roughly twice the resting wildness
+  // term — perceptible on a bright edge if you look for it, which is what "the
+  // picture is very slightly out of register" is supposed to mean.
+  const shift = w * w * 0.004 + echo * 0.006 + detune * 0.0009;
+  const grain = (0.05 + 0.3 * w + crush * 0.45) * (1 - 0.9 * highKill); // X3: fine detail first
 
   // ---- color: the world's distance (filter) and the medium's health (crush)
-  const sat = Math.max(0.1, 1 - 0.6 * lp - 0.3 * hp);
+  // X3 — the isolator kills, mapped by SPATIAL frequency, because that is what
+  // "band" means to an eye. Stated plainly: this is not a real band-split (that
+  // needs a blur pyramid the governor cannot shed), it is the same idea applied
+  // through the systems that already produce content at each scale —
+  //   low   the soft mass: fog, bloom, the large luminous structures
+  //   mid   the bulk of the picture: saturation and the midtones
+  //   high  fine detail: grain, the streak, the shimmer
+  // Killing the low band takes the BODY out of the picture the way it takes the
+  // body out of the mix, which is the sentence H1 asks each twin to say.
+  const sat = Math.max(0.1, (1 - 0.6 * lp - 0.3 * hp) * (1 - 0.8 * midKill));
   const steps = 3 + (POSTERIZE_STEPS - 3) * Math.pow(1 - crush, 1.5);
   const tint = lp >= hp ? TINT_UNDER : TINT_THIN;
   const tintAmt = 0.5 * lp + 0.35 * hp;
+
+  // ---- X1: the gater, rendered as a strobe.
+  // `gate` is a bar-locked square gater at eighths (D19), which makes its twin
+  // the one place in this entire visual system where hard rhythmic flashing is
+  // legal: the rail is explicitly "never a composition input" (D17), so it is a
+  // hand on a mixer rather than the composition, and §2.1's no-rhythm-on-the-
+  // ground-stream rule does not reach it.
+  //
+  // Capped, deliberately and permanently. GATE_FLOOR is the darkest the strobe
+  // may ever take the frame, and the edges are smoothed rather than square:
+  // eighths at 168 BPM is 5.6 Hz, which sits inside the band that provokes
+  // photosensitive seizures, and depth and edge sharpness are what govern the
+  // risk. This is the one number in this file that exists for a reason outside
+  // the picture, and it should not be "improved".
+  const gatePhase = ((tNow / (bar / 8)) % 1 + 1) % 1;
+  const gateSquare = smooth(clamp01(Math.abs(gatePhase * 2 - 1) * 3 - 0.5));
+  const strobe = 1 - gate * (1 - GATE_FLOOR) * (1 - gateSquare);
+
   // the HP kill is a subtraction, not a wash: with the floor removed there is
   // simply less picture. (The renderer applies the tint scaled by luminance,
   // so neither filter direction can lift the blacks into fog.)
-  const dim = 1 - 0.4 * hp;
+  const dim = (1 - 0.4 * hp) * strobe;
   const vignette = Math.max(0, 0.18 + 0.65 * hp + 0.12 * lp - 0.5 * arrival);
 
   // ---- optics (G1): DRR rendered as depth of field. Focus rides the camera's
@@ -269,7 +357,8 @@ export function look(params = {}, env = {}) {
   // never seen at all.
   const aerial = 0.12 + 1.05 * (1 - canopyLight(alt));
   const fogDensity = Math.max(0,
-    (0.075 - 0.04 * T) * aerial * (1 + 0.6 * lp + 0.5 * space) * (1 - 0.4 * hp) * (1 - 0.5 * exhale));
+    (0.075 - 0.04 * T) * aerial * (1 + 0.6 * lp + 0.5 * space) * (1 - 0.4 * hp) * (1 - 0.5 * exhale)
+    * (1 - 0.85 * lowKill));   // X3: killing the low band thins the picture's mass
 
   // ---- exposure: the forest floor gets almost none of the light.
   // Kept apart from `dim` (the HP kill's subtraction) so the rail's
@@ -287,7 +376,7 @@ export function look(params = {}, env = {}) {
   // the kick dips it for the same reason it dips everything else.
   const streak = Math.max(0,
     (0.18 + 0.4 * Tf + 0.5 * space + 0.7 * arrival + 0.35 * fusion + 1.2 * flash)
-    * (1 - duck * 0.5) * (1 - hp * 0.6));
+    * (1 - duck * 0.5) * (1 - hp * 0.6) * (1 - 0.9 * highKill));   // X3
 
   // ---- L2: god rays. Light scattering through the canopy is a thing that
   // happens where there IS a canopy and a sun — so it keys on altitude, peaks
@@ -302,11 +391,19 @@ export function look(params = {}, env = {}) {
   // ---- L8: heat shimmer. Refraction is the air itself becoming visible, so
   // it belongs to the two moments when the air is doing the most work: the
   // fusion climax, and the top of a tension curve.
-  const shimmer = clamp01(0.55 * (env.fusionAmt ?? 0) + Math.max(0, T - 0.78) * 1.6);
+  const shimmer = clamp01((0.55 * (env.fusionAmt ?? 0) + Math.max(0, T - 0.78) * 1.6)
+    * (1 - 0.9 * highKill));   // X3
 
   return {
     bloom, smear, shift, grain, sat, steps, tint, tintAmt, dim, vignette,
     focal, bokeh, focus, fogDensity, exposure, streak, godrays, shimmer,
+    // X2 — drive. Master saturation with makeup trim, and its twin is the
+    // picture pushed into its own ceiling: a Reinhard soft-clip in the shader,
+    // so highlights compress and refuse to go further instead of simply getting
+    // brighter. Note this is NOT `dim`, which subtracts; drive adds and then
+    // runs out of room, which is a visibly different thing and is what a mix
+    // hitting its ceiling actually looks like.
+    drive,
   };
 }
 

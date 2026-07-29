@@ -99,7 +99,7 @@ console.log('the weather axis crossfades across seams (M2)');
   check(at(0).rain > at(1).rain, 'and the rain really does hand over (floor → canopy is a drying)');
 
   const dry = weatherAt({ t: 10, index: 3, T: 0.5 });
-  check(dry.rain === 0 && dry.storm === 0, 'the zenith is clear, and clear means zero');
+  check(dry.rain === 0, 'the zenith is clear, and clear means zero rain');
   const floor = weatherAt({ t: 10, index: 1, T: 1 });
   check(floor.rain > 0.2 && floor.storm > 0.2, 'the forest floor rains — the twin of its ambrain bed');
   check(weatherAt({ t: 10, index: 1, T: 0 }).storm === 0,
@@ -109,9 +109,46 @@ console.log('the weather axis crossfades across seams (M2)');
   let allInRange = true;
   for (let i = 0; i < 3000; i++) {
     const w = weatherAt({ t: i * 1.7, index: i % 4, toIndex: (i + 1) % 4, blend: (i % 10) / 10, T: (i % 7) / 6 });
-    for (const k of ['mist', 'rain', 'wind', 'storm']) if (w[k] < 0 || w[k] > 1) allInRange = false;
+    for (const k of ['mist', 'rain', 'wind', 'storm', 'stormFar']) if (w[k] < 0 || w[k] > 1) allInRange = false;
   }
   check(allInRange, 'every weather channel stays inside 0..1');
+}
+
+// V3 — the item this tier exists for. The old `storm = rain · T` meant the one
+// band with a visible sky could never strike, and the band that struck had no
+// visible sky. These four checks are the ones that would have caught that.
+console.log('storm is not rain (V3): the sky and the strikes can finally meet');
+{
+  // over a whole track, at its own peak tension, does the zenith ever storm?
+  let zenithPeak = 0;
+  for (let i = 0; i < 4000; i++) zenithPeak = Math.max(zenithPeak, weatherAt({ t: i * 0.5, index: 3, T: 0.6 }).storm);
+  check(zenithPeak > 0.2, `the zenith storms while staying dry (peak ${zenithPeak.toFixed(2)}, rain 0)`);
+  check(weatherAt({ t: 10, index: 3, T: 0.6 }).rain === 0, '…and it is still not raining up there');
+
+  let struck = 0;
+  for (let i = 0; i < 40000; i++) {
+    if (lightningAt(i * 0.01, 1, weatherAt({ t: i * 0.01, index: 3, T: 0.6 }).storm).flash > 0.5) { struck++; break; }
+  }
+  check(struck > 0, 'and lightning actually fires there — the thing that was impossible before');
+
+  check(TRACK_WEATHER[1].stormFar < TRACK_WEATHER[3].stormFar,
+    'the floor is under its storm; the zenith is watching one on the horizon');
+  check(TRACK_WEATHER[1].storm === Math.max(...TRACK_WEATHER.map((w) => w.storm)),
+    'the forest floor is still the stormiest — it is the track whose bed is ambthunder');
+
+  // storm and rain must be independently reachable, or the decoupling is a lie
+  const someRainNoStorm = weatherAt({ t: 10, index: 1, T: 0 });
+  check(someRainNoStorm.rain > 0 && someRainNoStorm.storm === 0,
+    'rain without thunder is expressible (a calm downpour)');
+  check(dryStormExists(), 'thunder without rain is expressible (a dry storm seen from above)');
+
+  function dryStormExists() {
+    for (let i = 0; i < 4000; i++) {
+      const w = weatherAt({ t: i * 0.5, index: 3, T: 0.6 });
+      if (w.storm > 0.1 && w.rain === 0) return true;
+    }
+    return false;
+  }
 
   let lo = 1, hi = 0;
   for (let i = 0; i < 4000; i++) { const e = episode(i * 0.5, 2); lo = Math.min(lo, e); hi = Math.max(hi, e); }

@@ -516,3 +516,67 @@ that stopped.
     - **Unchanged on purpose:** `nearFieldAt` and the D41 resting aperture. The
       curve describes the world's near *content* — trunks, undergrowth, dust —
       and the fronds were one item of it, not its definition.
+
+---
+
+## 7. The sloth needs a human eye, in motion (opened 2026-07-29, D45)
+
+The four creature systems and the sky (D44–D46) are built, tested and
+photographed, and every one of them reads in a still frame at the altitude it
+belongs to. One is not settled.
+
+**The question.** Does the sloth read as an *animal*, or as a shape hanging
+under a bar? A still frame cannot answer it: what is supposed to sell it is the
+gait — a ~60 s limb cycle that gets *slower* at high tension, on the argument
+that the one creature in the set that refuses to hurry is a joke worth making —
+and nobody has watched it move.
+
+**Why this is worth flagging rather than assuming.** There are two precedents in
+this repo for a figure that met every stated constraint and still had to be
+removed by eye: D28 (the moth) and D40/D42 (the recurring form). Both were
+argued for, both were built, neither survived being looked at. The sloth's four
+screenshot passes (D45) fixed *visibility* — it was literally invisible twice,
+for two different reasons — which is not the same as legibility.
+
+**If it fails**, the fallback is already written down in
+`visuals_fauna_proposal.md` §Open decisions #3, and it is the more interesting
+option anyway: **motion-only.** The animal is a disturbance you infer from what
+moves rather than a body you see, which is exactly what `ambrustle` — the
+undergrowth's third ambience layer — is doing in the audio with no picture in
+front of it.
+
+**How to look:** `npm run dev`, then in the console
+`jungle.visuals.setAltitude(0.18, true)` and watch for a minute. The reach is
+slow on purpose; `jungle.bus.params.tensionManual = 1` with `tensionMix = 1`
+should make it slower, not faster, and if that reads as a bug rather than as a
+joke then the joke does not work.
+
+## 8. Frame cost on real hardware is still unmeasured (opened 2026-07-29)
+
+Inherited from the pizzaz pass and now more pointed. V1's cloud field adds ~180
+camera-facing billboards that the camera flies *through*, and the whole pass was
+developed against swiftshader where the governor already sits near the bottom of
+its ladder. The clouds are the governor's **top** rung (Y2), so the designed
+failure mode is "the sky thins out" rather than "the groove drops" — but nobody
+has confirmed the governor actually sheds them in time on a real GPU, and
+`quality` sat at 0.8 for the whole headless sweep, which tells you nothing.
+
+Same note as before applies to WebGPU: the chain compiles and boots there, and
+that is all the harness certifies.
+
+## 9. The dev server re-inits the UI mid-sweep (opened 2026-07-29, minor)
+
+Observed while photographing D44–D46, not caused by it. The transport in the
+later frames of a `visual_check` run shows **each track and section button
+twice** — `initUI` appends without clearing and is called once from `main.js`,
+so seeing doubles means the module was evaluated twice against the same DOM.
+
+The cause is the docs plugin: it regenerates `docs/api/index.html` at dev-server
+start, vite's watcher sees the write, and hot-updates the client. Harmless to
+the shots (`errors: none`, the bus keeps running, and the world renders
+correctly in every frame), and invisible in `npm run build`. Worth fixing at
+some point in one of two places — have the docs plugin write outside the watched
+tree or mark it `hmr: false`, or have `initUI` clear `#tracks`/`#sections`
+before it fills them. The second is one line and would make the symptom
+impossible regardless of what triggers a re-init.
+

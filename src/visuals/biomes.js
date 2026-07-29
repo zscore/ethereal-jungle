@@ -64,8 +64,15 @@
  */
 import * as THREE from 'three';
 import { canopyLight, beamAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
+import { cloudShadeAt, makeSky } from './sky.js';
+import { CAST } from './fauna.js';
+import {
+  makeSloths, makeTreeFrogs, makePoolFrogs, makeBirds, makeSoarer,
+} from './creatures.js';
 
 export const WORLD_TOP = 62;
+
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 /** The crown layer, in world units — the same two numbers look.js reasons in. */
 export const CROWN_Y0 = CANOPY_BASE * WORLD_TOP; // ≈31.6
@@ -298,9 +305,25 @@ function makeRoots(rng) {
     name: 'undergrowth',
     group: mesh,
     update(dt, env) {
-      // species walks with brightness: solitons at the dark end, worms toward the light
+      // W5 — the two-dimensional mode knob, finally used in two dimensions.
+      // §3.3 says the Gray-Scott parameter plane IS a 2-D mode knob: small
+      // moves in (F, k) change the pattern's *species*. Both coordinates moved
+      // before, but both were functions of the same scalar (`env.b`), so the
+      // sim walked the plane along a single straight line — a 2-D knob used as
+      // a 1-D one, while the bus had a second harmonic axis nobody was reading.
+      //
+      // F stays on brightness (solitons at the dark end, worms toward the
+      // light) and k now takes warmth, so the morphology reads BOTH axes. The
+      // payoff is the zenith, where the two diverge: the roots end up somewhere
+      // on this plane that the set has literally never visited before.
+      // The range is bounded on purpose. Gray-Scott only makes pattern while
+      // k stays under roughly (√F − F)/2 — above that the V field decays and
+      // the lattice goes uniformly blank, which would read as the roots simply
+      // switching off in the coldest track. At this F range that ceiling is
+      // 0.072–0.084, so 0.057–0.065 sits comfortably inside it at every
+      // brightness, and the low end is exactly where the old expression's was.
       const F = 0.030 + 0.016 * env.b;
-      const k = 0.062 - 0.005 * env.b;
+      const k = 0.057 + 0.008 * (env.warmth ?? 0.4);
       // sim steps are the first thing the quality governor buys back (J1):
       // fewer steps slow the morphology, they never change its species
       const steps = Math.max(2, Math.round(5 * (env.quality ?? 1)));
@@ -583,7 +606,10 @@ function makeForest(rng) {
   const FILL = 70;
   const FAR = 130;
   const crowns = [];
-  const add = (x, y, z, r, k, far) => crowns.push({ x, y, z, r, k, far });
+  // `hue` is a fixed per-crown offset, drawn once. W1's `spread` decides how
+  // much of it reaches the frame: a cold canopy is a hundred different greens,
+  // a warm one agrees on a single green.
+  const add = (x, y, z, r, k, far) => crowns.push({ x, y, z, r, k, far, hue: rng() });
   for (const tr of trees) {
     for (let j = 0; j < NEAR_PER_TREE; j++) {
       const a = rng() * Math.PI * 2, rr = Math.pow(rng(), 0.7) * 7;
@@ -649,6 +675,7 @@ function makeForest(rng) {
   const scl = new THREE.Vector3();
   const UP = new THREE.Vector3(0, 1, 0);
   const tint = new THREE.Color();
+  const crownTint = new THREE.Color();
 
   return {
     name: 'forest',
@@ -682,6 +709,23 @@ function makeForest(rng) {
       // leaves 20 units below them because it comes off the same field.
       const wind = windAtOr(env, 0, CROWN_Y1, 0);
       eye.copy(env.cam ?? UP);
+      // V5 — cloud shadow, and W1 — the canopy's colour agreement.
+      //
+      // The shadow comes from `cloudShadeAt`, the same analytic field the sky
+      // samples for its own cover: one field, sampled by both at its own
+      // position, exactly the way K1's wind is shared. A shadow that did not
+      // agree with the cloud above it would be worse than no shadow at all.
+      // This is what makes the clouds feel like they are IN the world rather
+      // than painted on the back of it, and it is the one V-tier item that pays
+      // off at canopy altitude instead of at the zenith.
+      //
+      // `spread` is warmth: a cold canopy is a hundred different greens and a
+      // warm one agrees on a single green (fauna.js `coherenceAt`). Per-crown
+      // variation is the cheapest place in the world to show agreement, because
+      // there are 200 of them in one frame.
+      const cover = clamp01((env.weather?.mist ?? 0.3) * 0.6 + (env.weather?.storm ?? 0) * 0.8);
+      const spread = env.fauna?.coherence?.spread ?? 0.3;
+      const anyShadow = cover > 0.01 && above > 0.02;
       for (let i = 0; i < drawn; i++) {
         const cr = crowns[i];
         const sway = cr.far ? 0.35 : 1;
@@ -691,8 +735,22 @@ function makeForest(rng) {
         m4.scale(scl);
         m4.setPosition(pos);
         crownMesh.setMatrixAt(i, m4);
+
+        // The instance colour is a pure MULTIPLIER on the material colour above,
+        // not a second copy of it — three.js multiplies the two, so baking the
+        // SHADE→SUNLIT lerp in here as well would square it. It is written
+        // every frame even when it is 1: a per-instance colour left frozen at
+        // whatever it held when a condition last went false is the same
+        // debugging trap the style uniforms have a comment about in scene.js.
+        const shade = anyShadow
+          ? cloudShadeAt(env.t, cr.x, cr.z, { cover, drift: env.drift ?? 0 }) : 0;
+        // cr.hue is a fixed per-crown offset; `spread` decides how much of it
+        // actually reaches the frame
+        crownTint.setScalar((1 - shade) * (1 + (cr.hue - 0.5) * spread));
+        crownMesh.setColorAt(i, crownTint);
       }
       crownMesh.instanceMatrix.needsUpdate = true;
+      if (crownMesh.instanceColor) crownMesh.instanceColor.needsUpdate = true;
     },
   };
 }
@@ -758,66 +816,14 @@ function makeCanopy() {
   };
 }
 
-// ---------- open air: the weather deck above the crowns (D39) ----------
-// This band used to be four nested wireframe icosahedra — the self-similar
-// family's canonical demo, and a geodesic dome is what it looked like. It is
-// gone (see the ADR). What replaces it is not another generator: the band's
-// content is now the FOREST, seen from over the top — the canopy sea in
-// makeForest, receding into air that is finally clear enough to have a horizon
-// in it. The self-similar argument survives in a better place, because a
-// canopy is a real fractal and the crown mask is built from a rule.
-//
-// What is left up here is the sky's own furniture: two banks of high cloud,
-// scrolling at near-coprime rates so the deck never quite repeats (the Eno
-// theorem, for the eye — the same argument the wind's two gust periods make).
-// Lightning inherits them, which is where it wanted to be all along: a strike
-// lights cloud from inside, and it was only ever lighting the shells because
-// the shells were the only thing above the trees.
-function makeUpperAir() {
-  const group = new THREE.Group();
-
-  const cloudTex = gradientTexture([
-    [0, 'rgba(0,0,0,0)'], [0.3, 'rgba(120,148,186,0.22)'],
-    [0.52, 'rgba(226,234,246,0.40)'], [0.72, 'rgba(140,164,196,0.20)'], [1, 'rgba(0,0,0,0)'],
-  ]);
-  const banks = [];
-  for (const [scroll, y, tilt, size] of [[0.010, 16, 0.07, 34], [0.016, 26, -0.05, 26]]) {
-    const g = new THREE.PlaneGeometry(340, size, 64, 1);
-    const pa = g.attributes.position;
-    // a slow undulation across the sheet, so the deck has weather in it rather
-    // than being a card seen edge-on
-    for (let i = 0; i < pa.count; i++) pa.setZ(i, Math.sin(pa.getX(i) * 0.021) * 14);
-    const tex = cloudTex.clone();
-    tex.needsUpdate = true;
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: 0, side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
-    }));
-    m.position.y = y;
-    m.rotation.x = tilt;
-    group.add(m);
-    banks.push({ mesh: m, scroll, tex });
-  }
-  group.position.y = 56;
-
-  return {
-    name: 'upperair',
-    group,
-    update(dt, env) {
-      // the deck is the highest thing in the world, so it gets the most wind
-      const wind = windAtOr(env, 0, WORLD_TOP, 0);
-      const alt = (env.cam?.y ?? 0) / WORLD_TOP;
-      // visible once the crowns stop being overhead: from under the canopy
-      // there is no sky to see, which is the point of the canopy
-      const open = Math.max(0, Math.min(1, (alt - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE)));
-      for (const r of banks) {
-        r.tex.offset.x += dt * r.scroll * (1 + env.drift * 0.4 + wind.gust * 1.5);
-        r.mesh.material.opacity = open * (0.35 + 0.4 * env.T) + (env.flash ?? 0) * 0.55;
-        r.mesh.rotation.z = wind.x * 0.03;
-      }
-    },
-  };
-}
+// ---------- open air: the weather deck, moved out (V1) ----------
+// This band's furniture used to be two additive sheets in a group at y 56 —
+// i.e. at y 72 and 82 — while the zenith camera flies at y 45–56 tilted DOWN
+// (BAND_PITCH[3] = -8). It was a ceiling over a camera looking at the floor.
+// It now lives in `sky.js` as a cloud FIELD the camera flies inside, with the
+// two original sheets kept above it as high cirrus. See that file for the
+// argument; the two `makeSky` and `cloudShadeAt` imports at the top are what
+// replaced this function.
 
 // ---------- the air: altitude-graded atmosphere (proposal C2) ----------
 // A vast inverted vertex-colored sphere. Retuned for the forest (D39): the
@@ -1279,9 +1285,24 @@ function makePool(rng) {
   }
   let rippleIdx = 0, dripClock = 0;
   group.position.y = 0.35;
+
+  /**
+   * Put one ring on the water. Extracted from the drip loop so the pool frogs
+   * (U3) can call it: a frog's call and the ripple it makes are then the same
+   * event rather than two things that happen to be near each other, and the
+   * ring pool is recycled once instead of twice.
+   */
+  function ripple(x, z, strength = 1) {
+    const r = ripples[rippleIdx++ % RIPPLES];
+    r.mesh.position.set(x, 0, z);
+    r.mesh.visible = true;
+    r.life = Math.min(1, strength);
+  }
+
   return {
     name: 'pool',
     group,
+    ripple,
     update(dt, env) {
       // the pool is the floor of the world: it fades out as you climb away
       const near = 1 - Math.min(1, Math.max(0, ((env.cam?.y ?? 0) - 6) / 20));
@@ -1299,10 +1320,7 @@ function makePool(rng) {
       dripClock += dt * rate;
       while (dripClock > 1) {
         dripClock -= 1;
-        const r = ripples[rippleIdx++ % RIPPLES];
-        r.mesh.position.set((Math.random() - 0.5) * 70, 0, (Math.random() - 0.5) * 70);
-        r.mesh.visible = true;
-        r.life = 1;
+        ripple((Math.random() - 0.5) * 70, (Math.random() - 0.5) * 70);
       }
       for (const r of ripples) {
         if (!r.mesh.visible) continue;
@@ -1456,11 +1474,28 @@ function makeNearField(rng) {
 
 /** Build the whole world into `scene`; returns per-frame updaters + hooks. */
 export function buildWorld(scene, rng) {
+  // The pool is built first among the things that reference each other, because
+  // the frog chorus drops its rings into the pool's own recycled ring pool
+  // (U3): a call and the ripple it makes are one event, not two.
+  const pool = makePool(rng);
+  const sky = makeSky(rng);
+  // U4/U5 — the flock is held by name because the toucan startle has to reach
+  // it from the event queue in scene.js. It is the only creature with an
+  // anchored behaviour, so it is the only one that needs a handle.
+  const flock = makeBirds(rng, CAST.bird, 'bird');
+
   const biomes = [
     // built bottom-up, which is also the order the set climbs them
-    makeAir(), makeRoots(rng), makeMycelium(rng), makePool(rng), makeFloor(rng),
-    makeForest(rng), makeCanopy(), makeUpperAir(), makeShafts(rng), makeMist(rng),
+    makeAir(), makeRoots(rng), makeMycelium(rng), pool, makeFloor(rng),
+    makeForest(rng), makeCanopy(), sky, makeShafts(rng), makeMist(rng),
     makeFireflies(rng), makeRain(rng), makeNearField(rng),
+    // …and the fauna, in the same bottom-up order (proposal IV, tier U)
+    makePoolFrogs(rng, CAST.poolfrog, 'poolfrog', pool),
+    makeSloths(rng, CAST.sloth, 'sloth'),
+    makeTreeFrogs(rng, CAST.treefrog, 'treefrog'),
+    makeSloths(rng, CAST.slothCrown, 'slothCrown'),
+    flock,
+    makeSoarer(rng, CAST.soarer, 'soarer'),
   ];
   for (const b of biomes) scene.add(b.group);
   return {
@@ -1476,5 +1511,10 @@ export function buildWorld(scene, rng) {
     ignite() { for (const b of biomes) b.ignite?.(); },
     /** Downbeat events — growth's one licensed rhythm contact (blooms). */
     onDownbeat() { for (const b of biomes) b.onDownbeat?.(); },
+    /** U5 — the toucan called; the birds nearest it leave. */
+    flush(x, y, z, t) { flock.flush(x, y, z, t); },
+    /** V2 — the storm cell this frame, so a strike can come FROM it. */
+    cell() { return sky.cell(); },
+    debugSky() { return sky.debug(); },
   };
 }

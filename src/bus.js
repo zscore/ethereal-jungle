@@ -13,6 +13,10 @@
  * audio-clock time, slightly ahead of when they sound.
  */
 import { PERFORM_DEFAULTS } from './perform.js';
+// W4 — the harmonic centre needs the mode's interval set to say how far from
+// home a degree is. `scales.js` imports nothing, so this adds no cycle: the
+// dependency runs bus → scales, while generators runs generators → bus.
+import { modeAt, degreeToMidi } from './music/scales.js';
 
 // ---------- seedable RNG (mulberry32) ----------
 export function makeRng(seed) {
@@ -445,6 +449,53 @@ export function warmthAt(t) {
 }
 
 /**
+ * W4 (proposal IV) — the harmonic centre at set-time t.
+ *
+ * N2 gave every track an authored centre cycle in its palette (`bass.roots`, in
+ * scale degrees, 8 phrases against a 17-phrase track) and N3 gave the pad a
+ * planing cycle (`pad.plane`, 5 phrases). Between them the current chord's NAME
+ * is a pure function of the phrase index — so it belongs here, on the shared
+ * bus, next to the other two harmonic axes, rather than being reconstructed by
+ * whoever wants it.
+ *
+ * The visuals wanted it because `note` was being published on every event and
+ * read by nobody, and the obvious mappings (pitch→height, pitch→hue) are both
+ * dead: height is already brightness, and hue-per-note says nothing. What the
+ * eye can honestly show is *how far from home the harmony currently is*, which
+ * is a property of the authored progression rather than of any one note — and
+ * because it is authored, it is clairvoyant like everything else on this bus.
+ *
+ * `awayness` is circle-of-fifths distance, normalised. That is the honest metric
+ * and it disagrees usefully with semitone distance: the 5th is one fifth from
+ * home (near) even though it is 7 semitones away, while the bVI the undergrowth
+ * leans on is four fifths out — which is exactly why generators.js calls it
+ * "the darkest move available without leaving the mode".
+ *
+ * NOTE: `centre` must stay identical to generators.js:1477-1478. It is not
+ * imported from there because that is the audio compiler and this is the shared
+ * timeline; `test/harmony.mjs` asserts the two agree across a sweep of phrases,
+ * which is this project's usual answer to two copies of one number.
+ */
+export function harmonyAt(t, brightness = 0.5) {
+  const phraseIndex = Math.floor(t / PHRASE_SECONDS);
+  const ps = phraseStateAt(phraseIndex);
+  const pal = ps.track.palette ?? {};
+  const at = (arr, i) => arr[((i % arr.length) + arr.length) % arr.length];
+
+  const centre = at(pal.bass?.roots ?? [1], phraseIndex);
+  const step = at(pal.pad?.plane ?? [0], phraseIndex);
+
+  // semitones above the tonic, in the mode actually sounding
+  const mode = modeAt(brightness);
+  const semis = ((degreeToMidi(centre, mode) - degreeToMidi(1, mode)) % 12 + 12) % 12;
+  // how many fifths from home: 7 is invertible mod 12, so n = 7·s (mod 12)
+  const fifths = (semis * 7) % 12;
+  const awayness = Math.min(fifths, 12 - fifths) / 6;
+
+  return { centre, step, semis, awayness, phraseIndex, mode: mode.name };
+}
+
+/**
  * D18 — seam flavor for the boundary INTO TRACKS[intoIndex], seeded per set:
  * 'landing' (countdown → arrival hit → intro as decaying aftermath) or
  * 'dissolve' (the roll unwinds, tension exhales — the ambient arrival is what
@@ -656,6 +707,12 @@ export const bus = {
   // D22 — the warmth axis, for symmetry with brightnessAt. (The identifier
   // inside resolves to the module-scope function above, not to this property.)
   warmthAt: (t) => warmthAt(t),
+
+  // W4 — the harmonic centre, for the same symmetry. The module-level function
+  // is pure and takes brightness explicitly (so it is testable without a bus);
+  // this supplies the *effective* brightness, knob included, so the eye reads
+  // the mode that is actually sounding rather than the authored one.
+  harmonyAt(t) { return harmonyAt(t, this.brightnessAt(t)); },
 
   /** Effective wildness: the knob, breathing with the tension curve. */
   wildnessAt(t) {
