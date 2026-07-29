@@ -284,6 +284,37 @@ export const TURNAROUNDS = [
   { name: 'the drag',     fig: '~ ~ [x ~ ~ x] [~ x ~ ~]', gain: 0.44, lpf: 2400 },
 ];
 
+/**
+ * R3 — drop variants. `section_ideas.md` asks for these by name and D18's own
+ * "revisit when" note points at them: *same arrival, different content* (§5 —
+ * predictable time, withheld content). The drop bar was one thing, a full slam,
+ * in all four tracks and on every seed.
+ *
+ * Which layers are allowed into the drop bar itself. The skeleton is never
+ * masked — the pulse is the promise being kept, and withholding it would read
+ * as a fault rather than as a choice. What gets withheld is content.
+ *
+ *   slam         everything at once (what the set did before)
+ *   break-first  the drums land, the floor floods in a bar later
+ *   floor-first  the bass lands naked, the break answers it
+ *   late         kick alone for a bar, then the whole arrangement
+ *
+ * Drawn per track per set, so a listener who hears the set twice hears the same
+ * four drops — the same idiom as `seamVariant`, and for the same reason: a
+ * variant that changes every pass is noise, not form.
+ */
+export const DROP_VARIANTS = [
+  { name: 'slam',        break: null,          bass: null },
+  { name: 'break-first', break: null,          bass: '[0 1 1 1]/4' },
+  { name: 'floor-first', break: '[0 1 1 1]/4', bass: null },
+  { name: 'late',        break: '[0 1 1 1]/4', bass: '[0 1 1 1]/4' },
+];
+
+export function dropVariantFor(trackIndex, seed) {
+  const rng = makeRng(((seed ^ 0xd80b) + trackIndex * 6151) >>> 0);
+  return DROP_VARIANTS[Math.floor(rng() * DROP_VARIANTS.length)];
+}
+
 /** How often a section wants its phrases turned around, and how hard. */
 const TURN_LIFT = {
   intro: 0, build: 0.45, groove: 0.3, breakdown: 0.15,
@@ -1138,6 +1169,13 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // §5's pre-drop denial: the final bar of build2 is ether-only. The mask is
   // keyed to absolute cycle mod 4 = bar-in-phrase (same trick as the roll).
   const dropout = sec === 'build2' && lastPhraseOf;
+  // R3 — which drop this track gets, and therefore what is withheld from its
+  // drop bar. Null everywhere except the peak's first phrase.
+  const drop = (sec === 'peak' && firstPhraseOf && !silent)
+    ? dropVariantFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed)
+    : null;
+  /** Apply a drop variant's mask for one layer family, if it has one. */
+  const held = (pat, family) => (drop?.[family] ? pat.mask(drop[family]) : pat);
   const gate = (pat) => (dropout ? pat.mask('[1 1 1 0]/4') : pat);
 
   const layers = [];
@@ -1159,7 +1197,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       : seamEarly
         ? `[${Array.from({ length: 4 }, (_, j) => (exitFade(j) * bg).toFixed(3)).join(' ')}]/4`
         : (thin ? 0.75 : 0.9) * bg;
-    layers.push(gate(costume(
+    layers.push(gate(held(costume(
       s(bp.s ?? 'jbreak') // local synthesized break; try s('breaks165') with the remote pack
         .slice(16, sigma.join(' '))
         .sometimesBy(thin ? 0 : wEff * 0.4, (x) => x.ply(2)) // stochastic re-subdivision
@@ -1167,7 +1205,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .gain(gainSpec)
         .orbit(1),
       bp, rs, weather,
-    )));
+    ), 'break')));
   }
 
   // ---- skeleton: the metric anchor (§1.2) — strength rises with tension ----
@@ -1423,7 +1461,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         }
         if (bp.release) x = x.attack(0.005).decay(bp.release).sustain(0.25).release(bp.release);
         if (bp.shape) x = x.shape(bp.shape);
-        return gate(x.slow(2).orbit(2)); // half-time layer (§1.4): the felt pulse
+        return gate(held(x.slow(2).orbit(2), 'bass')); // half-time layer (§1.4): the felt pulse
       };
       // the Reese (undergrowth): saws a few cents away — the beating IS the
       // timbre. Split-band: the detune stays in the mids, the sub is clean mono
@@ -1440,7 +1478,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       detunes.forEach((cents, i) => {
         layers.push(body(cents / 100, g * (detunes.length > 1 ? spread[(i + 1) % spread.length] : 0.9)));
       });
-      if (bp.sub) layers.push(gate(note(str(-12)).s('sine').gain(g * 0.8).slow(2).orbit(2)));
+      if (bp.sub) layers.push(gate(held(note(str(-12)).s('sine').gain(g * 0.8).slow(2).orbit(2), 'bass')));
       // N2 — the pedal, and it only sounds when there is news. On tonic phrases
       // the walk already says D and a drone under it would just be more of the
       // 120–250 Hz the mix has too much of; on the phrases where the centre has
