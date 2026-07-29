@@ -106,6 +106,11 @@ What got built in the
 (tiers A–E), `docs/visuals_fancy_proposal.md` (F–J) and
 `docs/visuals_pizzaz_proposal.md` (K–M: the shared atmosphere, the living
 layer, and the style tiers — its *What is NOT done* section is the open list).
+The same treatment for the **audio**, and the first pass to argue from
+measurements rather than taste: `docs/audio_pizzazz_proposal.md` (N–T, D43 — a
+§1 that is entirely numbers, then the harmony, cast, effects, arrangement and
+mix changes those numbers asked for; its *What shipped* section records what
+landed, what the tests rejected, and what was tried and did not work).
 
 **Three rules the visuals will not break**, in case a change seems to need it:
 visuals read the bus and never the audio; the ground stream never articulates

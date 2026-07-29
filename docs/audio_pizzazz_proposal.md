@@ -1,7 +1,8 @@
 # Audio Pizzazz — the brainstorm
 
-Status: **partly built** — see the *What shipped* section at the end for exactly
-which items landed, which were rejected on evidence, and what is left. Item
+Status: **partly built**, merged as **D43** — see the *What shipped* section at
+the end for exactly which items landed, which were rejected on evidence, and
+what is left. Item
 letters here are the ones the commit subjects reference. This is the audio-side
 counterpart to `visuals_expansion_proposal.md` (A–E), `visuals_fancy_proposal.md`
 (F–J) and `visuals_pizzaz_proposal.md` (K–M) — same ladder, so the item letters

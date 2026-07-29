@@ -2165,6 +2165,76 @@ in the world rather than carried in front of the lens), or when the near field
 wants a second layer — a foreground element that *enters and leaves* would clear
 the bar the fronds failed, and the wind field is already there to move it.
 
+## D43 — The music gets the treatment the picture got: measured first, then changed (2026-07-29)
+
+**Decision.** The audio side gets its own expansion pass, argued from
+measurements rather than taste, and recorded in `docs/audio_pizzazz_proposal.md`
+(items **N**–**T**, continuing the visuals ladder's letters). Everything that
+shipped is listed in that document's *What shipped* section; this entry records
+the decisions worth carrying, not the changelog.
+
+**Why now.** Three visuals passes (D24–D27, D39–D42) had made the picture worth
+looking at, and nothing had ever asked the equivalent question of the music with
+numbers. D33 built the ear — `spectrum_probe.mjs` — and then it was used almost
+exclusively for ringing. Pointing it at all four tracks at once, alongside an
+offline event census of the compiled set at six seeds, produced findings that no
+amount of listening had surfaced in a year of work:
+
+- **The forest floor voiced one chord for all 68 of its bars.** Its authored
+  aeolian→dorian change moves scale degree 6, and `neutral: [1,3,5,7,9]` does
+  not contain a 6th. Two more of the set's seven mode changes were silent the
+  same way. The stasis thesis (§2.1) was being over-honoured by roughly a factor
+  of four, and three quarters of that was a table, not a decision.
+- **The bass was already implying harmony the pad refused to confirm** — a real
+  bVI–V–bIII walk every phrase under a stack that never acknowledged it.
+- **The undergrowth fielded zero characteristic layers** against the canopy's
+  four, despite `track_identities.md` §4.1 promising it two. Its "Reese" was a
+  detune flag on the bass whose filter was one held number per phrase.
+- **The lead's gate compared a per-track-rescaled tension curve to an absolute
+  number**, leaving the darkest track's melody at gain 0.024 in its own groove
+  and the zenith's at zero.
+- **240 phrase endings per pass had nothing on them.**
+
+**The rule this pass adds**, and the one most likely to matter later: **tension
+is the authored will, section progress is the form's clock, and drift is the
+weather.** `drift(t)` had been advertised on the bus since the first commit,
+read five ways by the visuals and zero times by the music — a hole in the
+M(S)/V(S) symmetry rather than a missing effect. It now has a job description.
+
+**Rejected, and by the tests rather than by argument.** Three changes were
+reverted or moved because existing assertions caught them: giving the first two
+tracks a granular ghost (it is one of the zenith's three exclusive layers, and
+sprinkling it is the failure mode "a gesture is spent, not sprinkled" names);
+returning the seam's level weight to unity (it made the break step *up* into a
+window D36 made a wind-down); and a hole in the release that swallowed beat 3
+(the backbeat is an anchor). Recording these because the pattern is the useful
+part: the invariants this project has accumulated are load-bearing, and all
+three would have shipped on a listen.
+
+**What did NOT work, stated so nobody re-derives it.** The 2–4 kHz deficit is
+not fixed. The hats were lifted and high-passed and a band-passed 3.6 kHz layer
+added that the census confirms is playing; the band moved from 0.4% to 0.4%, and
+raising that layer 2.7× moved it a tenth of a point. Either a narrow band-pass
+on pink noise is perceptually present while carrying almost no energy in a
+2 kHz-wide average, or the filter is not doing what it appears to. It wants a
+listen on real speakers, not another probe run.
+
+**Deliberately not taken: D13.** Key movement across tracks stays open. The
+proposal argues for ascending fourths (D→G→C→F) on the grounds that the set
+*already* modulates — the brightness walk sweeps the parent collection five
+fifths and is inaudible only because the bass never leaves D — and that scheme
+spends less pitch-class drift than the current design. It is not built, because
+the README is right that it wants a listen rather than an argument, and because
+`tune()` measures both the stretch pivot and the just lattice from `ROOT`: move
+the root without moving those and the canopy, the one track that locks, locks to
+the wrong lattice.
+
+**Revisit when.** After a real listen on speakers — specifically for the top-end
+question above, and for whether N5's twice-per-phrase harmonic rhythm at the
+peak is drive or clutter. The 879 Hz ring is improved (the pad moved out of the
+floor's octave) but not gone; the direct fix is a narrow notch on the ether
+orbit, which wants a `masterchain.js` node.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,
