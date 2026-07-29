@@ -145,6 +145,11 @@ export const TRACKS = [
     // D35 — one reverb per orbit, sized by the cast. The undergrowth is the
     // closest air in the set: a low ceiling on the drums, a small ether.
     rooms: { 1: 2, 3: 7, 4: 6 },
+    // Q2 — and what the room is made of. Leaves and litter are the softest
+    // surfaces in the set: a very low tail ceiling and heavy damping, arriving
+    // instantly because there is nothing far enough away to arrive late. This
+    // is the difference between "a small hall" and "under wet leaves".
+    roomChar: { 1: { lp: 3400, dim: 1600, fade: 0.05 }, 3: { lp: 5200, dim: 900, fade: 0.25 } },
     palette: {
       // the most degraded break of the four: no top end, bit-reduced, close
       break: { lpf: 3200, crush: 8, coarse: 2, room: 0.1,
@@ -195,6 +200,8 @@ export const TRACKS = [
     warmth: 0.35,
     tuning: {},                      // plain 12-TET: the neutral middle of the arc
     rooms: { 1: 3, 3: 8, 4: 6 },     // D35 — one step further out
+    // wet, hard ground: a brighter tail than the litter above it, still damped
+    roomChar: { 1: { lp: 5200, dim: 1100, fade: 0.09 }, 3: { lp: 7500, dim: 500, fade: 0.35 } },
     palette: {
       break: { speed: 1.02, shape: 0.15, room: 0.18 }, // tight, tuned up, dry
       hats: { s: 'hh', lpf: 9000, gain: 1 },
@@ -245,6 +252,9 @@ export const TRACKS = [
     // D35 — the canopy is a big bright space, and the squawk is the thing that
     // makes you hear how big (its send is the highest in the set)
     rooms: { 1: 3, 3: 11, 4: 7 },
+    // open air and hard leaves: the brightest tails in the set, and the ether
+    // finally has somewhere far enough away for the reflections to arrive late
+    roomChar: { 1: { lp: 9000, dim: 380, fade: 0.14 }, 3: { lp: 14000, dim: 160, fade: 0.55 } },
     palette: {
       break: { room: 0.15 }, // full, open, top end intact
       hats: { s: 'hh', lpf: 12000, gain: 1.12 },
@@ -294,6 +304,9 @@ export const TRACKS = [
     // D35 — the zenith drowns even its drums: the near orbit is as wet as the
     // canopy's ether, which is what "dematerialised" means in room terms
     rooms: { 1: 9, 3: 12, 4: 9 },
+    // nothing to reflect off at all: almost no damping, and a tail that takes
+    // most of a bar to arrive — distance without a surface
+    roomChar: { 1: { lp: 11000, dim: 200, fade: 0.5 }, 3: { lp: 16000, dim: 90, fade: 0.75 } },
     palette: {
       // dematerialised: high-passed (the drums lose their body), drowned,
       // thinned, slices reversed

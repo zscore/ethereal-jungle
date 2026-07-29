@@ -437,7 +437,7 @@ function seamFillLayer(ctx, fill, { snd, notes, brk = {}, rs, deep }) {
   }
   return pat
     .gain(gain).lpf(lpf)
-    .room(deep ? '[0.3 0.5 0.7 0.9]' : 0.18).roomsize(rs(1))
+    .room(deep ? '[0.3 0.5 0.7 0.9]' : 0.18).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1))
     .slow(4).orbit(1);
 }
 
@@ -456,8 +456,47 @@ function seamFillLayer(ctx, fill, { snd, notes, brk = {}, rs, deep }) {
 // each at its own distance.
 const ROOM_SIZE = { 1: 3, 2: 3, 3: 9, 4: 6 }; // drums near, ether far
 
-/** The room a track puts an orbit in: cast data (`TRACKS[i].rooms`) or default. */
-const roomsFor = (voice) => (orbit) => voice.rooms?.[orbit] ?? ROOM_SIZE[orbit] ?? 4;
+/**
+ * Q2 — and what the room is MADE of, which D35 left undone.
+ *
+ * D35 gave each orbit a size, because superdough rebuilds an impulse response
+ * whenever `roomsize` changes and events on one orbit were each demanding a
+ * different one. `roomlp`, `roomdim` and `roomfade` are orbit-global in exactly
+ * the same way (`superdoughoutput.getReverb` takes all four), so they need the
+ * same discipline — and they are what makes a reverb sound like somewhere.
+ *
+ *   roomlp   the tail's ceiling: how much air the room has
+ *   roomdim  damping — high frequencies dying faster than low ones, i.e. how
+ *            soft the surfaces are. Leaves and litter are very soft.
+ *   roomfade the tail's own attack: how long the reflections take to arrive
+ *
+ * The default set reads as: drums in a close damped space, the floor tighter
+ * still, the ether wide open and slow to arrive. A track overrides any of it
+ * with `TRACKS[i].roomChar` — which is where the undergrowth stops being in a
+ * small hall and starts being under wet leaves.
+ */
+const ROOM_CHAR = {
+  1: { lp: 6500, dim: 900, fade: 0.12 },  // near: damped, arrives at once
+  2: { lp: 4200, dim: 1400, fade: 0.08 }, // the floor: tightest, darkest
+  3: { lp: 9500, dim: 260, fade: 0.45 },  // the ether: open, slow, undamped
+  4: { lp: 8000, dim: 420, fade: 0.30 },  // the lead's air, between the two
+};
+
+/**
+ * The room a track puts an orbit in: cast data (`TRACKS[i].rooms`) or default.
+ * `rs(orbit)` is still the size, so every existing call site reads the same;
+ * `rs.lp/.dim/.fade` carry Q2's character. They hang off the same function on
+ * purpose — the layer builders already take `rs`, and a room whose size and
+ * surfaces are decided in two different places is how they drift apart.
+ */
+const roomsFor = (voice) => {
+  const rs = (orbit) => voice.rooms?.[orbit] ?? ROOM_SIZE[orbit] ?? 4;
+  const char = (key) => (orbit) => voice.roomChar?.[orbit]?.[key] ?? ROOM_CHAR[orbit]?.[key] ?? ROOM_CHAR[3][key];
+  rs.lp = char('lp');
+  rs.dim = char('dim');
+  rs.fade = char('fade');
+  return rs;
+};
 
 // ---------- D32: the squawk (was D31's tom kit) ----------
 // The same three croaks (tools/ingest_toms.py), and nothing else survives of
@@ -511,7 +550,7 @@ function squawkLayer(ctx, sq, seed, phraseIndex, rs) {
     // on its tail.
     .attack(0.004).decay(0.1).sustain(1)
     .lpf(sq.lpf ?? 5200)                       // distance takes the top off
-    .room(sq.room ?? 0.5).roomsize(rs(sq.orbit ?? 3))
+    .room(sq.room ?? 0.5).roomsize(rs(sq.orbit ?? 3)).roomlp(rs.lp(sq.orbit ?? 3)).roomdim(rs.dim(sq.orbit ?? 3)).roomfade(rs.fade(sq.orbit ?? 3))
     .pan(0.15 + rng() * 0.7)                   // anywhere in the canopy
     .gain(sq.gain ?? 0.3)
     .mask(`[${bars.join(' ')}]/4`)             // absolute cycle mod 4 = bar-in-phrase
@@ -635,7 +674,7 @@ function costume(pat, bp = {}, rs, weather = 0) {
   if (bp.crush) x = x.crush(Math.max(4, bp.crush + (bp.crushDrift ?? 0) * weather));
   if (bp.coarse) x = x.coarse(bp.coarse);
   if (bp.shape) x = x.shape(bp.shape);
-  if (bp.room) x = x.room(bp.room).roomsize(rs(1));
+  if (bp.room) x = x.room(bp.room).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1));
   return x;
 }
 
@@ -669,7 +708,7 @@ function pluckLayer(ctx, pk, mode, tuning, rng, rs) {
   let pat = note(seq.join(' '))
     .s('sine').fmh(pk.fmh ?? 3.5).fmi(pk.fmi ?? 2.2)   // inharmonic ratio = wooden
     .attack(0.002).decay(pk.decay ?? 0.12).sustain(0).release(pk.release ?? 0.14)
-    .room(pk.room ?? 0.05).roomsize(rs(pk.orbit ?? 1))
+    .room(pk.room ?? 0.05).roomsize(rs(pk.orbit ?? 1)).roomlp(rs.lp(pk.orbit ?? 1)).roomdim(rs.dim(pk.orbit ?? 1)).roomfade(rs.fade(pk.orbit ?? 1))
     .gain(pk.gain ?? 0.28)
     .pan(0.35 + rng() * 0.3)
     .orbit(pk.orbit ?? 1);
@@ -721,7 +760,7 @@ function stabLayer(ctx, sb, chord, tension, rng, rs) {
     .lpenv(sb.lpenv ?? 2.6).lpattack(0.002).lpdecay(sb.lpdecay ?? 0.09).lpsustain(0).fanchor(0)
     // the NEAR orbit, not the floor's: a stab is a struck, close, dry thing
     // that wants the drums' short room, and the bass orbit is spoken for
-    .room(sb.room ?? 0.22).roomsize(rs(1))
+    .room(sb.room ?? 0.22).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1))
     .gain((sb.gain ?? 0.2) * (0.7 + 0.3 * tension))
     .pan(`[0.42 0.58]`)
     .orbit(1);
@@ -757,7 +796,7 @@ function stridulateLayer(ctx, st, phraseIndex, seed, rs) {
     .bandf(st.bandf ?? 3600).bandq(st.bandq ?? 22)
     .tremolosync(st.rate ?? 14).tremolodepth(st.depth ?? 0.85)
     .attack(0.01).decay(st.decay ?? 0.18).sustain(0).release(0.12)
-    .room(st.room ?? 0.25).roomsize(rs(1))
+    .room(st.room ?? 0.25).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1))
     .gain(st.gain ?? 0.16)
     .pan(`[${st.pan ?? 0.28} ${1 - (st.pan ?? 0.28)}]`)
     .orbit(1);
@@ -790,13 +829,13 @@ function breathLayer(ctx, br, mode, tuning, rng, w, tension, rs) {
     .s('sine').vib(br.vib ?? 4.5).vibmod(br.vibmod ?? 0.18)
     .attack(0.3).release(1.1)
     .lpf(lo + span * tension)
-    .room(0.55).roomsize(rs(4))
+    .room(0.55).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
     .gain(g).pan(0.45)
     .slow(4).orbit(4); // long tones under the lead's half-time
   const air = s(seq.map((x) => (x === '~' ? '~' : 'white')).join(' '))
     .attack(0.35).release(0.9)
     .hpf(900).lpf(lo + span * tension).resonance(4)
-    .room(0.55).roomsize(rs(4))
+    .room(0.55).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
     .gain(g * (br.noise ?? 0.32)).pan(0.45)
     .slow(4).orbit(4);
   return [tone, air];
@@ -814,7 +853,7 @@ function choirLayer(ctx, ch, chord, brightness, rs) {
     .vowel(brightness > 0.68 ? 'o' : 'a')
     .attack(2.6).release(6)
     .lpf(ch.lpf ?? 1500)
-    .room(0.9).roomsize(rs(3))
+    .room(0.9).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
     .gain(ch.gain ?? 0.2).pan(0.5)
     .slow(4).orbit(3);
 }
@@ -835,7 +874,7 @@ function bowlLayer(ctx, bw, mode, tuning, rs) {
     // Measured (tools/spectrum_probe.mjs): peaks at 2219 and 5001 Hz that were
     // still up 1 dB in the quietest frame of the breakdown — the ring.
     .lpf(bw.lpf ?? 2200)
-    .room(0.95).roomsize(rs(3))
+    .room(0.95).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
     .gain(bw.gain ?? 0.17).pan(0.5)
     .slow(8).orbit(3);
 }
@@ -864,7 +903,7 @@ function ghostLayer(ctx, gh, rng, breakSound, rs) {
     .speed(grid.speed.join(' ')).pan(grid.pan.join(' '))
     .attack(0.08).release(0.7)
     .lpf(gh.lpf ?? 2200)
-    .room(0.95).roomsize(rs(3))
+    .room(0.95).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
     .gain(gh.gain ?? 0.15)
     .slow(2).orbit(3);
 }
@@ -882,7 +921,7 @@ function hooverLayer(ctx, hv, mode, tuning, rs) {
     .penv(hv.penv ?? -10).pattack(0.001).pdecay(0.35).pcurve(1)
     .attack(0.01).release(1.4)
     .lpf(2600).resonance(6)
-    .room(0.35).roomsize(rs(1))
+    .room(0.35).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1))
     .gain(hv.gain ?? 0.3).pan(0.5)
     .mask('[1 0 0 0]/4') // bar 0 of the phrase = the drop
     .orbit(1);
@@ -932,6 +971,7 @@ export function makeSetPattern(ctx, p, signals) {
         palette: ps.track.palette ?? {},
         tuning: ps.track.tuning,
         rooms: ps.track.rooms,          // D35 — one reverb size per orbit
+        roomChar: ps.track.roomChar,    // Q2 — …and what its surfaces are made of
 
         // P0 — the track's own tension range, so gates can ask "how far into
         // THIS track's arc are we" instead of comparing a rescaled curve to an
@@ -1362,7 +1402,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   if (landingArrival) {
     layers.push(
       // D36 — halved: the impact marks the boundary, it no longer announces it
-      s('ambimpact').gain(0.42).room(0.6).roomsize(rs(3)).pan(0.5)
+      s('ambimpact').gain(0.42).room(0.6).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3)).pan(0.5)
         .mask('[1 0 0 0]/4') // bar 0 of the phrase = the boundary downbeat
         .orbit(3),
     );
@@ -1438,7 +1478,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
         .release((swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4)) * relMul)
         .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`)
-        .room(0.9).roomsize(rs(3))   // low DRR: distance, the heavens
+        .room(0.9).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))   // low DRR: distance, the heavens
         .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1) * gainMul)
         .pan(`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`)
         .slow(slowVal)
@@ -1482,7 +1522,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
           .s(pp.s ?? 'sawtooth')
           .attack(0.9).release(2.6)
           .lpf(breath(0.4))
-          .room(0.93).roomsize(rs(3)) // one room per orbit (D35); distance is the SEND
+          .room(0.93).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3)) // one room per orbit (D35); distance is the SEND
           .gain((pp.gain ?? 0.32) * 0.34 * motion)
           .pan(`[0.4 0.6]`)
           .slow(2)                   // one tone per two cycles: a walk, not a riff
@@ -1494,7 +1534,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     layers.push(
       note(fmt(tune(degreeToMidi(1, mode, 1), tuning)))
         .s('sine').attack(3).release(8)
-        .room(0.95).roomsize(rs(3)).gain(0.22).pan(0.5)
+        .room(0.95).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3)).gain(0.22).pan(0.5)
         .slow(4).orbit(3),
     );
   }
@@ -1533,7 +1573,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .pan(fx.pan ?? panPos).slow(4).orbit(3);
       if (fx.hpf) pat = pat.hpf(fx.hpf);
       if (fx.lpf) pat = pat.lpf(fx.lpf);
-      if (fx.room) pat = pat.room(fx.room).roomsize(rs(3));
+      if (fx.room) pat = pat.room(fx.room).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3));
       return pat;
     };
     const [baseBed, ...accents] = ambience.current;
@@ -1576,7 +1616,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     let lead = note(seq.join(' '))
       .s(lp.s ?? 'triangle')
       .attack(0.05).release(1.5)
-      .room(lp.room ?? 0.8).roomsize(rs(4)) // drowned: the pluck problem's legal resolution (§7.2)
+      .room(lp.room ?? 0.8).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4)) // drowned: the pluck problem's legal resolution (§7.2)
       .lpf(llo + lspan * tension)
       // featured (breakdown, D11): the ether becomes figure, tension gate waived
       // P0 — the ramp reads the track's own arc too, and floors at a level that
@@ -1594,7 +1634,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const up = seq.map((x) => (x === '~' ? '~' : fmt(parseFloat(x) + 12 * (bl.oct ?? 1)))).join(' ');
       layers.push(note(up).s('sine').fmh(bl.fmh ?? 3).fmi(bl.fmi ?? 2.2)
         .attack(0.005).decay(bl.decay ?? 0.6).sustain(0.08).release(1.2)
-        .room(bl.room ?? 0.55).roomsize(rs(4))
+        .room(bl.room ?? 0.55).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
         .gain((bl.gain ?? 0.19) * (featured ? 1.15 : 1)).pan(0.55)
         .slow(2).orbit(4));
     }
@@ -1666,7 +1706,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .penv(td.penv ?? -24).pattack(td.pattack ?? 0.5).pcurve(1)
         .attack(0.004).decay(1.6).sustain(0).release(0.9)
         .lpf(td.lpf ?? 700).resonance(td.resonance ?? 9)
-        .room(td.room ?? 0.35).roomsize(rs(3))
+        .room(td.room ?? 0.35).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
         .gain(td.gain ?? 0.34).pan(0.5)
         .mask('[1 0 0 0]/4')       // the drop bar, and nowhere else in the set
         .orbit(2),
@@ -1683,7 +1723,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       layers.push(
         s('ambthunder').speed(-(th.speed ?? 0.85))   // reversed: it arrives backwards
           .begin(0).end(th.end ?? 0.22)
-          .room(th.room ?? 0.6).roomsize(rs(3))
+          .room(th.room ?? 0.6).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
           .gain(th.gain ?? 0.5).pan(0.5)
           .mask('[0 0 0 1]/4')     // the emptied bar itself
           .orbit(3),
@@ -1692,7 +1732,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       layers.push(
         s('ambthunder').speed(th.speed ?? 0.85)
           .begin(0).end(th.end ?? 0.22)
-          .room(0.35).roomsize(rs(3))
+          .room(0.35).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
           .gain((th.gain ?? 0.5) * 1.15).pan(0.5)
           .mask('[1 0 0 0]/4')
           .orbit(3),
