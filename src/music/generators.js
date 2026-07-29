@@ -16,7 +16,7 @@
  * point: variation by re-casting, not by re-coding (§7.3, docs/track_identities.md).
  */
 import { makeRng, phraseStateAt, seamVariant, warmthAt, PHRASE_BARS, SEAM_BARS, AMB_CHUNKS } from '../bus.js';
-import { modeAt, padVoicing, bassNotes, leadNotes, degreeToMidi, tune } from './scales.js';
+import { modeAt, padVoicing, bassNotes, BASS_DEGREES, leadNotes, degreeToMidi, tune } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
 export function euclid(k, n, rot = 0) {
@@ -1140,6 +1140,23 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         talea = talea.map((_, i) => talea[(i + hit) % 16]);
       }
       const colors = bassNotes(mode, bp.oct ?? -1, tuning);
+      // N2 — the moving harmonic centre. The census that motivated this found
+      // the bass ALREADY walking bVI–V–bIII every phrase under a pad that never
+      // acknowledged it: the set's harmony was static not because nothing moved,
+      // but because the layer that moves and the layer that names the chord were
+      // never the same layer. So the walk's gravity centre now advances on an
+      // authored cycle (`palette.bass.roots`, scale degrees) instead of always
+      // being the tonic. Nothing new is played — every degree is already in the
+      // mode, so there is no wrong note by construction — but the chord changes
+      // NAME every four bars, which is what a listener hears as a progression.
+      //
+      // The cycle is 8 phrases against a 17-phrase track, so it never lands the
+      // same way twice inside a set (§7's Eno principle, applied to harmony).
+      // Deterministic in `phraseIndex`, so it costs the shared rng no draws —
+      // one of those would re-deal every layer downstream of it.
+      const cycle = bp.roots ?? [1];
+      const centreDeg = cycle[(voice.phraseIndex ?? 0) % cycle.length];
+      const centreIdx = Math.max(0, BASS_DEGREES.indexOf(centreDeg));
       // D23 — the walk was unsigned (`ci += 1 or 2`), so every bass line in the
       // set was a rising pentatonic run that wrapped: 51 distinct note
       // sequences, one contour. Steps are signed now, they leap where the grid
@@ -1147,13 +1164,16 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // line with a shape rather than a ramp. When the figure lands on the
       // downbeat it lands on the root.
       const top = colors.length - 1;
-      let ci = talea[0] ? 0 : Math.floor(rng() * colors.length);
+      let ci = talea[0] ? centreIdx : Math.floor(rng() * colors.length);
       let first = true;
       const seq = talea.map((v, i) => {
         if (!v) return null;
         if (first) { first = false; return colors[ci]; }
         const mag = rng() < 0.18 + 0.3 * INDISPENSABILITY[i] ? 2 : 1; // leap on the strong slices
-        const up = rng() < 0.55 - 0.5 * (ci / top);                   // tonic gravity
+        // N2 — gravity toward the phrase's centre, not always toward the tonic.
+        // Reduces to the old `0.55 - 0.5 * (ci / top)` when the centre IS the
+        // tonic, which is most phrases: this bends the line, it does not replace it.
+        const up = rng() < 0.5 - 0.45 * ((ci - centreIdx) / top);
         ci = Math.max(0, Math.min(top, ci + (up ? mag : -mag)));
         return colors[ci];
       });
@@ -1172,6 +1192,22 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // mono (§7.2's one rule with teeth — wide detune below 150 Hz smears).
       if (bp.detune) layers.push(body(bp.detune / 100, g * 0.9));
       if (bp.sub) layers.push(gate(note(str(-12)).s('sine').gain(g * 0.8).slow(2).orbit(2)));
+      // N2 — the pedal, and it only sounds when there is news. On tonic phrases
+      // the walk already says D and a drone under it would just be more of the
+      // 120–250 Hz the mix has too much of; on the phrases where the centre has
+      // MOVED, a held whole-note states the new root so the change has a floor
+      // to stand on. Same idiom as D18's landing pedal below.
+      if (centreIdx > 0) {
+        layers.push(gate(
+          note(fmt(colors[centreIdx]))
+            .s(bp.s ?? 'sawtooth')
+            .attack(0.06).release(2.4)
+            .lpf(lo * 0.9)
+            .gain(g * 0.5)
+            .slow(4)                 // one tone per phrase: the harmony, not a riff
+            .orbit(2),
+        ));
+      }
     }
   }
 

@@ -128,9 +128,15 @@ export function padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0 } = 
   return [...stack, tune(degreeToMidi(colour, mode, oct), tuning)];
 }
 
-/** Pentatonic subset for the bass color loop (maximally even E(5,12) inside the mode). */
+/**
+ * Pentatonic subset for the bass color loop (maximally even E(5,12) inside the
+ * mode). Exported as degrees too, because N2's `palette.bass.roots` cycle is
+ * authored in scale degrees and has to index into this exact set.
+ */
+export const BASS_DEGREES = [1, 2, 3, 5, 6];
+
 export function bassNotes(mode, oct = -1, tuning) {
-  return [1, 2, 3, 5, 6].map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
+  return BASS_DEGREES.map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
 }
 
 /** Lead pitch set: one octave of the mode, registered high (§2.3: ether ≥ octave 4). */

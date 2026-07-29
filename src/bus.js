@@ -156,7 +156,12 @@ export const TRACKS = [
       snare: { ghosts: 0.55, gain: 0.24 },
       // the Reese (§7.2): two saws a few cents apart in the bass register —
       // slow phase-cancellation sweep — split-banded with a clean mono sub
-      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: 8, sub: true, lpf: [130, 220], gain: 0.46 },
+      // N2 — the harmonic centre cycle, in scale degrees (BASS_DEGREES). Eight
+      // phrases against a seventeen-phrase track, so it never lands the same
+      // way twice. The floor here mostly holds the tonic and leans on bVI —
+      // the darkest move available without leaving the mode.
+      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: 8, sub: true, lpf: [130, 220], gain: 0.46,
+        roots: [1, 1, 6, 1, 1, 3, 1, 5] },
       pad: { s: 'sawtooth', oct: 0, width: 6, lpf: [700, 2000], attack: 1.4, release: 4, gain: 0.32 },
       lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8 },
       // the migrating pluck at its near/dry extreme: wooden tuned percussion,
@@ -176,7 +181,11 @@ export const TRACKS = [
       // the busiest skeleton in the set — this is the track that struts
       kick: { extras: 0.95, gain: 0.6 },
       snare: { ghosts: 0.9, gain: 0.34 },
-      bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42 }, // the floor walks
+      // the floor walks — and now it walks somewhere: degree 3 is the relative
+      // major, and the 2 at the end of the cycle is the one genuinely unsettled
+      // phrase in the track
+      bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42,
+        roots: [1, 1, 3, 1, 6, 1, 3, 2] },
       pad: { s: 'sawtooth', oct: 1, width: 9, lpf: [900, 2600], attack: 1.2, release: 4, gain: 0.32 },
       lead: { s: 'triangle', lpf: [1200, 2400], room: 0.8 },
       pluck: { fmh: 3.5, fmi: 2.2, oct: 0, k: 3, decay: 0.16, room: 0.4, offGrid: 0.33, gain: 0.28, orbit: 1 },
@@ -210,7 +219,9 @@ export const TRACKS = [
       // full track wants to lean forward and chatter under the backbeat.
       kick: { extras: 0.82, gain: 0.6, bag: 'pushed' },
       snare: { ghosts: 0.85, gain: 0.36, bag: 'busy' },
-      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5 },
+      // the glad track gets the glad centres: the 5th and the 6th
+      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5,
+        roots: [1, 1, 5, 1, 6, 1, 3, 1] },
       pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2 },
       lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7 },
       pluck: { fmh: 3.5, fmi: 1.8, oct: 1, k: 3, decay: 0.35, room: 0.75, offGrid: 0.6, gain: 0.26, orbit: 4 },
@@ -260,7 +271,10 @@ export const TRACKS = [
       kick: { extras: 0.3, gain: 0.45, bag: 'sparse' },
       snare: { ghosts: 0.3, gain: 0.2, bag: 'sparse' },
       // the floor is removed: bare sine, an octave up, absent for whole phrases
-      bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45 },
+      // almost nothing moves up here — two departures in eight phrases, which is
+      // the harmonic version of "nothing underneath you"
+      bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45,
+        roots: [1, 1, 1, 5, 1, 1, 1, 2] },
       pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3 },
       lead: { s: 'sine', lpf: [2000, 1500], room: 0.9 },
       // D34 — the pluck's own ceiling: fmh 3.5 puts sidebands at 4.5× the
