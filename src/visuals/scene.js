@@ -446,6 +446,8 @@ export async function initScene(canvas) {
      * culled to nothing.
      */
     debugFauna() { return lastFauna; },
+    /** U3 — the frogs' positions relative to the lens (see `buildWorld`). */
+    debugFrogs() { return world.debugFrogs(camera.position); },
     /** Suppress every creature, for an A/B against the world without them. */
     setFauna(on) { faunaForce = on; },
     /**
@@ -657,6 +659,16 @@ export async function initScene(canvas) {
       wind, weather, flash,   // the shared atmosphere (K1/K7/M2)
       strike,                 // …and the bearing it came from (V2: the cell)
       warmth, harmony, fauna, section,
+      // The bar, in seconds — the ONE piece of the clock the ground stream may
+      // see, and it is here for exactly one consumer: the sloth's crawl, which
+      // starts a pull on a downbeat once every two to six bars (fauna.js
+      // `slothCrawl`). `look.js` already takes the same number for the gater and
+      // the roll. Anything else in the world reaching for this needs an argument
+      // first — §2.1 is that the ground carries no rhythm, and a bar clock in
+      // every biome's `update` is how that rule stops being true.
+      bar: BAR,
+      // …and how much rain there is when it rains (bus.js `RAIN_DENSITY`)
+      rainDensity: bus.params.rainDensity ?? 1,
       seed: bus.params.seed, worldTop: WORLD_TOP,
       sunDir: SUN_DIR,   // AA1 — the same bearing the god rays use (D44's cell)
       sky: skyForce ?? skyTier,   // Y2 — the governor's top rung, read by sky.js

@@ -9,6 +9,7 @@ import {
   gradeAt, styleAt, BAND_ORBITS, BAND_GRADES, FOCAL_SHARP, POSTERIZE_STEPS,
   TINT_UNDER, TINT_THIN, INK_SECTIONS, HALFTONE_KNEE, FOV_BASE, FOV_DOLLY,
   canopyLight, beamAt, pitchAt, BAND_PITCH, nearFieldAt, APERTURE_REST,
+  etherAt, ETHER_FEATHER,
   CANOPY_BASE, CANOPY_TOP, FLOOR_LIGHT, GATE_FLOOR,
 } from '../src/visuals/look.js';
 import { PERFORM_DEFAULTS } from '../src/perform.js';
@@ -360,6 +361,25 @@ console.log('every level is somewhere on that one curve');
   let beamJump = 0, prevBeam = beamAt(0);
   for (let i = 1; i <= 4000; i++) { const v = beamAt(i / 4000); beamJump = Math.max(beamJump, Math.abs(v - prevBeam)); prevBeam = v; }
   check(beamJump < 0.01, 'the shafts fade rather than switching off at the roofline');
+
+  // the ether's own window — the last particle cloud in the world to get one.
+  // The complaint it answers was a viewer's: from the litter you looked up
+  // through two unrelated dot fields at once, the fireflies' and the canopy's,
+  // and only one of them belonged down there.
+  check(etherAt(0) === 0 && etherAt(CANOPY_BASE - ETHER_FEATHER) === 0,
+    'there is no canopy ether under the crowns — the first two tracks are the fireflies alone');
+  check(etherAt(CANOPY_BASE) === 1, 'and all of it from the crowns\' underside up, which is the seam the set already had');
+  check(etherAt(1) === 1,
+    'it is a floor and not a window: the zenith looks DOWN into the ether, so it must not close again at the top');
+  let etherJump = 0, prevEther = etherAt(0), etherMono = true;
+  for (let i = 1; i <= 4000; i++) {
+    const v = etherAt(i / 4000);
+    etherJump = Math.max(etherJump, Math.abs(v - prevEther));
+    if (v < prevEther - 1e-12) etherMono = false;
+    prevEther = v;
+  }
+  check(etherJump < 0.01, 'the ether fades in rather than appearing — 4200 motes popping on at a boundary is the one thing it must not do');
+  check(etherMono, 'and it only ever rises: the camera acquires the ether once, by climbing into the layer it is made of');
 }
 
 console.log('the camera climbs like a body, not like a lift (D39)');

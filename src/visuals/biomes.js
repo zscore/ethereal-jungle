@@ -52,7 +52,9 @@
  * the surface", §3.1) and the kick's duck/flinch (the coupling constant).
  * Each biome reads only env — bus signals, never audio:
  *   env = { t, T, Tf, b, drift, duck, trackPhase, trackIndex, cam, quality,
- *           wind(x,y,z), weather, flash }
+ *           wind(x,y,z), weather, flash, rainDensity, bar }
+ * `bar` is the one piece of the clock down here, and it has exactly one consumer
+ * (the sloth's crawl). Reaching for it needs an argument — see scene.js.
  * `quality` (0.4…1) is the governor's dial (J1): biomes spend it on work the
  * eye can't name — sim steps, particle population — never on the composition.
  *
@@ -63,11 +65,11 @@
  * place*. Any new biome should sample the field rather than invent a clock.
  */
 import * as THREE from 'three';
-import { canopyLight, beamAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
+import { canopyLight, beamAt, etherAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { shadedColor, sunUniform, uniformScalar } from './shade.js';
 import { cloudShadeAt, makeSky } from './sky.js';
-import { CAST } from './fauna.js';
+import { CAST, fireflyHue } from './fauna.js';
 import {
   makeSloths, makeTreeFrogs, makePoolFrogs, makeBirds, makeSoarer,
 } from './creatures.js';
@@ -216,6 +218,27 @@ function crownTexture() {
       }
     };
     build(c, c * 1.06, s * 0.115, 2);
+  });
+}
+
+/**
+ * A soft radial falloff — the pool's own radiance (requested: "so I can see it").
+ *
+ * Drawn as a texture rather than as a shader term because it is used as an
+ * additive card and a canvas gradient is exact, free and cached. Two stops of
+ * curve rather than one: a bright core that falls off fast, then a long faint
+ * skirt, which is what a light source seen through water and air actually does.
+ * A single linear ramp reads as a spotlight painted on the floor.
+ */
+function radianceTexture() {
+  return sprite('radiance', 128, (g, s) => {
+    const grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.18, 'rgba(255,255,255,0.55)');
+    grad.addColorStop(0.45, 'rgba(255,255,255,0.16)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, s, s);
   });
 }
 
@@ -944,6 +967,13 @@ function makeForest(rng, opts = {}) {
 // downdraft impulse: the ether FLINCHES instead of merely dimming. (CPU
 // advection over the instanced cloud — identical on WebGPU and WebGL2; a TSL
 // compute path can replace the integrator behind this same interface.)
+//
+// It belongs to the CANOPY, and since `etherAt` (look.js) it is finally only
+// there. This was the last cloud in the world drawn at full strength in every
+// band — so from the litter you looked up through two unrelated dot fields at
+// once, the fireflies' and this one, and only the fireflies were yours. The
+// window costs nothing and buys back the whole advection loop in the two tracks
+// that do not want it. See `etherAt` for why the boundary is `CANOPY_BASE`.
 function makeCanopy() {
   const N = 4200;
   const pos = new Float32Array(N * 3);
@@ -962,6 +992,14 @@ function makeCanopy() {
     group: mesh,
     ignite() { heat = 1; },
     update(dt, env) {
+      // the band, first: below the crowns there is no ether, and an invisible
+      // field is not worth advecting. `heat` is decayed before the early return
+      // rather than after it, so a fusion ignition cannot survive frozen in a
+      // band where nothing is drawn and re-light the ether on the way back up.
+      heat = Math.max(0, heat - dt * 0.35);
+      const here = etherAt((env.cam?.y ?? 0) / WORLD_TOP);
+      mesh.visible = here > 0.01;
+      if (!mesh.visible) return;
       const speed = (0.5 + 1.6 * env.T + heat * 2) * dt;
       const tw = env.t * 0.08 + env.drift * 2;
       // K1: the swirl is the ether's own motion; the wind is the world's, and
@@ -992,9 +1030,8 @@ function makeCanopy() {
         mesh.setMatrixAt(i, m4);
       }
       mesh.instanceMatrix.needsUpdate = true;
-      heat = Math.max(0, heat - dt * 0.35);
       mat.color.copy(paletteAt(env.b)).multiplyScalar(1.6).lerp(new THREE.Color('#fff3d0'), heat * 0.5);
-      mat.opacity = (0.35 + 0.35 * env.Tf) * (1 - env.duck * 0.45) + heat * 0.18;
+      mat.opacity = ((0.35 + 0.35 * env.Tf) * (1 - env.duck * 0.45) + heat * 0.18) * here;
     },
   };
 }
@@ -1144,12 +1181,49 @@ function makeMist(rng) {
 // them to brightness had them at their strongest in the open sky, which is the
 // one place on earth you cannot see a light shaft. They also need something to
 // scatter in, so the track's mist is a factor: no mist, no beam.
+//
+// AND THEY ARE TALLER THAN THE CANOPY NOW (requested: "so they don't just cut
+// off when we're at the canopy"). They used to be exactly 34 units hung with
+// their top edge ON `CROWN_Y1` — and the camera flies that band at y 31.7…45.2
+// (`camY = 2 + b·54` against the authored 0.55→0.80 span), so the top of the
+// canopy track put the lens level with the top edge of every shaft in the
+// world. That edge carried the gradient's brightest stop, so it was not a fade
+// running out, it was a lit blade ending in a line across the frame.
+//
+// The fix is at both ends of the same object. The blade extends 11 units past
+// the last leaf, into the layer where the emergents stand clear, and the
+// gradient gains a stop ABOVE its peak so the light now fades IN downward out
+// of the haze instead of beginning at a boundary. What was a cut is a shaft
+// coming out of the air over the roof.
+//
+// This is defensible as well as prettier: crepuscular rays between emergent
+// crowns are one of the sights of a rainforest seen from above, which is
+// precisely the altitude that had none. And `beamAt` still governs the
+// strength, so the whole family still fades out on its own at `CANOPY_TOP` —
+// what changed is where the GEOMETRY stops, not what the doctrine says about
+// where a beam can be seen.
+//
+// Everything below the crown line is untouched, deliberately and checkably: the
+// bottom edge lands at y 11.198 exactly as before, and the 0.18 falloff stop
+// resolves to y 28.1 against the old 28.2. The change is additive above the
+// roof and a no-op under it, which is what keeps it out of the two tracks that
+// were not complaining.
 function makeShafts(rng) {
   const group = new THREE.Group();
+  const HEIGHT = 45;                 // was 34, all of it added at the top
+  const TOP = CROWN_Y1 + 11;         // ≈56.2 — up among the emergent crowns
+  // Stops are measured from the plane's TOP downward (the canvas's first row is
+  // the texture's v=1, and a plane's v=1 is its top edge), so this converts a
+  // world height into the stop that lands on it and the gradient can be written
+  // in the units the forest is described in.
+  const vAt = (y) => (TOP - y) / HEIGHT;
   const tex = gradientTexture([
-    [0, 'rgba(255,244,214,0.55)'], [0.5, 'rgba(255,244,214,0.18)'], [1, 'rgba(255,244,214,0)'],
+    [0, 'rgba(255,244,214,0)'],                       // the open air: nothing yet
+    [vAt(CROWN_Y1 + 7), 'rgba(255,244,214,0.26)'],    // between the emergents
+    [vAt(CROWN_Y1), 'rgba(255,244,214,0.55)'],        // the last leaf: the shaft is born
+    [vAt(CROWN_Y1) + 0.38, 'rgba(255,244,214,0.18)'], // …and the old falloff, unmoved
+    [1, 'rgba(255,244,214,0)'],
   ]);
-  const HEIGHT = 34;
   const blades = [];
   for (let i = 0; i < 9; i++) {
     const m = new THREE.Mesh(
@@ -1160,7 +1234,7 @@ function makeShafts(rng) {
       }),
     );
     const a = rng() * Math.PI * 2, rad = 8 + rng() * 30;
-    m.position.set(Math.cos(a) * rad, CROWN_Y1 - HEIGHT * 0.5, Math.sin(a) * rad);
+    m.position.set(Math.cos(a) * rad, TOP - HEIGHT * 0.5, Math.sin(a) * rad);
     m.userData.tilt = (rng() - 0.5) * 0.12; // slight slant, never perfectly plumb
     m.rotation.z = m.userData.tilt;
     group.add(m);
@@ -1221,6 +1295,11 @@ function makeFireflies(rng) {
   const NEIGHBOUR = 6;      // world units — the radius the rules see
   const m4 = new THREE.Matrix4();
   const tmp = new THREE.Color();
+  // The lamp's colour, rewritten once per frame from the warmth walk rather
+  // than fixed at build time (`fireflyHue`, fauna.js — read the argument there
+  // for why a firefly is allowed a hue when W1 forbids the rest of the world
+  // one). It starts at the amber this swarm has burned since K2, which is also
+  // exactly what `fireflyHue` returns at full gladness.
   const base = new THREE.Color('#ffd98a');
   let stride = 0;           // rebuild a third of the accelerations per frame
 
@@ -1259,6 +1338,13 @@ function makeFireflies(rng) {
 
       stride = (stride + 1) % 3;
       const wind = windAtOr(env, 0, 20, 0);
+      // the mood, as the species of firefly in the air (requested). One write
+      // per frame for the whole swarm, not per agent: warmth is a set-scale walk
+      // and 220 fireflies disagreeing about it would be 220 different animals.
+      // The blink below is untouched — the colour moves over tens of seconds,
+      // the blink over one, and it is the blink that carries the life.
+      const hue = fireflyHue(env.warmth ?? 0.4);
+      base.setRGB(hue[0], hue[1], hue[2]);
 
       // rebuild the grid: count, prefix-sum, place. Every agent moved last
       // frame, so this is a full rebuild rather than an update — which is
@@ -1363,6 +1449,17 @@ function makeFireflies(rng) {
 // fast and hard-edged, because there are hundreds of them and no single one is
 // ever an event — that is precisely the §2.1 distinction, and it is why rain
 // can be dense without spending a synch point.
+//
+// **Density is a knob now (requested), and the default is sparser.** It reads
+// `bus.params.rainDensity` through `env.rainDensity`, so rain joins tension,
+// brightness, wildness and coupling on the one writable surface — a slider in the
+// panel, a MIDI CC, an OSC address, all for free (see `RAIN_DENSITY` in bus.js).
+//
+// It scales the POPULATION and the opacity, and deliberately not the fall speed
+// or the streak length: those two are what make rain read as rain, and thinning a
+// downpour by slowing it produces sleet. The knob is at 0.55 by default, which is
+// 380 streaks at full rain against the old 700 — enough to see the weather
+// through rather than a curtain in front of it.
 function makeRain(rng) {
   const N = 700;
   const mesh = new THREE.InstancedMesh(
@@ -1394,11 +1491,21 @@ function makeRain(rng) {
     group: mesh,
     update(dt, env) {
       const rain = env.weather?.rain ?? 0;
-      if (rain < 0.02) { mesh.visible = false; return; } // clear weather is free
+      // the knob, and it is allowed to switch the rain off completely: at 0 there
+      // is no population to draw, so the early-out has to see it too
+      const density = clamp01(env.rainDensity ?? 1);
+      if (rain < 0.02 || density < 0.01) { mesh.visible = false; return; }
       mesh.visible = true;
-      const drawn = Math.max(120, Math.floor(N * rain * (env.quality ?? 1)));
+      // The floor comes down with it. A hard `max(120, …)` was a floor under the
+      // GOVERNOR, which is right, but it also silently ignored the density knob
+      // at every setting below 0.17 — the knob would appear to do nothing over
+      // its bottom third, which is the kind of control that reads as broken.
+      const floor = Math.max(24, Math.floor(120 * density));
+      const drawn = Math.max(floor, Math.floor(N * rain * density * (env.quality ?? 1)));
       if (mesh.count !== drawn) mesh.count = drawn;
-      mesh.material.opacity = 0.10 + 0.35 * rain;
+      // sparser rain is also FAINTER rain: fewer streaks at the old opacity read
+      // as a handful of bright scratches rather than as weather
+      mesh.material.opacity = (0.10 + 0.35 * rain) * (0.45 + 0.55 * density);
       const cam = env.cam ?? { x: 0, y: 0, z: 0 };
       const wind = windAtOr(env, cam.x, cam.y, cam.z);
       // rain leans into the wind, and the streak leans with it: the geometry
@@ -1428,11 +1535,28 @@ function makeRain(rng) {
 }
 
 // A still black pool among the roots, lit by caustics — two interfering
-// caustic layers scrolling at coprime rates, plus ripple rings from falling
-// drops. The ripples are the only expanding rings in the world that are NOT
-// figure: they are stochastic, soft-edged, slow, and they never coincide with
-// a kick, which is what keeps the kick's shockwave legible as the one ring
-// that means something (§2.2 — do not counterfeit the currency).
+// caustic layers scrolling at coprime rates, plus ripple rings. The rings are
+// the only expanding rings in the world that are NOT figure: they are
+// stochastic, soft-edged, slow, and they never coincide with a kick, which is
+// what keeps the kick's shockwave legible as the one ring that means something
+// (§2.2 — do not counterfeit the currency).
+//
+// TWO REQUESTED CHANGES, and they are opposite sides of one problem: the pool
+// was hard to see and never still.
+//
+// **It has a radiance now.** The pool was two additive caustic cards at 0.55 and
+// 0.35 opacity times `0.25 + 0.5·b`, on the litter, under an exposure that
+// `look.js` holds near 0.62 because the crowns pass ~2% of the sky. On the
+// undergrowth's own numbers that is a black plane with a faint web on it —
+// correct photometry and an invisible object. What answers it is not more
+// caustic (a brighter web on a black floor is still a black floor) but the water
+// having a LIGHT OF ITS OWN: a broad soft radiance under the caustics, so the
+// pool reads as a luminous body first and a textured surface second. It is a
+// bioluminescent pool, which this world has every right to — the mycelial net
+// signals, the fireflies blink and the ether glows within twenty units of it.
+//
+// **And it is still until it rains.** See `splash`: the ambient drip trickle is
+// gone and the surface only breaks for weather.
 function makePool(rng) {
   const group = new THREE.Group();
   const tex = causticTexture();
@@ -1453,6 +1577,28 @@ function makePool(rng) {
     group.add(m);
     layers.push({ mesh: m, rate, op });
   }
+  // ---- the radiance: the water's own light, under the caustics ----
+  // Two cards, not one. The near one is small and bright and sits where the
+  // camera is, so there is a lit patch of water in the frame at all times; the
+  // far one is the whole pool at a tenth of the level, which is what gives the
+  // surface an extent to be part of rather than a glow in the dark. Both are
+  // additive and neither writes depth, like everything else on this plane.
+  const radTex = radianceTexture();
+  const glows = [];
+  for (const [size, op] of [[46, 0.55], [96, 0.16]]) {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.MeshBasicMaterial({
+        map: radTex, transparent: true, opacity: 0, color: '#bfe8ff',
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      }),
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.y = -0.02;          // under the caustic cards, never coplanar
+    group.add(m);
+    glows.push({ mesh: m, op });
+  }
+
   const RIPPLES = 10;
   const ripples = [];
   const ringGeo = new THREE.RingGeometry(0.7, 1, 40);
@@ -1466,14 +1612,37 @@ function makePool(rng) {
     group.add(m);
     ripples.push({ mesh: m, life: 0 });
   }
-  let rippleIdx = 0, dripClock = 0;
+  let rippleIdx = 0, splashClock = 0;
   group.position.y = 0.35;
 
+  // ---- the droplets a splash throws up (requested) ----
+  // A ring alone is a disturbance; what says *impact* is something leaving the
+  // surface. Sixteen tiny motes on ballistic arcs, recycled from one pool, all
+  // spawned by the same call as the ring — so a splash is one event with two
+  // parts rather than two systems that agree.
+  const DROPS = 16;
+  const dropMesh = glowCloud(new Float32Array(DROPS * 3), 0xdff2ff, 0.045);
+  dropMesh.frustumCulled = false;
+  // Sized up front, not by the first `setColorAt`. three allocates the instance
+  // colour lazily *at the current count*, and this mesh starts at count 0 — so
+  // the lazy path would hand back a zero-length buffer and every write would go
+  // past the end of it. (The frogs hit the same trap from the other direction.)
+  dropMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(DROPS * 3), 3);
+  dropMesh.count = 0;
+  group.add(dropMesh);
+  const drops = [];
+  for (let i = 0; i < DROPS; i++) drops.push({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0 });
+  let dropIdx = 0;
+  const dropM4 = new THREE.Matrix4();
+  const dropCol = new THREE.Color();
+
   /**
-   * Put one ring on the water. Extracted from the drip loop so the pool frogs
-   * (U3) can call it: a frog's call and the ripple it makes are then the same
-   * event rather than two things that happen to be near each other, and the
-   * ring pool is recycled once instead of twice.
+   * Put one ring on the water, at `strength` 0..1.
+   *
+   * Kept as a public method although nothing calls it every frame any more: it is
+   * the pool's "something touched me" channel, and the two things that used it —
+   * the ambient drip trickle and the pool frogs' calls (D45) — were both removed
+   * on request (visuals tasks 7 and 5). `splash` below is what rain uses.
    */
   function ripple(x, z, strength = 1) {
     const r = ripples[rippleIdx++ % RIPPLES];
@@ -1482,35 +1651,115 @@ function makePool(rng) {
     r.life = Math.min(1, strength);
   }
 
+  /**
+   * A raindrop landing: one ring, and a few drops thrown off it.
+   *
+   * Requested — the ripples used to run constantly and the middle of the frame
+   * was never still, so the surface now breaks only for weather. The rate is
+   * driven by `weather.rain` in `update` below rather than by individual streaks
+   * from `makeRain`, and that is a deliberate choice rather than a shortcut: the
+   * streaks live in a cylinder that FOLLOWS the camera (a snow globe) and recycle
+   * at `cam.y − 16`, so above camera y ≈ 17 no streak ever reaches the water at
+   * all, and the splashes would stop while the rain visibly kept falling. Rain is
+   * a field; what lands on the water is a rate, and a rate is the honest coupling.
+   */
+  function splash(x, z, strength = 1) {
+    ripple(x, z, strength);
+    const n = 2 + Math.floor(strength * 3);
+    for (let k = 0; k < n; k++) {
+      const d = drops[dropIdx++ % DROPS];
+      const a = Math.random() * Math.PI * 2;
+      const out = 0.8 + Math.random() * 1.6;
+      d.x = x; d.y = 0; d.z = z;
+      d.vx = Math.cos(a) * out;
+      d.vy = 1.6 + Math.random() * 1.9;      // up, and it comes back down
+      d.vz = Math.sin(a) * out;
+      d.life = 1;
+    }
+  }
+
   return {
     name: 'pool',
     group,
     ripple,
+    splash,
     update(dt, env) {
       // the pool is the floor of the world: it fades out as you climb away
       const near = 1 - Math.min(1, Math.max(0, ((env.cam?.y ?? 0) - 6) / 20));
       group.visible = near > 0.01;
       if (!group.visible) return;
       const wind = windAtOr(env, 0, 2, 0);
+      const cam = env.cam ?? { x: 0, y: 0, z: 0 };
+      const rain = env.weather?.rain ?? 0;
       for (const l of layers) {
         l.mesh.material.opacity = near * l.op * (0.25 + 0.5 * env.b) * (1 - env.duck * 0.4);
         l.mesh.material.map.offset.x += dt * l.rate * (1 + wind.gust);
         l.mesh.material.map.offset.y += dt * l.rate * 0.6;
         l.mesh.material.color.copy(paletteAt(env.b)).multiplyScalar(2.2);
       }
-      // drips: a Poisson-ish trickle that rains harder when it is raining
-      const rate = 0.4 + 6 * (env.weather?.rain ?? 0);
-      dripClock += dt * rate;
-      while (dripClock > 1) {
-        dripClock -= 1;
-        ripple((Math.random() - 0.5) * 70, (Math.random() - 0.5) * 70);
+
+      // the radiance. It rides the SAME `near`, `b` and duck the caustics do, so
+      // it is the same object being lit and not a second one lying on top —
+      // including the kick's dip, because a pool that kept its glow through a
+      // duck would be the one thing in the world outside the sidechain.
+      //
+      // The bright card tracks the camera in plan (never in height: it is the
+      // water). A radiance pinned to the world origin is a lit patch you walk
+      // away from, and the whole complaint was that the pool could not be seen.
+      glows[0].mesh.position.x = cam.x * 0.6;
+      glows[0].mesh.position.z = cam.z * 0.6;
+      for (const g of glows) {
+        g.mesh.material.opacity = near * g.op * (0.45 + 0.55 * env.b) * (1 - env.duck * 0.4);
+        // the water's own colour: the band's palette, pushed cool and up. Water
+        // this dark is lit by what is dissolved in it, and it is greener than the
+        // caustics because the caustic is a highlight and this is the body.
+        g.mesh.material.color.copy(paletteAt(env.b * 0.5 + 0.12)).multiplyScalar(2.8);
       }
+
+      // splashes, when the rain comes and only then. The rate is the rain's own
+      // amount squared-ish (a shower is not half a downpour) times the density
+      // knob, so the same knob that thins the streaks thins what they do.
+      const density = env.rainDensity ?? 1;
+      splashClock += dt * 14 * rain * rain * density;
+      while (splashClock > 1) {
+        splashClock -= 1;
+        // near the lens, because a splash 30 units out is one pixel: inside a
+        // 26-unit disc around the camera, which is the radius `makeRain` uses
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * 26;
+        splash(cam.x + Math.cos(a) * r, cam.z + Math.sin(a) * r, 0.5 + 0.5 * rain);
+      }
+
       for (const r of ripples) {
         if (!r.mesh.visible) continue;
-        r.life -= dt * 0.55;
-        if (r.life <= 0) { r.mesh.visible = false; continue; }
-        r.mesh.scale.setScalar(0.5 + (1 - r.life) * 7);
-        r.mesh.material.opacity = r.life * r.life * 0.5 * near;
+        r.life -= dt * 0.9;                  // faster than the old drip rings: a
+        if (r.life <= 0) { r.mesh.visible = false; continue; }   // splash is brief
+        r.mesh.scale.setScalar(0.35 + (1 - r.life) * 4.5);
+        r.mesh.material.opacity = r.life * r.life * 0.6 * near;
+      }
+
+      // the droplets: gravity, and dead when they touch the water again
+      let live = 0;
+      for (const d of drops) {
+        if (d.life <= 0) continue;
+        d.life -= dt * 1.6;
+        d.vy -= 9.8 * dt * 0.55;             // a slow gravity: they are tiny and wet
+        d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
+        if (d.y < 0) d.life = 0;
+      }
+      for (const d of drops) {
+        if (d.life <= 0) continue;
+        dropM4.makeScale(1, 1, 1);
+        dropM4.setPosition(d.x, d.y, d.z);
+        dropMesh.setMatrixAt(live, dropM4);
+        dropCol.copy(paletteAt(env.b)).multiplyScalar(3.4 * near * d.life);
+        dropMesh.setColorAt(live, dropCol);
+        live++;
+      }
+      dropMesh.count = live;
+      if (live) {
+        dropMesh.instanceMatrix.needsUpdate = true;
+        if (dropMesh.instanceColor) dropMesh.instanceColor.needsUpdate = true;
       }
     },
   };
@@ -1678,7 +1927,8 @@ export function buildWorld(scene, rng, opts = {}) {
     // …and the fauna, in the same bottom-up order (proposal IV, tier U)
     makePoolFrogs(rng, CAST.poolfrog, 'poolfrog', pool),
     makeSloths(rng, CAST.sloth, 'sloth', forest.trees),
-    makeTreeFrogs(rng, CAST.treefrog, 'treefrog'),
+    // …and the dart frogs perch on ITS trunks, for the reason the sloths do
+    makeTreeFrogs(rng, CAST.treefrog, 'treefrog', forest.trees),
     makeSloths(rng, CAST.slothCrown, 'slothCrown', forest.trees),
     flock,
     makeSoarer(rng, CAST.soarer, 'soarer'),
@@ -1702,6 +1952,19 @@ export function buildWorld(scene, rng, opts = {}) {
     /** V2 — the storm cell this frame, so a strike can come FROM it. */
     cell() { return sky.cell(); },
     debugSky() { return sky.debug(); },
+    /**
+     * U3 — where the frogs actually are, relative to the lens.
+     *
+     * `debugFauna` says a band is fully present; it cannot say the population
+     * is sitting twenty units above the top of the frame, which is exactly the
+     * bug that shipped. Distance-from-camera is the number that would have
+     * caught it, so it is the number this returns.
+     */
+    debugFrogs(cam) {
+      return Object.fromEntries(biomes
+        .filter((b) => b.name === 'treefrog' || b.name === 'poolfrog')
+        .map((b) => [b.name, b.debug?.(cam)]));
+    },
     /** U2 — where each sloth is along its branch, and which way it is going. */
     debugSloths() {
       return Object.fromEntries(biomes

@@ -179,6 +179,46 @@ export function coherenceAt(warmth = 0.4) {
   };
 }
 
+// ---------- the firefly's own colour, as mood (requested) ----------
+// The two ends of the lamp. WARM is exactly the firefly this world already had
+// (`#ffd98a`), so at full gladness nothing has changed and the new behaviour is
+// entirely on the cold side — which is the safe direction for a change to the
+// one animal that has been in the frame since K2.
+export const FIREFLY_WARM = [1, 0.851, 0.541];   // #ffd98a — amber, the glad lamp
+export const FIREFLY_COLD = [0.541, 0.878, 0.659]; // #8ae0a8 — the green one
+
+/**
+ * What colour the fireflies are burning, from the warmth walk.
+ *
+ * **Read the W1 note above before touching this.** It says warmth must not be
+ * rendered as colour temperature, because `BAND_GRADES` (L6) already owns
+ * warm-versus-cool as a function of altitude and a second, contradictory
+ * warm/cool would fight it. That rule is still right and this does not break
+ * it, for a reason worth stating rather than assuming: the grade is the colour
+ * of the LIGHT IN THE AIR, and a firefly is not lit by the air. It is a
+ * self-luminous body, and its colour is its own chemistry — which is why this
+ * is the one place in the world where a hue can answer the mood without
+ * arguing with the grade about what the light is doing.
+ *
+ * It is also not invented. Real fireflies run from about 550 nm to 590 nm by
+ * species — a green lamp and an amber one — so the two ends here are two
+ * animals rather than one animal with a filter over it, and the walk between
+ * them is the swarm changing species as the set's gladness changes.
+ *
+ * Continuous, and therefore free on the ground stream (§2.1): warmth is a slow
+ * authored walk, so this moves over tens of seconds. Nothing here is on a beat,
+ * and the blink — the one thing about a firefly that is discrete — is left
+ * exactly as K2 wrote it, still refusing to synchronise.
+ */
+export function fireflyHue(warmth = 0.4) {
+  const w = clamp01(warmth);
+  return [
+    FIREFLY_COLD[0] + (FIREFLY_WARM[0] - FIREFLY_COLD[0]) * w,
+    FIREFLY_COLD[1] + (FIREFLY_WARM[1] - FIREFLY_COLD[1]) * w,
+    FIREFLY_COLD[2] + (FIREFLY_WARM[2] - FIREFLY_COLD[2]) * w,
+  ];
+}
+
 // ---------- W6: the section, spent on the world ----------
 // `sectionAt` (D11) reaches the visuals and, since D42 deleted the recurring
 // form, drives exactly one thing: the ink style. The styles doctrine resists a
@@ -208,7 +248,7 @@ export function lifeAt(section) {
 
 // ---------- gaits (all CONTINUOUS tier) ----------
 /**
- * The sloth's limb cycle, 0..1, for individual `i`.
+ * The sloth's limb cycle, 0..1, for individual `i` — the free-running form.
  *
  * Slow on purpose and slow by argument: this is the thesis of §3.1 rendered as
  * an animal — an integrative motion with all memory and no rhythm, incapable of
@@ -218,6 +258,10 @@ export function lifeAt(section) {
  * Note the tension term is INVERSE and weak. A sloth at the drop is not a
  * faster sloth. Refusing to accelerate where everything else in the frame is
  * accelerating is the joke, and it only works if it is exact.
+ *
+ * `slothCrawl` below is what the world actually calls, and it delegates here
+ * whenever there is no bar clock to lock to. This stays the definition of what
+ * the animal is when nothing is playing.
  */
 export function slothReach(t, i, T = 0) {
   const period = periodFor(i, 44, 96) * (1 + 0.18 * clamp01(T));
@@ -225,6 +269,100 @@ export function slothReach(t, i, T = 0) {
   const ph = ((t / period + start) % 1 + 1) % 1;
   // most of the cycle is hanging; the reach is a brief, smooth quarter of it
   return ph < 0.75 ? 0 : smooth((ph - 0.75) / 0.25);
+}
+
+// ---------- the crawl, on the slow beats (requested) ----------
+/**
+ * How many bars pass between one sloth's reaches. Drawn on the golden stride, so
+ * this is the desynchronisation discipline doing the same job it does for every
+ * period in this module — no two neighbouring individuals share a multiple, and
+ * the four values have no common factor below 12 bars.
+ *
+ * These are the *slow* beats and that is the whole licence. A reach every two to
+ * six bars is 2.9–8.6 s at 168 BPM: slower than any layer in the arrangement,
+ * far slower than the backbeat, and nowhere near a rate the eye reads as
+ * keeping time. What it does read as is an animal that moves *when the music
+ * moves*, which is what was asked for.
+ */
+export const CRAWL_BARS = [2, 3, 4, 6];
+
+/** The bar multiple sloth `i` keeps to. */
+export function crawlBarsFor(i) {
+  return CRAWL_BARS[Math.floor(((i * GOLDEN) % 1) * CRAWL_BARS.length) % CRAWL_BARS.length];
+}
+
+/**
+ * The reach, 0..1, LOCKED TO THE BAR — an anchored behaviour, and the second one
+ * in the set (U5's toucan flush is the first). Read the paragraph below before
+ * changing it, because it is the one place this module knowingly steps over its
+ * own rule.
+ *
+ * U1 forbids the ground stream from carrying rhythm and prices anchored
+ * behaviours at one per creature. This is that one, spent on the sloth, and it
+ * is affordable for three reasons that have to hold together:
+ *
+ *   1. It is on the SLOW grid. A pull begins on a downbeat and takes a whole bar
+ *      to complete, one downbeat in every two to six. Nothing in the
+ *      arrangement is that slow, so the crawl cannot double any audible layer.
+ *   2. The population still never agrees. Each animal keeps its own bar multiple
+ *      (`crawlBarsFor`) *and* its own offset inside the grid, so three sloths
+ *      reach on three different downbeats and the aggregate is not a pulse. This
+ *      is `periodFor`'s guarantee, transposed onto a grid instead of a period —
+ *      and it is the reason a beat-locked animal is not a drum machine here.
+ *   3. The refusal survives. At high tension a sloth SKIPS more of its slots, so
+ *      it still reaches less often at the drop than it does in the intro. D45's
+ *      joke — the one thing in the frame that will not be hurried — is intact
+ *      and is now legible against a beat instead of against nothing.
+ *
+ * With `bar <= 0` (no clock: a still, a test, a bus mid-refactor) it falls back
+ * to `slothReach`, so the animal is never frozen by the absence of music.
+ */
+export function slothCrawl(t, i, bar = 0, T = 0) {
+  if (!(bar > 0)) return slothReach(t, i, T);
+  const window = crawlBarsFor(i) * bar;
+  // each animal starts its grid on its own bar, so two sloths sharing a multiple
+  // still do not share a downbeat
+  const offset = Math.floor(hash01(i * 2246822519 + 13) * crawlBarsFor(i)) * bar;
+  const x = (t - offset) / window;
+  const slot = Math.floor(x);
+  const ph = x - slot;
+  // the pull occupies exactly ONE bar of the window: it starts on a downbeat and
+  // the hand plants on the next one, so both ends of the motion are on the grid
+  const span = 1 / crawlBarsFor(i);
+  if (ph >= span) return 0;
+  // …and it does not take every slot. The skip chance RISES with tension, which
+  // is D45's inverse term restated on a grid: busier music, stiller animal.
+  const skip = 0.18 + 0.55 * clamp01(T);
+  if (hash01(Math.imul(slot, 374761393) + i * 668265263) < skip) return 0;
+  return smooth(ph / span);
+}
+
+/**
+ * A sparkle carrier for individual `i`, 0..1, scaled by `drive`.
+ *
+ * The sparkle the frogs wear (U3) is `drive = the sidechain`, which is the one
+ * rhythmic coupling this world already licenses everywhere: scene.js's header
+ * lists the kick ducking the ether, shoving the camera, pressing the mist down
+ * and dipping the bloom, all from one constant. A glint on a wet animal is a
+ * fifth rendering of that same constant rather than a new synch point, which is
+ * what keeps it inside the economy (§2.2) instead of spending against it.
+ *
+ * The carrier itself is fast and desynchronised like every other population
+ * signal here, so what the eye gets is a scatter of wet points catching the
+ * light — not a chorus of animals flashing in unison, which would be the
+ * forbidden thing.
+ */
+export function glint(t, i, drive = 0, seed = 0) {
+  const ph = phaseFor(t, i, 0.19, 0.53, seed + 11);
+  // The flash occupies a short window of the carrier rather than half of it: a
+  // highlight that is up 46% of the time is a wet animal, which is a different
+  // and much less findable thing than an animal that catches the light. At this
+  // duty about one frog in eight is glinting at any instant, so a kick lands a
+  // handful of points across the chorus and never the whole chorus.
+  const DUTY = 0.28;
+  if (ph > DUTY) return 0;
+  const spark = Math.sin((ph / DUTY) * Math.PI);
+  return clamp01(drive) * spark * spark * spark;
 }
 
 /** Wingbeat phase for bird `i` — fast, and desynchronised like everything else. */
@@ -261,17 +399,53 @@ export const CAST = {
   // and its gaze climbs, so a sloth level with the lens is a sloth nobody looks
   // at; from 15–23 it is in the part of the frame that band is already about.
   sloth: { count: 3, lo: 0.05, hi: 0.34, feather: 0.10, y: [16, 22] },
-  // …and one more where a sloth actually lives, high in the crowns during the
+  // …and one more where a sloth actually lives, INSIDE the crowns during the
   // canopy track. Same system, one constant apart.
-  slothCrown: { count: 2, lo: 0.48, hi: 0.80, feather: 0.10, y: [34, 43] },
-  // U3 — tree frogs, on leaves at EYE LEVEL for the forest-floor camera
-  // (y 18–32). The brief asked for frogs on the forest floor; the ground there
-  // is 20–30 units below the lens and out of frame, and a tree frog is the frog
-  // that solves it without overruling the brief.
-  treefrog: { count: 7, lo: 0.24, hi: 0.56, feather: 0.09, y: [19, 31] },
-  // …and the chorus at the water, in the undergrowth, which is where `ambfrogs`
-  // actually sounds (D16) and where the pool's ripple machinery already is.
-  poolfrog: { count: 9, lo: 0.00, hi: 0.30, feather: 0.10, y: [0.5, 2.2] },
+  //
+  // The band was y 34–43 and that put the animal on the roof. The crown layer
+  // runs y 31.6–45.3 (`CROWN_Y0/CROWN_Y1`), a non-emergent trunk tops out at
+  // 43.3, and the host filter demanded `h > 46` — so every crown sloth hung from
+  // an emergent, at 34–43, on a tree whose top was 46–53. That is the last few
+  // units of a trunk: a sloth at the summit of the tallest tree in the forest,
+  // silhouetted against open sky, which is exactly where a real one never is and
+  // exactly where it looked silly. Sloths hang UNDER the canopy, in the crown's
+  // own shade, on branches thin enough to bend.
+  //
+  // 30–38 puts them in the lower half of the crown layer with foliage overhead,
+  // and `SLOTH_TOP_FRAC` guarantees the rest: whatever the band says, no sloth
+  // may hang above 78% of its host's height.
+  slothCrown: { count: 2, lo: 0.48, hi: 0.80, feather: 0.10, y: [30, 38] },
+  // U3 — the dart frogs, on the trunks. The brief asked for frogs on the forest
+  // floor; the ground there is 20–30 units below the lens and out of frame, so
+  // they live on the bark at eye level, which is where a jungle frog is anyway.
+  //
+  // The band now spans TWO tracks rather than one, and the y range spans the
+  // camera's whole climb through them, because these are the only frogs that
+  // can be seen for any length of time: the pond chorus below is fenced in by
+  // the undergrowth's upward pitch (see `poolfrog`), so if the frogs are to be
+  // a presence in this world rather than a detail in one shot, it is this
+  // system that has to carry it. `creatures.js` keeps them in the near field as
+  // the camera climbs, so the y range is a clamp on the perch, not a scatter.
+  treefrog: { count: 12, lo: 0.10, hi: 0.58, feather: 0.09, y: [6, 37] },
+  // …and the chorus at the water, which is where `ambfrogs` actually sounds
+  // (D16) and where the pool's ripple machinery already is.
+  //
+  // **This band is short, and it is short for a reason that is not tuning.**
+  // The undergrowth's gaze CLIMBS (BAND_PITCH[0] = 5.0), so the bottom of the
+  // frame sits ~13° below horizontal, and anything on the ground falls out of
+  // it the moment the camera leaves the ground. Projected through the real
+  // camera, a chorus on the water reads at 4 frogs of 10 at camera y 2, 0.2 at
+  // y 4, and **zero from y 6 up** — and no distance rescues it, because the
+  // range that would put a low frog back inside the frame (>20 units) is past
+  // the point where the fog has eaten it. Searching the whole placement space
+  // (height × radius) against the camera's real travel tops out at 4%.
+  //
+  // Sitting them from the waterline onto the root arches (y to 5) is what buys
+  // the band back: 3.8 frogs at camera y 2 and 2.3 at y 4. The old 0.30 was
+  // therefore not a wider band, it was nine animals drawn into a frame that
+  // could not contain them — and the ones the eye is meant to find higher up
+  // are the dart frogs above, whose band starts exactly where this one stops.
+  poolfrog: { count: 10, lo: 0.00, hi: 0.08, feather: 0.06, y: [0.8, 5] },
   // U4 — the canopy flock. 56, not 220: a flock reads as a flock at small
   // counts, and a cloud of 220 birds reads as insects.
   bird: { count: 56, lo: 0.44, hi: 0.82, feather: 0.10, y: [33, 46] },
@@ -284,6 +458,41 @@ export const CAST = {
 /** Population of a cast entry under the quality governor (Y2). */
 export function populationFor(spec, quality = 1, floor = 1) {
   return Math.max(Math.min(floor, spec.count), Math.round(spec.count * clamp01(quality)));
+}
+
+// ---------- the taper (requested) ----------
+/**
+ * The highest fraction of its host's height a sloth may hang at.
+ *
+ * A hard ceiling rather than a tuned band, because the band is a wish and this
+ * is the guarantee: `CAST.slothCrown` can be re-tuned by anyone and a tree can
+ * be any height the forest's own RNG gives it, so the rule that keeps an animal
+ * off the summit has to be expressed against the TREE. 78% leaves a fifth of the
+ * trunk and the whole crown above the animal, which is what "under the canopy"
+ * means.
+ */
+export const SLOTH_TOP_FRAC = 0.78;
+
+/**
+ * How thick and how long a branch is at height `y` up a tree of height `h`,
+ * 0..1 — and therefore how big the animal hanging from it is.
+ *
+ * Requested, and true: a bough near the base of a tropical tree is a metre
+ * across and carries anything, while the same tree's upper branches are wrist-
+ * thick and bend under a bird. The old code drew every branch at one length and
+ * one radius at every height, which is most of why a sloth high in a crown read
+ * as a full-size animal glued to the sky rather than as an animal far away and
+ * up a thinning tree.
+ *
+ * Flat through the lower half (a bough is a bough) and then falling away, so the
+ * curve says something only where there is something to say. Smoothstepped for
+ * the reason every curve in this world is: a sloth that changed size at a
+ * boundary would be a bug you could see.
+ */
+export function branchTaper(y, h) {
+  if (!(h > 0)) return 1;
+  const frac = clamp01(y / h);
+  return 1 - 0.62 * smooth(clamp01((frac - 0.35) / 0.6));
 }
 
 /**

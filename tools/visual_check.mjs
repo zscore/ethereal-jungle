@@ -282,7 +282,15 @@ await page.evaluate(() => {
 for (const [name, alt, weather] of [
   // U2 — the sloths, in the band whose gaze climbs into them
   ['fauna-sloth', 0.18, { mist: 0.8, rain: 0, wind: 0.35, storm: 0 }],
-  // U3 — tree frogs at eye level among the trunks
+  // U3 — the pond chorus, which is a BOTTOM-OF-THE-WORLD shot and cannot be
+  // taken anywhere else: the undergrowth's gaze climbs, so a frog on the water
+  // is out of frame from camera y 6 up (see `CAST.poolfrog`). If this frame is
+  // empty the band has been widened again by someone who did not read that note.
+  ['fauna-poolfrog', 0.03, { mist: 0.7, rain: 0, wind: 0.25, storm: 0 }],
+  // …and the dart frogs on the trunks, which DO travel with the camera — one
+  // low in the undergrowth and one at the forest floor, because the whole point
+  // of the near-field recycling is that both frames are populated
+  ['fauna-dartfrog-low', 0.16, { mist: 0.7, rain: 0, wind: 0.35, storm: 0 }],
   ['fauna-treefrog', 0.40, { mist: 0.55, rain: 0.5, wind: 0.45, storm: 0 }],
   // U4/U5 — the flock, in the crowns
   ['fauna-birds', 0.64, { mist: 0.35, rain: 0, wind: 1, storm: 0 }],

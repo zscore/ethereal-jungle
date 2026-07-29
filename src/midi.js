@@ -11,7 +11,7 @@
  * from the console), and persists in localStorage. Unmapped CCs are logged
  * once so you can discover what your controller sends.
  */
-import { bus } from './bus.js';
+import { bus, VISUAL_LIVE_KEYS } from './bus.js';
 import { PERFORM_LIVE_KEYS } from './perform.js';
 
 const DEFAULT_CC_MAP = {
@@ -32,6 +32,7 @@ const DEFAULT_CC_MAP = {
   23: 'gate',
   24: 'drive',
   25: 'roll',
+  27: 'rainDensity',      // the visuals' own live knob — how much rain there is
 };
 
 const STORE_KEY = 'jungle.midi.ccmap';
@@ -101,9 +102,10 @@ export async function initMidi({ onChange } = {}) {
     }
     bus.params[key] = value / 127;
     // Live perform keys (D17/D19) need no rebuild: the engine reads them at
-    // the output tap, the filter follower and the master chain. Everything
-    // else — including `roll`, which is pattern surgery — is launch-quantized.
-    if (!PERFORM_LIVE_KEYS.has(key)) scheduleChange();
+    // the output tap, the filter follower and the master chain. Nor do the
+    // visuals' own knobs, which no pattern reads at all. Everything else —
+    // including `roll`, which is pattern surgery — is launch-quantized.
+    if (!PERFORM_LIVE_KEYS.has(key) && !VISUAL_LIVE_KEYS.has(key)) scheduleChange();
   };
 
   const attach = () => {
