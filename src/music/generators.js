@@ -529,6 +529,17 @@ const PAD_MOTION = {
   intro: 1, build: 0.9, breakdown: 0.8, release: 0.6, build2: 0.4, groove: 0.35, peak: 0.25,
 };
 
+/**
+ * N5 — chord changes per phrase, by section. Faster harmonic rhythm reads as
+ * drive without a single new note (§2's stasis survives: same mode, same root).
+ * The ambient sections stay at one and the two sections that are supposed to
+ * push get two, which is the whole shape of the device — a phrase that changes
+ * chord twice arrives somewhere, and a phrase that does not is waiting.
+ */
+const HARM_RHYTHM = {
+  intro: 1, build: 1, groove: 1, breakdown: 1, build2: 2, peak: 2, release: 1, seam: 1,
+};
+
 /** Draw a placement set and the bars it falls on, or null for a bare phrase. */
 function placements(bag, density, lift, rng) {
   if (density <= 0 || rng() > density * lift) return null;
@@ -1249,6 +1260,34 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   const plane = pp.plane ?? [0];
   const step = plane[(voice.phraseIndex ?? 0) % plane.length];
   const chord = padVoicing(mode, warmth, { oct: pp.oct ?? 1, tuning, width: pp.width ?? 0, step });
+  // N5 — harmonic rhythm as a section device (the open item in
+  // section_ideas.md). On its own a faster `.slow()` would only re-ATTACK the
+  // same chord, which is a rhythm device wearing a harmony costume. So the
+  // extra changes borrow the NEXT entries of the plane cycle: at the peak the
+  // pad previews where it is going, and doubling the rate becomes a genuine
+  // harmonic accelerando rather than a louder metronome. Multiplicative with
+  // N3 — without a plane cycle this collapses back to one repeated chord.
+  const changes = HARM_RHYTHM[sec] ?? 1;
+  // walk the cycle forward to the next step that is actually DIFFERENT — the
+  // cycles contain repeated entries on purpose (a chord that stays is how a
+  // phrase says "still waiting"), but a section asking for two changes should
+  // get two chords, not the same one struck twice. With no plane authored this
+  // finds nothing and the device correctly degrades to a re-attack.
+  const stepsForPhrase = [step];
+  for (let j = 1; j < changes; j++) {
+    const from = (voice.phraseIndex ?? 0) + j - 1;
+    let next = stepsForPhrase[j - 1];
+    for (let d = 1; d <= plane.length; d++) {
+      const cand = plane[(from + d) % plane.length];
+      if (cand !== stepsForPhrase[j - 1]) { next = cand; break; }
+    }
+    stepsForPhrase.push(next);
+  }
+  const chords = changes > 1
+    ? stepsForPhrase.map((st) => padVoicing(mode, warmth, {
+      oct: pp.oct ?? 1, tuning, width: pp.width ?? 0, step: st,
+    }))
+    : [chord];
   const motion = PAD_MOTION[sec] ?? 0.4;
   if (!silent) {
     const [plo, pspan] = pp.lpf ?? [900, 2600];
@@ -1258,7 +1297,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     const breath = (k) => Math.round(cutoff * (1 + motion * k));
     const drift = 0.09 * motion; // stereo wander, widest where the pad is barest
     layers.push(
-      note(`[${chord.map(fmt).join(',')}]`)
+      note(`<${chords.map((c) => `[${c.map(fmt).join(',')}]`).join(' ')}>`)
         .s(pp.s ?? 'sawtooth')
         .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
         .release(swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4))
@@ -1266,8 +1305,9 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .room(0.9).roomsize(rs(3))   // low DRR: distance, the heavens
         .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1))
         .pan(`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`)
-        // harmonic rhythm as warmth: the glad track re-voices twice as often
-        .slow(pp.slow ?? 4)
+        // harmonic rhythm as warmth (the glad track re-voices twice as often)
+        // AND as section (N5): each alternation gets one slot of the phrase
+        .slow(Math.max(1, (pp.slow ?? 4) / changes))
         .orbit(3),
     );
     // ---- motion between notes ----
