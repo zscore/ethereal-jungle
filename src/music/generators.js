@@ -315,6 +315,16 @@ export function dropVariantFor(trackIndex, seed) {
   return DROP_VARIANTS[Math.floor(rng() * DROP_VARIANTS.length)];
 }
 
+/**
+ * R4 — where the set shuts up. One entry per section, applied to everything
+ * `gate()` touches (the drums, the floor, the cast — never the pad, which is
+ * the continuity layer and survives every hole by design).
+ */
+const HOLES = {
+  release: '[1 1 1 [1 1 0 0]]/4',  // the second half of the last bar: a breath
+  build2:  '[1 1 [1 1 1 0] 1]/4',  // one sixteenth swallowed, mid-phrase
+};
+
 /** How often a section wants its phrases turned around, and how hard. */
 const TURN_LIFT = {
   intro: 0, build: 0.45, groove: 0.3, breakdown: 0.15,
@@ -1176,7 +1186,23 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     : null;
   /** Apply a drop variant's mask for one layer family, if it has one. */
   const held = (pat, family) => (drop?.[family] ? pat.mask(drop[family]) : pat);
-  const gate = (pat) => (dropout ? pat.mask('[1 1 1 0]/4') : pat);
+  /**
+   * R4 — holes. `gate` used to serve exactly one caller: the build2 dropout
+   * bar. It is a general device and the set's entire silence budget was about
+   * six seconds in 389, so it now also carries a per-section HOLES table.
+   *
+   * Mini-notation nests, so sub-bar holes cost nothing: `[1 1 1 [1 1 0 0]]/4`
+   * empties the second half of the phrase's last bar. The release gets one,
+   * because a track that is letting go should occasionally stop talking, and
+   * the hole lands where R1 would otherwise have put a turnaround — the two
+   * read as one gesture, a fill that falls into a gap.
+   */
+  const hole = HOLES[sec];
+  const gate = (pat) => {
+    let x = dropout ? pat.mask('[1 1 1 0]/4') : pat;
+    if (hole && !seam?.active) x = x.mask(hole);
+    return x;
+  };
 
   const layers = [];
 
@@ -1790,8 +1816,18 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     if (call) layers.push(call);
   }
   if (pal.bowl && castIn) layers.push(bowlLayer(ctx, pal.bowl, mode, tuning, rs));
-  if (pal.ghost && castIn && !ambient) {
-    layers.push(gate(ghostLayer(ctx, pal.ghost, rng, pal.break?.s ?? 'jbreak', rs)));
+  // R4 — the granular ghost, in the section it was written for. The backlog's
+  // "granular/halfspeed break ghost — the drums heard as *weather*" is exactly
+  // this layer, and it was gated `!ambient`, which excludes the breakdown: the
+  // one section with no drums, and therefore the only one where a drum-shaped
+  // texture can be heard as weather rather than as drums. The gate stays for
+  // the intro (nothing has been stated yet, so there is nothing to ghost).
+  if (pal.ghost && castIn && sec !== 'intro') {
+    const inBreakdown = sec === 'breakdown';
+    const g = ghostLayer(ctx, pal.ghost, rng, pal.break?.s ?? 'jbreak', rs);
+    // in the breakdown it is the figure rather than a haze under one, so it
+    // comes up and slows down — the timestretch artifact §3.4 asks for
+    layers.push(gate(inBreakdown ? g.gain((pal.ghost.gain ?? 0.15) * 1.9).slow(2) : g));
   }
   // spent once: the hoover, on the canopy's drop bar. 1992, once, never again.
   if (pal.hoover && sec === 'peak' && firstPhraseOf && !silent) {

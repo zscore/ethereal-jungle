@@ -324,7 +324,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>18</b><span>modules</span></div>
       <div><b>157</b><span>exports</span></div>
-      <div><b>7,201</b><span>lines</span></div>
+      <div><b>7,237</b><span>lines</span></div>
       <div><b>83%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
@@ -2012,7 +2012,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>generators.js</h3>
       <a class="srcref" href="../../src/music/generators.js">src/music/generators.js</a>
-      <span class="muted">1848 lines · 20 exported</span>
+      <span class="muted">1884 lines · 20 exported</span>
     </header>
     <div class="doc lead"><p>generators.js — the machine room (music doc <span class="ref sec" title="a section of the theory docs in docs/">§4</span>).</p>
 <p>Every generator is a pure function of (bus params, seeded rng) → Strudel pattern. ENGINE DISCIPLINE: generators emit <em>events with abstract params</em> (sample slot, note, orbit, dynamics). superdough is merely the current renderer of those events — keep renderer-specific hacks out of here so the whole layer can be re-pointed at SuperDirt/scsynth over OSC without touching composition logic.</p>
@@ -2463,20 +2463,38 @@ late         kick alone for a bar, then the whole arrangement</pre>
   <span class="k">return</span> DROP_VARIANTS[Math.floor(rng() * DROP_VARIANTS.length)];
 }</code></pre></div></details>
   </article>
+  <article class="item" id="src-music-generators-js--HOLES" data-name="holes" data-text="r4 — where the set shuts up.">
+    <header class="item-head">
+      <span class="kind table">table</span>
+      <h4><a href="#src-music-generators-js--HOLES">HOLES</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:323</a>
+    </header>
+    <pre class="sig"><code>HOLES = { …</code></pre>
+    <div class="doc"><p>R4 — where the set shuts up. One entry per section, applied to everything <code>gate()</code> touches (the drums, the floor, the cast — never the pad, which is the continuity layer and survives every hole by design).</p></div>
+    
+    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">323
+324
+325
+326</pre><pre class="src"><code><span class="k">const</span> HOLES = {
+  release: <span class="s">'[1 1 1 [1 1 0 0]]/4'</span>,  <span class="c">// the second half of the last bar: a breath</span>
+  build2:  <span class="s">'[1 1 [1 1 1 0] 1]/4'</span>,  <span class="c">// one sixteenth swallowed, mid-phrase</span>
+}</code></pre></div></details>
+  </article>
   <article class="item" id="src-music-generators-js--TURN_LIFT" data-name="turn_lift" data-text="how often a section wants its phrases turned around, and how hard.">
     <header class="item-head">
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--TURN_LIFT">TURN_LIFT</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:319</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:329</a>
     </header>
     <pre class="sig"><code>TURN_LIFT = { …</code></pre>
     <div class="doc"><p>How often a section wants its phrases turned around, and how hard.</p></div>
     
-    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">319
-320
-321
-322</pre><pre class="src"><code><span class="k">const</span> TURN_LIFT = {
+    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">329
+330
+331
+332</pre><pre class="src"><code><span class="k">const</span> TURN_LIFT = {
   intro: <span class="n">0</span>, build: <span class="n">0.45</span>, groove: <span class="n">0.3</span>, breakdown: <span class="n">0.15</span>,
   build2: <span class="n">0.9</span>, peak: <span class="n">0.6</span>, release: <span class="n">0.85</span>, seam: <span class="n">0</span>,
 }</code></pre></div></details>
@@ -2486,18 +2504,18 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--turnaroundFor">turnaroundFor</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:328</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:338</a>
     </header>
     <pre class="sig"><code>turnaroundFor(phraseIndex, seed, sec)</code></pre>
     <div class="doc"><p>Draw a phrase's turnaround, or null. Deterministic in (seed, phraseIndex) and hashed away from the shared stream, the <code>squawkLayer</code> idiom.</p></div>
     
-    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">328
-329
-330
-331
-332
-333
-334</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> turnaroundFor(phraseIndex, seed, sec) {
+    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">338
+339
+340
+341
+342
+343
+344</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> turnaroundFor(phraseIndex, seed, sec) {
   <span class="k">const</span> lift = TURN_LIFT[sec] ?? <span class="n">0.3</span>;
   <span class="k">if</span> (lift &lt;= <span class="n">0</span>) <span class="k">return</span> <span class="l">null</span>;
   <span class="k">const</span> rng = makeRng(((seed ^ 0x7a17) + phraseIndex * <span class="n">2311</span>) &gt;&gt;&gt; <span class="n">0</span>);
@@ -2510,22 +2528,12 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--SEAM_FILLS">SEAM_FILLS</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:336</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:346</a>
     </header>
     <pre class="sig"><code>SEAM_FILLS = [ …</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">74 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">336
-337
-338
-339
-340
-341
-342
-343
-344
-345
-346
+    <details class="source"><summary>source <span class="muted">74 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">346
 347
 348
 349
@@ -2588,7 +2596,17 @@ late         kick alone for a bar, then the whole arrangement</pre>
 406
 407
 408
-409</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_FILLS = [
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> SEAM_FILLS = [
   {
     name: <span class="s">'the outbreath'</span>, voice: <span class="s">'snare'</span>,
     fig: <span class="s">'[x [x x] x [x x]] [x ~ [x x] x] [~ x ~ [x ~]] [x ~ ~ ~]'</span>,
@@ -2668,39 +2686,39 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--perBar">perBar</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:412</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:422</a>
     </header>
     <pre class="sig"><code>perBar(arr)</code></pre>
     <div class="doc"><p>Per-bar automation under <code>.slow(4)</code>: one value per bar of the fill.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">412</pre><pre class="src"><code><span class="k">const</span> perBar = (arr) =&gt; <span class="s">`[${arr.join(' ')}]`</span>;</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">422</pre><pre class="src"><code><span class="k">const</span> perBar = (arr) =&gt; <span class="s">`[${arr.join(' ')}]`</span>;</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--hits" data-name="hits" data-text="dress a figure's hits in a sound.">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--hits">hits</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:415</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:425</a>
     </header>
     <pre class="sig"><code>hits(fig, snd)</code></pre>
     <div class="doc"><p>Dress a figure's hits in a sound.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">415</pre><pre class="src"><code><span class="k">const</span> hits = (fig, snd) =&gt; fig.replaceAll(<span class="s">'x'</span>, snd);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">425</pre><pre class="src"><code><span class="k">const</span> hits = (fig, snd) =&gt; fig.replaceAll(<span class="s">'x'</span>, snd);</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--seamFillWeather" data-name="seamfillweather" data-text="the biome texture a weather fill chops: the outgoing track's last ambience layer.">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--seamFillWeather">seamFillWeather</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:433</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:443</a>
     </header>
     <pre class="sig"><code>seamFillWeather(ambience = [])</code></pre>
     <div class="doc"><p>The biome texture a <code>weather</code> fill chops: the outgoing track's LAST ambience layer. Two reasons it is the last one and not the bed or a middle accent.</p>
 <p>Not the bed, because the bed is already foregrounded through the late seam (<code>foreground</code> below) — chopping it would only double what is already there, where an accent may well have been resting, which is what makes it arrive as a gesture.</p>
 <p>Not a middle accent, because in every one of the four biomes the last layer is the <strong>texture</strong> and the middle ones are the <strong>creatures</strong> — glint, drips, leaves, sparkle against frogs, thunder, the piha, the shimmer. <a class="ref adr" href="../design_decisions.md#d31-the-toucan-toms-one-bird-tuned-into-a-drum-kit-2026-07-28" title="The toucan toms: one bird, tuned into a drum kit (2026-07-28)">D31</a> is the standing lesson here: gating an animal onto a 16th grid is how you turn a recording of a bird into a sampler playing a bird, and the verdict on that was &quot;horrendous&quot;. Textures survive being cut up; creatures do not.</p></div>
     
-    <details class="source"><summary>source <span class="muted">2 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">433
-434</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> seamFillWeather = (ambience = []) =&gt;
+    <details class="source"><summary>source <span class="muted">2 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">443
+444</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> seamFillWeather = (ambience = []) =&gt;
   ambience.slice(<span class="n">1</span>).pop() ?? ambience[<span class="n">0</span>] ?? <span class="s">'ambwind'</span>;</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--FILL_VOICES" data-name="fill_voices" data-text="the material classes, in the order they rotate through a set.">
@@ -2708,31 +2726,31 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--FILL_VOICES">FILL_VOICES</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:437</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:447</a>
     </header>
     <pre class="sig"><code>FILL_VOICES = ['snare', 'break', 'pitch', 'weather']</code></pre>
     <div class="doc"><p>The material classes, in the order they rotate through a set.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">437</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> FILL_VOICES = [<span class="s">'snare'</span>, <span class="s">'break'</span>, <span class="s">'pitch'</span>, <span class="s">'weather'</span>];</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">447</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> FILL_VOICES = [<span class="s">'snare'</span>, <span class="s">'break'</span>, <span class="s">'pitch'</span>, <span class="s">'weather'</span>];</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--seamFillFor" data-name="seamfillfor" data-text="which fill a boundary gets: keyed to the track being entered, mixed with the seed, so the set varies and a reroll re-deals it.">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--seamFillFor">seamFillFor</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:460</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:470</a>
     </header>
     <pre class="sig"><code>seamFillFor(toIndex, seed)</code></pre>
     <div class="doc"><p>Which fill a boundary gets: keyed to the track being entered, mixed with the seed, so the set varies and a reroll re-deals it. Pure — no draw from the phrase <code>rng</code>, which would shift every seeded decision downstream.</p>
 <p><strong>The material rotates; only the figure is drawn.</strong> A flat draw over the bag is the wrong shape for this decision: with four snare figures in seven, the default seed dealt snare rolls to three of the set's four boundaries, which is the complaint the new material exists to answer arriving again by luck. Rotating <code>toIndex</code> through the voices instead guarantees that no two boundaries in a set are made of the same thing — a four-track set hears the break stop, a line fall, the biome chopped and exactly one snare roll — and the seed still chooses where the rotation starts and which snare figure it is.</p>
 <p><a class="ref adr" href="../design_decisions.md#d38-the-seam-fill-is-a-material-not-a-figure-2026-07-28" title="The seam fill is a material, not a figure (2026-07-28)">D38</a> — BOTH flavors draw from this one bag now. <a class="ref adr" href="../design_decisions.md#d18-seeded-seam-variants-the-landing-and-the-dissolve-2026-07-26" title="Seeded seam variants: the landing and the dissolve (2026-07-26)">D18</a> gave the dissolve its own private figure, but <a class="ref adr" href="../design_decisions.md#d36-the-seam-winds-down-2026-07-28" title="The seam winds down (2026-07-28)">D36</a> already took the figure-level difference away when it made both flavors wind down: what separates a landing from a dissolve is how the boundary is <em>met</em> (an impact and a root pedal, versus nothing at all), not which snare roll got there. Keeping a second bag would have meant half the boundaries in a set never hearing the new material.</p></div>
     
-    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">460
-461
-462
-463
-464
-465</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> seamFillFor = (toIndex, seed) =&gt; {
+    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">470
+471
+472
+473
+474
+475</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> seamFillFor = (toIndex, seed) =&gt; {
   <span class="k">const</span> rot = Math.abs(strHash(<span class="s">`fillvoice:${seed}`</span>)) % FILL_VOICES.length;
   <span class="k">const</span> voice = FILL_VOICES[(((toIndex + rot) % FILL_VOICES.length) + FILL_VOICES.length) % FILL_VOICES.length];
   <span class="k">const</span> bag = SEAM_FILLS.filter((f) =&gt; f.voice === voice);
@@ -2744,27 +2762,27 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--seamFillSound">seamFillSound</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:472</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:482</a>
     </header>
     <pre class="sig"><code>seamFillSound(fill, track = {})</code></pre>
     <div class="doc"><p>The sound a fill's figure will be made of, given the track that is exiting. Exported because it is the only way to know what to listen for: the test and the probe both need it, and re-deriving it would be a second source of truth.</p></div>
     
-    <details class="source"><summary>source <span class="muted">16 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">472
-473
-474
-475
-476
-477
-478
-479
-480
-481
-482
+    <details class="source"><summary>source <span class="muted">16 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">482
 483
 484
 485
 486
-487</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> seamFillSound(fill, track = {}) {
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496
+497</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> seamFillSound(fill, track = {}) {
   <span class="k">const</span> pal = track.palette ?? {};
   <span class="k">switch</span> (fill.voice) {
     <span class="k">case</span> <span class="s">'break'</span>: <span class="k">return</span> pal.<span class="k">break</span>?.s ?? <span class="s">'jbreak'</span>;
@@ -2786,7 +2804,7 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--seamFillLayer">seamFillLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:487</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:497</a>
     </header>
     <pre class="sig"><code>seamFillLayer(ctx, fill, { snd, notes, brk = {}, rs, deep })</code></pre>
     <div class="doc"><p>Render a fill. The dissolve is a <em>treatment</em> applied here rather than a separate figure (<a class="ref adr" href="../design_decisions.md#d38-the-seam-fill-is-a-material-not-a-figure-2026-07-28" title="The seam fill is a material, not a figure (2026-07-28)">D38</a>): quieter, darker, and drowning further as it goes, where a landing keeps a little air so the hole is audibly a hole.</p></div>
@@ -2795,25 +2813,15 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <h5>Walkthrough <span class="muted">— the annotated steps inside this function</span></h5>
       
         <div class="step">
-          <div class="step-head"><span class="step-title">D35: one room per orbit</span><span class="muted">line 521</span></div>
+          <div class="step-head"><span class="step-title">D35: one room per orbit</span><span class="muted">line 531</span></div>
           <p><code>roomsize</code> is a property of the ORBIT, not of the event: superdough keeps one reverb per orbit and REGENERATES its impulse response whenever an event asks for a different size (superdoughoutput.mjs <code>getReverb</code>). Every track was asking for two or three sizes on the same orbit — the canopy's ether orbit alternated 8, 9 and 11 about five hundred times a track — so the reverb was rebuilding an impulse of up to twelve seconds of noise, over and over, and the tail length depended on whichever layer had spoken last.</p>
 <p>So the size of the space is per orbit and per track, and instruments keep only their <code>room</code> SEND, which is per-event and free. The orbit map is the stream vector (<span class="ref sec" title="a section of the theory docs in docs/">§3.1</span>), and this makes it literal: four streams, four rooms, each at its own distance.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">533
-534</pre><pre class="src"><code>
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">543
+544</pre><pre class="src"><code>
 </code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">48 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">487
-488
-489
-490
-491
-492
-493
-494
-495
-496
-497
+    <details class="source"><summary>source <span class="muted">48 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">497
 498
 499
 500
@@ -2850,7 +2858,17 @@ late         kick alone for a bar, then the whole arrangement</pre>
 531
 532
 533
-534</pre><pre class="src"><code><span class="k">function</span> seamFillLayer(ctx, fill, { snd, notes, brk = {}, rs, deep }) {
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544</pre><pre class="src"><code><span class="k">function</span> seamFillLayer(ctx, fill, { snd, notes, brk = {}, rs, deep }) {
   <span class="k">const</span> { s, note } = ctx;
   <span class="k">const</span> gain = perBar(fill.gain.map((v) =&gt; +(v * (deep ? <span class="n">0.82</span> : <span class="n">1</span>)).toFixed(<span class="n">3</span>)));
   <span class="k">const</span> lpf = perBar(fill.lpf.map((v) =&gt; Math.round(v * (deep ? <span class="n">0.55</span> : <span class="n">1</span>))));
@@ -2907,20 +2925,20 @@ late         kick alone for a bar, then the whole arrangement</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--ROOM_SIZE">ROOM_SIZE</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:534</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:544</a>
     </header>
     <pre class="sig"><code>ROOM_SIZE = { 1: 3, 2: 3, 3: 9, 4: 6 }</code></pre>
     <div class="doc"><p><code>roomsize</code> is a property of the ORBIT, not of the event: superdough keeps one reverb per orbit and REGENERATES its impulse response whenever an event asks for a different size (superdoughoutput.mjs <code>getReverb</code>). Every track was asking for two or three sizes on the same orbit — the canopy's ether orbit alternated 8, 9 and 11 about five hundred times a track — so the reverb was rebuilding an impulse of up to twelve seconds of noise, over and over, and the tail length depended on whichever layer had spoken last.</p>
 <p>So the size of the space is per orbit and per track, and instruments keep only their <code>room</code> SEND, which is per-event and free. The orbit map is the stream vector (<span class="ref sec" title="a section of the theory docs in docs/">§3.1</span>), and this makes it literal: four streams, four rooms, each at its own distance.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">534</pre><pre class="src"><code><span class="k">const</span> ROOM_SIZE = { <span class="n">1</span>: <span class="n">3</span>, <span class="n">2</span>: <span class="n">3</span>, <span class="n">3</span>: <span class="n">9</span>, <span class="n">4</span>: <span class="n">6</span> }</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">544</pre><pre class="src"><code><span class="k">const</span> ROOM_SIZE = { <span class="n">1</span>: <span class="n">3</span>, <span class="n">2</span>: <span class="n">3</span>, <span class="n">3</span>: <span class="n">9</span>, <span class="n">4</span>: <span class="n">6</span> }</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--ROOM_CHAR" data-name="room_char" data-text="q2 — and what the room is made of, which d35 left undone.">
     <header class="item-head">
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--ROOM_CHAR">ROOM_CHAR</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:555</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:565</a>
     </header>
     <pre class="sig"><code>ROOM_CHAR = { …</code></pre>
     <div class="doc"><p>Q2 — and what the room is MADE of, which <a class="ref adr" href="../design_decisions.md#d35-one-room-per-orbit-2026-07-28" title="One room per orbit (2026-07-28)">D35</a> left undone.</p>
@@ -2931,12 +2949,12 @@ roomdim  damping — high frequencies dying faster than low ones, i.e. how
 roomfade the tail's own attack: how long the reflections take to arrive</pre>
 <p>The default set reads as: drums in a close damped space, the floor tighter still, the ether wide open and slow to arrive. A track overrides any of it with <code>TRACKS[i].roomChar</code> — which is where the undergrowth stops being in a small hall and starts being under wet leaves.</p></div>
     
-    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">555
-556
-557
-558
-559
-560</pre><pre class="src"><code><span class="k">const</span> ROOM_CHAR = {
+    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">565
+566
+567
+568
+569
+570</pre><pre class="src"><code><span class="k">const</span> ROOM_CHAR = {
   <span class="n">1</span>: { lp: <span class="n">6500</span>, dim: <span class="n">900</span>, fade: <span class="n">0.12</span> },  <span class="c">// near: damped, arrives at once</span>
   <span class="n">2</span>: { lp: <span class="n">4200</span>, dim: <span class="n">1400</span>, fade: <span class="n">0.08</span> }, <span class="c">// the floor: tightest, darkest</span>
   <span class="n">3</span>: { lp: <span class="n">9500</span>, dim: <span class="n">260</span>, fade: <span class="n">0.45</span> },  <span class="c">// the ether: open, slow, undamped</span>
@@ -2948,19 +2966,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--roomsFor">roomsFor</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:569</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:579</a>
     </header>
     <pre class="sig"><code>roomsFor(voice)</code></pre>
     <div class="doc"><p>The room a track puts an orbit in: cast data (<code>TRACKS[i].rooms</code>) or default. <code>rs(orbit)</code> is still the size, so every existing call site reads the same; <code>rs.lp/.dim/.fade</code> carry Q2's character. They hang off the same function on purpose — the layer builders already take <code>rs</code>, and a room whose size and surfaces are decided in two different places is how they drift apart.</p></div>
     
-    <details class="source"><summary>source <span class="muted">8 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">569
-570
-571
-572
-573
-574
-575
-576</pre><pre class="src"><code><span class="k">const</span> roomsFor = (voice) =&gt; {
+    <details class="source"><summary>source <span class="muted">8 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">579
+580
+581
+582
+583
+584
+585
+586</pre><pre class="src"><code><span class="k">const</span> roomsFor = (voice) =&gt; {
   <span class="k">const</span> rs = (orbit) =&gt; voice.rooms?.[orbit] ?? ROOM_SIZE[orbit] ?? <span class="n">4</span>;
   <span class="k">const</span> char = (key) =&gt; (orbit) =&gt; voice.roomChar?.[orbit]?.[key] ?? ROOM_CHAR[orbit]?.[key] ?? ROOM_CHAR[<span class="n">3</span>][key];
   rs.lp = char(<span class="s">'lp'</span>);
@@ -2977,48 +2995,38 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--SQUAWK_SPEEDS">SQUAWK_SPEEDS</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:589</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:599</a>
     </header>
     <pre class="sig"><code>SQUAWK_SPEEDS = [0.86, 0.94, 1.0, 1.09, 1.18]</code></pre>
     <div class="doc"><p>The same three croaks (tools/ingest_toms.py), and nothing else survives of <a class="ref adr" href="../design_decisions.md#d31-the-toucan-toms-one-bird-tuned-into-a-drum-kit-2026-07-28" title="The toucan toms: one bird, tuned into a drum kit (2026-07-28)">D31</a>: transposing a 1450 Hz bird down to 220 Hz to make a tom sounded, in the verdict that killed it, horrendous — a growl, not a drum. What the material is actually good at is being a bird, so it is one: a single call over the canopy at a steady interval, near its own pitch, at the back of the room.</p>
 <p>Speeds stay close to 1: this is a bird that is <em>near or far</em>, not a bird that has been detuned. A hair up reads as a smaller bird, a hair down as a larger one, and that is the whole range the ear will accept before it hears a sampler instead of an animal.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">589</pre><pre class="src"><code><span class="k">const</span> SQUAWK_SPEEDS = [<span class="n">0.86</span>, <span class="n">0.94</span>, <span class="n">1.0</span>, <span class="n">1.09</span>, <span class="n">1.18</span>];</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">599</pre><pre class="src"><code><span class="k">const</span> SQUAWK_SPEEDS = [<span class="n">0.86</span>, <span class="n">0.94</span>, <span class="n">1.0</span>, <span class="n">1.09</span>, <span class="n">1.18</span>];</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--SQUAWK_AT" data-name="squawk_at" data-text="where in the bar a call may land: off the beat, always.">
     <header class="item-head">
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--SQUAWK_AT">SQUAWK_AT</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:593</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:603</a>
     </header>
     <pre class="sig"><code>SQUAWK_AT = [3, 5, 6, 7, 10, 11, 13, 14]</code></pre>
     <div class="doc"><p>Where in the bar a call may land: off the beat, always. A bird that lands on the downbeat is playing in the band, and this one is in the trees.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">593</pre><pre class="src"><code><span class="k">const</span> SQUAWK_AT = [<span class="n">3</span>, <span class="n">5</span>, <span class="n">6</span>, <span class="n">7</span>, <span class="n">10</span>, <span class="n">11</span>, <span class="n">13</span>, <span class="n">14</span>];</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">603</pre><pre class="src"><code><span class="k">const</span> SQUAWK_AT = [<span class="n">3</span>, <span class="n">5</span>, <span class="n">6</span>, <span class="n">7</span>, <span class="n">10</span>, <span class="n">11</span>, <span class="n">13</span>, <span class="n">14</span>];</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--squawkLayer" data-name="squawklayer" data-text="the squawk (canopy).">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--squawkLayer">squawkLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:605</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:615</a>
     </header>
     <pre class="sig"><code>squawkLayer(ctx, sq, seed, phraseIndex, rs)</code></pre>
     <div class="doc"><p>The squawk (canopy). One call every <code>every</code> phrases — a steady interval, so it reads as punctuation — but the bar it lands in, the 16th inside that bar, which croak, its pitch and its position in the field are all drawn per phrase, so the interval never becomes a metronome.</p>
 <p>On the ether orbit and drowned, not on the drums: it is weather (<span class="ref sec" title="a section of the theory docs in docs/">§3.4</span>), which is also why it keeps playing through the intro and the breakdown where the percussion does not. Returns null on the phrases between calls.</p></div>
     
-    <details class="source"><summary>source <span class="muted">31 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">605
-606
-607
-608
-609
-610
-611
-612
-613
-614
-615
+    <details class="source"><summary>source <span class="muted">31 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">615
 616
 617
 618
@@ -3038,7 +3046,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 632
 633
 634
-635</pre><pre class="src"><code><span class="k">function</span> squawkLayer(ctx, sq, seed, phraseIndex, rs) {
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645</pre><pre class="src"><code><span class="k">function</span> squawkLayer(ctx, sq, seed, phraseIndex, rs) {
   <span class="k">const</span> { s } = ctx;
   <span class="k">const</span> every = Math.max(<span class="n">1</span>, sq.every ?? <span class="n">2</span>);
   <span class="k">if</span> (((phraseIndex % every) + every) % every !== <span class="n">0</span>) <span class="k">return</span> <span class="l">null</span>;
@@ -3078,14 +3096,14 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--PAD_MOTION">PAD_MOTION</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:644</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:654</a>
     </header>
     <pre class="sig"><code>PAD_MOTION = { …</code></pre>
     <div class="doc"><p>How much the ether moves, by section. The complaint this answers is that the background chords sit still for minutes at a time in the opening sections — which is exactly where the arrangement is thinnest, so a static pad is most exposed there and least excusable. Inverted against density on purpose: the bare sections get the most movement, the full ones the least, because by the peak there is plenty else going on and a wandering pad would just be mud.</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">644
-645
-646</pre><pre class="src"><code><span class="k">const</span> PAD_MOTION = {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">654
+655
+656</pre><pre class="src"><code><span class="k">const</span> PAD_MOTION = {
   intro: <span class="n">1</span>, build: <span class="n">0.9</span>, breakdown: <span class="n">0.8</span>, release: <span class="n">0.6</span>, build2: <span class="n">0.4</span>, groove: <span class="n">0.35</span>, peak: <span class="n">0.25</span>,
 }</code></pre></div></details>
   </article>
@@ -3094,14 +3112,14 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--HARM_RHYTHM">HARM_RHYTHM</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:655</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:665</a>
     </header>
     <pre class="sig"><code>HARM_RHYTHM = { …</code></pre>
     <div class="doc"><p>N5 — chord changes per phrase, by section. Faster harmonic rhythm reads as drive without a single new note (<span class="ref sec" title="a section of the theory docs in docs/">§2</span>'s stasis survives: same mode, same root). The ambient sections stay at one and the two sections that are supposed to push get two, which is the whole shape of the device — a phrase that changes chord twice arrives somewhere, and a phrase that does not is waiting.</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">655
-656
-657</pre><pre class="src"><code><span class="k">const</span> HARM_RHYTHM = {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">665
+666
+667</pre><pre class="src"><code><span class="k">const</span> HARM_RHYTHM = {
   intro: <span class="n">1</span>, build: <span class="n">1</span>, groove: <span class="n">1</span>, breakdown: <span class="n">1</span>, build2: <span class="n">2</span>, peak: <span class="n">2</span>, release: <span class="n">1</span>, seam: <span class="n">1</span>,
 }</code></pre></div></details>
   </article>
@@ -3110,18 +3128,18 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--placements">placements</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:660</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:670</a>
     </header>
     <pre class="sig"><code>placements(bag, density, lift, rng)</code></pre>
     <div class="doc"><p>Draw a placement set and the bars it falls on, or null for a bare phrase.</p></div>
     
-    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">660
-661
-662
-663
-664
-665
-666</pre><pre class="src"><code><span class="k">function</span> placements(bag, density, lift, rng) {
+    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">670
+671
+672
+673
+674
+675
+676</pre><pre class="src"><code><span class="k">function</span> placements(bag, density, lift, rng) {
   <span class="k">if</span> (density &lt;= <span class="n">0</span> || rng() &gt; density * lift) <span class="k">return</span> <span class="l">null</span>;
   <span class="k">return</span> {
     at: bag[Math.floor(rng() * bag.length)],
@@ -3134,15 +3152,15 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--steps">steps</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:669</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:679</a>
     </header>
     <pre class="sig"><code>steps(s, snd, positions)</code></pre>
     <div class="doc"><p>A 16-step pattern sounding <code>snd</code> at the given positions and nowhere else.</p></div>
     
-    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">669
-670
-671
-672</pre><pre class="src"><code><span class="k">function</span> steps(s, snd, positions) {
+    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">679
+680
+681
+682</pre><pre class="src"><code><span class="k">function</span> steps(s, snd, positions) {
   <span class="k">const</span> set = <span class="k">new</span> Set(positions);
   <span class="k">return</span> s(Array.<span class="k">from</span>({ length: <span class="n">16</span> }, (_, i) =&gt; (set.has(i) ? snd : <span class="s">'~'</span>)).join(<span class="s">' '</span>));
 }</code></pre></div></details>
@@ -3155,16 +3173,16 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--strHash">strHash</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:675</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:685</a>
     </header>
     <pre class="sig"><code>strHash(str)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">675
-676
-677
-678
-679</pre><pre class="src"><code><span class="k">function</span> strHash(str) {
+    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">685
+686
+687
+688
+689</pre><pre class="src"><code><span class="k">function</span> strHash(str) {
   <span class="k">let</span> h = <span class="n">0</span>;
   <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; str.length; i++) h = (h * <span class="n">31</span> + str.charCodeAt(i)) | <span class="n">0</span>;
   <span class="k">return</span> h &gt;&gt;&gt; <span class="n">0</span>;
@@ -3175,17 +3193,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--layerPresenceAt">layerPresenceAt</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:687</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:697</a>
     </header>
     <pre class="sig"><code>layerPresenceAt(name, phraseIndex, seed)</code></pre>
     <div class="doc"><p>Slow 0..1 walk per (layer, seed), sampled at phrase scale: smoothstep value noise with one cell ≈ 3 phrases, so accent layers surface in episodes of ~30–50 s and fade over phrases rather than switching. Keyed to the absolute phrase index — deterministic across recompiles, never looping with the set.</p></div>
     
-    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">687
-688
-689
-690
-691
-692</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> layerPresenceAt(name, phraseIndex, seed) {
+    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">697
+698
+699
+700
+701
+702</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> layerPresenceAt(name, phraseIndex, seed) {
   <span class="k">const</span> cell = (i) =&gt; makeRng(((seed ^ strHash(name)) + i * <span class="n">131</span>) &gt;&gt;&gt; <span class="n">0</span>)();
   <span class="k">const</span> x = phraseIndex / <span class="n">3</span>;
   <span class="k">const</span> i = Math.floor(x), f = x - i, sm = f * f * (<span class="n">3</span> - <span class="n">2</span> * f);
@@ -3200,30 +3218,30 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--MOTIF">MOTIF</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:699</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:709</a>
     </header>
     <pre class="sig"><code>MOTIF = [0, 2, 1, 4, 3, 2, 4, 0]</code></pre>
     <div class="doc"><p>ONE melodic cell for the whole set (<span class="ref sec" title="a section of the theory docs in docs/">§6.4</span>): recalled under transformation across tracks, it converts a sequence of tracks into an argument. Every characteristic instrument added by <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a> states THIS cell — new faces, no new tunes; that is what keeps four casts sounding like one piece.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">699</pre><pre class="src"><code><span class="k">const</span> MOTIF = [<span class="n">0</span>, <span class="n">2</span>, <span class="n">1</span>, <span class="n">4</span>, <span class="n">3</span>, <span class="n">2</span>, <span class="n">4</span>, <span class="n">0</span>];</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">709</pre><pre class="src"><code><span class="k">const</span> MOTIF = [<span class="n">0</span>, <span class="n">2</span>, <span class="n">1</span>, <span class="n">4</span>, <span class="n">3</span>, <span class="n">2</span>, <span class="n">4</span>, <span class="n">0</span>];</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--TRANSFORMS" data-name="transforms" data-text="scale-degree offsets — the set's single cell">
     <header class="item-head">
       <span class="kind table">table</span>
       <h4><a href="#src-music-generators-js--TRANSFORMS">TRANSFORMS</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:701</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:711</a>
     </header>
     <pre class="sig"><code>TRANSFORMS = [ …</code></pre>
     <div class="doc"><p>scale-degree offsets — the set's single cell</p></div>
     
-    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">701
-702
-703
-704
-705
-706
-707</pre><pre class="src"><code><span class="k">const</span> TRANSFORMS = [
+    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">711
+712
+713
+714
+715
+716
+717</pre><pre class="src"><code><span class="k">const</span> TRANSFORMS = [
   (m) =&gt; m,                                        <span class="c">// literal recall</span>
   (m) =&gt; [...m].reverse(),                         <span class="c">// retrograde</span>
   (m) =&gt; m.map((d) =&gt; <span class="n">4</span> - d),                      <span class="c">// inversion about the cell's center</span>
@@ -3236,25 +3254,25 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--leadContour">leadContour</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:714</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:724</a>
     </header>
     <pre class="sig"><code>leadContour(rng, w)</code></pre>
     <div class="doc"><p><span class="ref sec" title="a section of the theory docs in docs/">§3</span> contour-then-quantize: 80% a transformation of the motif, 20% a fresh smooth contour. Shape is generated apart from pitch set, so mode changes re-color a held shape — motivic identity surviving harmonic change.</p></div>
     
-    <details class="source"><summary>source <span class="muted">14 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">714
-715
-716
-717
-718
-719
-720
-721
-722
-723
-724
+    <details class="source"><summary>source <span class="muted">14 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">724
 725
 726
-727</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> leadContour(rng, w) {
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> leadContour(rng, w) {
   <span class="k">if</span> (rng() &lt; <span class="n">0.8</span>) {
     <span class="k">const</span> tf = TRANSFORMS[Math.floor(rng() * TRANSFORMS.length)];
     <span class="k">return</span> tf(MOTIF, rng);
@@ -3277,34 +3295,24 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--fmt">fmt</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:733</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:743</a>
     </header>
     <pre class="sig"><code>fmt(n)</code></pre>
     <div class="doc"><p>Small helpers, all of the same shape: a palette slice in, one pattern out. Nothing here knows which track it is playing for — that is the whole idea.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">733</pre><pre class="src"><code><span class="k">const</span> fmt = (n) =&gt; n.toFixed(<span class="n">3</span>);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">743</pre><pre class="src"><code><span class="k">const</span> fmt = (n) =&gt; n.toFixed(<span class="n">3</span>);</code></pre></div></details>
   </article>
   <article class="item" id="src-music-generators-js--costume" data-name="costume" data-text="the break's costume (palette.break).">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--costume">costume</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:741</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:751</a>
     </header>
     <pre class="sig"><code>costume(pat, bp = {}, rs, weather = 0)</code></pre>
     <div class="doc"><p>The break's costume (palette.break). Same σ, same slices, different drummer: degradation and room for the undergrowth, speed and snap for the forest floor, nothing at all for the canopy, and a high-passed reversed drowning for the zenith, where the drums stop having bodies.</p></div>
     
-    <details class="source"><summary>source <span class="muted">23 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">741
-742
-743
-744
-745
-746
-747
-748
-749
-750
-751
+    <details class="source"><summary>source <span class="muted">23 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">751
 752
 753
 754
@@ -3316,7 +3324,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 760
 761
 762
-763</pre><pre class="src"><code><span class="k">function</span> costume(pat, bp = {}, rs, weather = <span class="n">0</span>) {
+763
+764
+765
+766
+767
+768
+769
+770
+771
+772
+773</pre><pre class="src"><code><span class="k">function</span> costume(pat, bp = {}, rs, weather = <span class="n">0</span>) {
   <span class="k">let</span> x = pat;
   <span class="k">if</span> (bp.speed) x = x.speed(bp.speed);
   <span class="k">if</span> (bp.reverse) x = x.sometimesBy(bp.reverse, (y) =&gt; y.speed(-(bp.speed ?? <span class="n">1</span>)));
@@ -3345,17 +3363,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--dub">dub</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:763</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:773</a>
     </header>
     <pre class="sig"><code>dub(pat, spec, tension, boost = 0)</code></pre>
     <div class="doc"><p>The dub rail (forest floor): a dotted-eighth feedback delay against the 4/4 (<span class="ref sec" title="a section of the theory docs in docs/">§1.4</span>'s cross-rhythm, <span class="ref sec" title="a section of the theory docs in docs/">§9.3</span>'s dub). Applied to the SNARE and the LEAD only — the two layers whose transients can afford to be answered.</p></div>
     
-    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">763
-764
-765
-766
-767
-768</pre><pre class="src"><code><span class="k">function</span> dub(pat, spec, tension, boost = <span class="n">0</span>) {
+    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">773
+774
+775
+776
+777
+778</pre><pre class="src"><code><span class="k">function</span> dub(pat, spec, tension, boost = <span class="n">0</span>) {
   <span class="k">if</span> (!spec) <span class="k">return</span> pat;
   <span class="k">const</span> [base, span] = spec.feedback ?? [<span class="n">0.34</span>, <span class="n">0.3</span>];
   <span class="k">const</span> fb = Math.min(<span class="n">0.96</span>, base + span * tension + boost);
@@ -3367,22 +3385,12 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--pluckLayer">pluckLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:776</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:786</a>
     </header>
     <pre class="sig"><code>pluckLayer(ctx, pk, mode, tuning, rng, rs)</code></pre>
     <div class="doc"><p>The migrating pluck (<span class="ref sec" title="a section of the theory docs in docs/">§7.2</span>'s stream-ambiguous token). One instrument in every track, walking across stream space over the whole set: dry, gridded and on the drum orbit in the undergrowth; drowned, unmetered and on the ether orbit at the zenith. The set's slowest-moving variable.</p></div>
     
-    <details class="source"><summary>source <span class="muted">24 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">776
-777
-778
-779
-780
-781
-782
-783
-784
-785
-786
+    <details class="source"><summary>source <span class="muted">24 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">786
 787
 788
 789
@@ -3395,7 +3403,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 796
 797
 798
-799</pre><pre class="src"><code><span class="k">function</span> pluckLayer(ctx, pk, mode, tuning, rng, rs) {
+799
+800
+801
+802
+803
+804
+805
+806
+807
+808
+809</pre><pre class="src"><code><span class="k">function</span> pluckLayer(ctx, pk, mode, tuning, rng, rs) {
   <span class="k">const</span> { note } = ctx;
   <span class="k">const</span> scale = leadNotes(mode, pk.oct ?? <span class="n">0</span>, tuning);
   <span class="k">const</span> mask = euclid(pk.k ?? <span class="n">3</span>, <span class="n">16</span>, Math.floor(rng() * <span class="n">16</span>));
@@ -3425,7 +3443,7 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--stabLayer">stabLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:819</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:829</a>
     </header>
     <pre class="sig"><code>stabLayer(ctx, sb, chord, tension, rng, rs)</code></pre>
     <div class="doc"><p>P3 — the stab (forest floor): the genre signifier this set never had.</p>
@@ -3433,17 +3451,7 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 <p>That envelope is the point. It is the first use of <code>lpenv</code>/<code>lpdecay</code> in this project, and it is the mechanism behind most of what &quot;produced&quot; means in this genre — a sound whose brightness has a <em>shape</em> rather than a value. Because the decay is short and the resonance is up, the stab reads as <strong>hard</strong> rather than <strong>lit</strong>, which is what lets the forest floor have punctuation without breaking its &quot;wet, not lit&quot; rule (<span class="ref sec" title="a section of the theory docs in docs/">§4.2</span>'s forbidden list).</p>
 <p>It takes the pad's own chord, so it spends no new pitch material and follows N3's planing for free.</p></div>
     
-    <details class="source"><summary>source <span class="muted">26 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">819
-820
-821
-822
-823
-824
-825
-826
-827
-828
-829
+    <details class="source"><summary>source <span class="muted">26 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">829
 830
 831
 832
@@ -3458,7 +3466,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 841
 842
 843
-844</pre><pre class="src"><code><span class="k">function</span> stabLayer(ctx, sb, chord, tension, rng, rs) {
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854</pre><pre class="src"><code><span class="k">function</span> stabLayer(ctx, sb, chord, tension, rng, rs) {
   <span class="k">const</span> { note } = ctx;
   <span class="c">// the syncopated eighths: off the anchors the skeleton holds down, so the</span>
   <span class="c">// stab lands in the holes rather than doubling the backbeat</span>
@@ -3490,24 +3508,14 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--stridulateLayer">stridulateLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:861</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:871</a>
     </header>
     <pre class="sig"><code>stridulateLayer(ctx, st, phraseIndex, seed, rs)</code></pre>
     <div class="doc"><p>P2 — the stridulator (undergrowth): a cricket with a rhythm.</p>
 <p>The undergrowth's problem was measurable rather than aesthetic: 2–8 kHz was half a percent of the mix, and muting the hats changed that number by zero. The track's brief forbids anything above octave 5, which rules out putting a shimmer up there — so the top end has to arrive as a <em>creature</em>, which the lid was never meant to exclude.</p>
 <p>Band-passed noise at ~3.6 kHz with a very high Q is one stridulating insect; chopping it with a tempo-synced tremolo gives it the pulse a real one has. The first use of superdough's band-pass filter and of <code>tremolo*</code> anywhere in this project. It rides <code>layerPresenceAt</code>, so it comes and goes in episodes rather than sitting on top of the arrangement — a chorus you notice stopping.</p></div>
     
-    <details class="source"><summary>source <span class="muted">20 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">861
-862
-863
-864
-865
-866
-867
-868
-869
-870
-871
+    <details class="source"><summary>source <span class="muted">20 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">871
 872
 873
 874
@@ -3516,7 +3524,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 877
 878
 879
-880</pre><pre class="src"><code><span class="k">function</span> stridulateLayer(ctx, st, phraseIndex, seed, rs) {
+880
+881
+882
+883
+884
+885
+886
+887
+888
+889
+890</pre><pre class="src"><code><span class="k">function</span> stridulateLayer(ctx, st, phraseIndex, seed, rs) {
   <span class="k">const</span> { s } = ctx;
   <span class="c">// presence walk, same machinery the ambience accents ride (D16): this is a</span>
   <span class="c">// creature, and creatures are not session players</span>
@@ -3542,23 +3560,13 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--breathLayer">breathLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:892</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:902</a>
     </header>
     <pre class="sig"><code>breathLayer(ctx, br, mode, tuning, rng, w, tension, rs)</code></pre>
     <div class="doc"><p>The breath voice (forest floor): bamboo/duduk-ish — a tone with living pitch (vibrato) plus its own band of air on the same envelope. The first thing in the set with a body. Returns [tone, air].</p>
 <p>The air is a separate layer rather than superdough's <code>noise</code> control on the oscillator: that control routes through <code>drywet</code>, whose teardown disconnects an oscillator the voice has usually already released — one console error per note. Stacking our own noise costs nothing and lets it be filtered apart.</p></div>
     
-    <details class="source"><summary>source <span class="muted">28 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">892
-893
-894
-895
-896
-897
-898
-899
-900
-901
-902
+    <details class="source"><summary>source <span class="muted">28 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">902
 903
 904
 905
@@ -3575,7 +3583,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 916
 917
 918
-919</pre><pre class="src"><code><span class="k">function</span> breathLayer(ctx, br, mode, tuning, rng, w, tension, rs) {
+919
+920
+921
+922
+923
+924
+925
+926
+927
+928
+929</pre><pre class="src"><code><span class="k">function</span> breathLayer(ctx, br, mode, tuning, rng, w, tension, rs) {
   <span class="k">const</span> { note, s } = ctx;
   <span class="k">const</span> contour = leadContour(rng, w); <span class="c">// the set's cell, not a new tune</span>
   <span class="k">const</span> scale = leadNotes(mode, br.oct ?? <span class="n">1</span>, tuning);
@@ -3609,22 +3627,22 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--choirLayer">choirLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:926</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:936</a>
     </header>
     <pre class="sig"><code>choirLayer(ctx, ch, chord, brightness, rs)</code></pre>
     <div class="doc"><p>The vowel choir (canopy). The voice is the strongest attractor in the mix, so it is spent exactly once per set — at the golden-ratio climax, and nowhere else. Formant follows brightness: 'a' opening toward 'o' as the light rises.</p></div>
     
-    <details class="source"><summary>source <span class="muted">11 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">926
-927
-928
-929
-930
-931
-932
-933
-934
-935
-936</pre><pre class="src"><code><span class="k">function</span> choirLayer(ctx, ch, chord, brightness, rs) {
+    <details class="source"><summary>source <span class="muted">11 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">936
+937
+938
+939
+940
+941
+942
+943
+944
+945
+946</pre><pre class="src"><code><span class="k">function</span> choirLayer(ctx, ch, chord, brightness, rs) {
   <span class="k">const</span> { note } = ctx;
   <span class="k">return</span> note(<span class="s">`[${chord.map(fmt).join(',')}]`</span>)
     .s(<span class="s">'sawtooth'</span>)
@@ -3641,26 +3659,26 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--bowlLayer">bowlLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:943</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:953</a>
     </header>
     <pre class="sig"><code>bowlLayer(ctx, bw, mode, tuning, rs)</code></pre>
     <div class="doc"><p>The glass bowl (zenith): Chowning-ratio FM over a quartal stack in stretched tuning — inharmonic partials with nothing to resolve to. One strike every two phrases; the sparsest thing in the set.</p></div>
     
-    <details class="source"><summary>source <span class="muted">15 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">943
-944
-945
-946
-947
-948
-949
-950
-951
-952
-953
+    <details class="source"><summary>source <span class="muted">15 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">953
 954
 955
 956
-957</pre><pre class="src"><code><span class="k">function</span> bowlLayer(ctx, bw, mode, tuning, rs) {
+957
+958
+959
+960
+961
+962
+963
+964
+965
+966
+967</pre><pre class="src"><code><span class="k">function</span> bowlLayer(ctx, bw, mode, tuning, rs) {
   <span class="k">const</span> { note } = ctx;
   <span class="k">const</span> voices = [<span class="n">1</span>, <span class="n">5</span>, <span class="n">9</span>].map((d) =&gt; fmt(tune(degreeToMidi(d, mode, bw.oct ?? <span class="n">2</span>), tuning)));
   <span class="k">return</span> note(<span class="s">`[${voices.join(',')}]`</span>)
@@ -3681,22 +3699,12 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--ghostLayer">ghostLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:965</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:975</a>
     </header>
     <pre class="sig"><code>ghostLayer(ctx, gh, rng, breakSound, rs)</code></pre>
     <div class="doc"><p>The granular ghost (zenith): the break itself, in grains — half speed, often reversed, drowned, with no skeleton under it. <span class="ref sec" title="a section of the theory docs in docs/">§3.4</span>'s timestretch artifact heard as weather, and the audio sibling of the corpus shrine (<a class="ref adr" href="../design_decisions.md#d25-the-corpus-shrine-is-self-corpus-the-world-films-itself-2026-07-26" title="The corpus shrine is self-corpus: the world films itself (2026-07-26)">D25</a>): at the top of the set, the piece plays back its own earlier material as ether.</p></div>
     
-    <details class="source"><summary>source <span class="muted">22 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">965
-966
-967
-968
-969
-970
-971
-972
-973
-974
-975
+    <details class="source"><summary>source <span class="muted">22 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">975
 976
 977
 978
@@ -3707,7 +3715,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 983
 984
 985
-986</pre><pre class="src"><code><span class="k">function</span> ghostLayer(ctx, gh, rng, breakSound, rs) {
+986
+987
+988
+989
+990
+991
+992
+993
+994
+995
+996</pre><pre class="src"><code><span class="k">function</span> ghostLayer(ctx, gh, rng, breakSound, rs) {
   <span class="k">const</span> { s } = ctx;
   <span class="k">const</span> mask = euclid(gh.grains ?? <span class="n">5</span>, <span class="n">16</span>, Math.floor(rng() * <span class="n">16</span>));
   <span class="k">const</span> grid = { snd: [], begin: [], end: [], speed: [], pan: [] };
@@ -3735,25 +3753,25 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--hooverLayer">hooverLayer</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:992</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:1002</a>
     </header>
     <pre class="sig"><code>hooverLayer(ctx, hv, mode, tuning, rs)</code></pre>
     <div class="doc"><p>The hoover (canopy, spent once): the rave-lineage lead-weapon on the drop bar. Detuned saws with a downward pitch envelope — 1992, once, never again.</p></div>
     
-    <details class="source"><summary>source <span class="muted">14 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">992
-993
-994
-995
-996
-997
-998
-999
-1000
-1001
-1002
+    <details class="source"><summary>source <span class="muted">14 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1002
 1003
 1004
-1005</pre><pre class="src"><code><span class="k">function</span> hooverLayer(ctx, hv, mode, tuning, rs) {
+1005
+1006
+1007
+1008
+1009
+1010
+1011
+1012
+1013
+1014
+1015</pre><pre class="src"><code><span class="k">function</span> hooverLayer(ctx, hv, mode, tuning, rs) {
   <span class="k">const</span> { note } = ctx;
   <span class="k">const</span> root = tune(degreeToMidi(<span class="n">1</span>, mode, <span class="n">1</span>), tuning);
   <span class="k">const</span> voices = [root - <span class="n">0.07</span>, root, root + <span class="n">0.07</span>].map(fmt);
@@ -3773,22 +3791,12 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--makeSetPattern">makeSetPattern</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:1016</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:1026</a>
     </header>
     <pre class="sig"><code>makeSetPattern(ctx, p, signals)</code></pre>
     <div class="doc"><p>The set compiler (<a class="ref adr" href="../design_decisions.md#d9-bar-exact-seams-cycle-keyed-set-compiler-bar-quantized-timeline-2026-07-26" title="Bar-exact seams: cycle-keyed set compiler, bar-quantized timeline (2026-07-26)">D9</a> — bar-exact seams). Returns ONE pattern that covers the whole looping set, keyed to the scheduler's absolute cycle count: cycle c is bar c of the set (mod SET_BARS), phrase floor(c/4). Each phrase's arrangement is compiled lazily and deterministically (seeded by phrase index), so seam phase edges land sample-exactly on phrase lines regardless of when setPattern is called — swapping in a freshly built pattern with the same params yields identical events. <code>signals</code> = { tensionAt, brightnessAt }.</p></div>
     
-    <details class="source"><summary>source <span class="muted">69 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1016
-1017
-1018
-1019
-1020
-1021
-1022
-1023
-1024
-1025
-1026
+    <details class="source"><summary>source <span class="muted">69 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1026
 1027
 1028
 1029
@@ -3846,7 +3854,17 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1081
 1082
 1083
-1084</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeSetPattern(ctx, p, signals) {
+1084
+1085
+1086
+1087
+1088
+1089
+1090
+1091
+1092
+1093
+1094</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeSetPattern(ctx, p, signals) {
   <span class="k">const</span> { Pattern } = ctx;
   <span class="k">const</span> cache = <span class="k">new</span> Map(); <span class="c">// phraseIndex → compiled 1-cycle pattern</span>
   <span class="k">const</span> phrasePattern = (idx) =&gt; {
@@ -3921,7 +3939,7 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="kind function">function</span>
       <h4><a href="#src-music-generators-js--buildArrangement">buildArrangement</a></h4>
       
-      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:1097</a>
+      <a class="srcref" href="../../src/music/generators.js" title="open the source file">generators.js:1107</a>
     </header>
     <pre class="sig"><code>buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {})</code></pre>
     <div class="doc"><p>Build one phrase's arrangement as a stacked 1-cycle pattern. <code>ctx</code> provides the pattern-building functions (from @strudel/core controls) so this module stays import-order agnostic. <code>p</code> is a bus params snapshot. <code>brightness</code> comes from the bus's authored walk; <code>seam</code> and <code>section</code> come from phraseStateAt — the seam makes the arrangement the seam operator (<span class="ref sec" title="a section of the theory docs in docs/">§6.3</span>), the section (<a class="ref adr" href="../design_decisions.md#d11-in-track-sections-tension-gates-the-arrangement-not-just-the-knobs-2026-07-26" title="In-track sections: tension gates the arrangement, not just the knobs (2026-07-26)">D11</a>) gates which layers exist at all: form is what plays, tension only shades how it plays. <code>ambience</code> = { current, incoming } biome bed names (<a class="ref adr" href="../design_decisions.md#d16-hat-breathing-barlow-accents-per-biome-ambience-beds-2026-07-26" title="Hat breathing + Barlow accents; per-biome ambience beds (2026-07-26)">D16</a>) — incoming is used for the seam crossfade. <code>voice</code> (<a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>) is the track's cast: warmth, tuning and palette.</p></div>
@@ -3930,19 +3948,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <h5>Walkthrough <span class="muted">— the annotated steps inside this function</span></h5>
       
         <div class="step">
-          <div class="step-head"><span class="step-title">section state (D11)</span><span class="muted">line 1114</span></div>
+          <div class="step-head"><span class="step-title">section state (D11)</span><span class="muted">line 1124</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1114
-1115
-1116
-1117
-1118
-1119
-1120
-1121
-1122
-1123
-1124
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1124
 1125
 1126
 1127
@@ -4001,7 +4009,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1180
 1181
 1182
-1183</pre><pre class="src"><code>
+1183
+1184
+1185
+1186
+1187
+1188
+1189
+1190
+1191
+1192
+1193
+1194
+1195
+1196
+1197
+1198
+1199
+1200
+1201
+1202
+1203
+1204
+1205
+1206
+1207
+1208
+1209</pre><pre class="src"><code>
   <span class="k">const</span> sec = section?.name ?? <span class="s">'groove'</span>;
   <span class="k">const</span> lastPhraseOf = section ? section.phraseInSection === section.sectionPhrases - <span class="n">1</span> : <span class="l">false</span>;
   <span class="k">const</span> firstPhraseOf = section ? section.phraseInSection === <span class="n">0</span> : <span class="l">false</span>;
@@ -4066,44 +4100,60 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
     : <span class="l">null</span>;
   <span class="c">/** Apply a drop variant's mask for one layer family, if it has one. */</span>
   <span class="k">const</span> held = (pat, family) =&gt; (drop?.[family] ? pat.mask(drop[family]) : pat);
-  <span class="k">const</span> gate = (pat) =&gt; (dropout ? pat.mask(<span class="s">'[1 1 1 0]/4'</span>) : pat);
+  <span class="c">/**
+   * R4 — holes. `gate` used to serve exactly one caller: the build2 dropout
+   * bar. It is a general device and the set's entire silence budget was about
+   * six seconds in 389, so it now also carries a per-section HOLES table.
+   *
+   * Mini-notation nests, so sub-bar holes cost nothing: `[1 1 1 [1 1 0 0]]/4`
+   * empties the second half of the phrase's last bar. The release gets one,
+   * because a track that is letting go should occasionally stop talking, and
+   * the hole lands where R1 would otherwise have put a turnaround — the two
+   * read as one gesture, a fill that falls into a gap.
+   */</span>
+  <span class="k">const</span> hole = HOLES[sec];
+  <span class="k">const</span> gate = (pat) =&gt; {
+    <span class="k">let</span> x = dropout ? pat.mask(<span class="s">'[1 1 1 0]/4'</span>) : pat;
+    <span class="k">if</span> (hole &amp;&amp; !seam?.active) x = x.mask(hole);
+    <span class="k">return</span> x;
+  };
 
   <span class="k">const</span> layers = [];
 
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">drums: the break (figure) — sharp, dry, narrow, double-time</span><span class="muted">line 1183</span></div>
+          <div class="step-head"><span class="step-title">drums: the break (figure) — sharp, dry, narrow, double-time</span><span class="muted">line 1209</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1183
-1184
-1185
-1186
-1187
-1188
-1189
-1190
-1191
-1192
-1193
-1194
-1195
-1196
-1197
-1198
-1199
-1200
-1201
-1202
-1203
-1204
-1205
-1206
-1207
-1208
-1209
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1209
 1210
-1211</pre><pre class="src"><code>
+1211
+1212
+1213
+1214
+1215
+1216
+1217
+1218
+1219
+1220
+1221
+1222
+1223
+1224
+1225
+1226
+1227
+1228
+1229
+1230
+1231
+1232
+1233
+1234
+1235
+1236
+1237</pre><pre class="src"><code>
   <span class="k">if</span> (breakIn) {
     <span class="k">const</span> bp = pal.<span class="k">break</span> ?? {};
     <span class="k">const</span> thin = sec === <span class="s">'build'</span>; <span class="c">// degraded entry: the break fades in over the build</span>
@@ -4134,35 +4184,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">skeleton: the metric anchor (§1.2) — strength rises with tension</span><span class="muted">line 1211</span></div>
+          <div class="step-head"><span class="step-title">skeleton: the metric anchor (§1.2) — strength rises with tension</span><span class="muted">line 1237</span></div>
           <p>Kick and snare split so ONLY the kick carries the sidechain: the audio duck now mirrors the visual duck — one coupling constant, both media. <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>: warmth affirms the backbeat — the canopy's snare leans in, the zenith's is thinned toward absence. Same skeleton, different conviction.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1215
-1216
-1217
-1218
-1219
-1220
-1221
-1222
-1223
-1224
-1225
-1226
-1227
-1228
-1229
-1230
-1231
-1232
-1233
-1234
-1235
-1236
-1237
-1238
-1239
-1240
-1241
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1241
 1242
 1243
 1244
@@ -4237,7 +4261,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1313
 1314
 1315
-1316</pre><pre class="src"><code>
+1316
+1317
+1318
+1319
+1320
+1321
+1322
+1323
+1324
+1325
+1326
+1327
+1328
+1329
+1330
+1331
+1332
+1333
+1334
+1335
+1336
+1337
+1338
+1339
+1340
+1341
+1342</pre><pre class="src"><code>
   <span class="k">const</span> anchorStrength =
     Math.min(<span class="n">1</span>, <span class="n">0.45</span> + <span class="n">0.5</span> * tension + (sec === <span class="s">'peak'</span> ? <span class="n">0.15</span> : <span class="n">0</span>)) * (sec === <span class="s">'build'</span> ? <span class="n">0.7</span> : <span class="n">1</span>);
   <span class="k">const</span> backbeat = anchorStrength * (<span class="n">0.75</span> + <span class="n">0.5</span> * warmth);
@@ -4341,35 +4391,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">hats: breathing presence + Barlow accents (D16)</span><span class="muted">line 1316</span></div>
+          <div class="step-head"><span class="step-title">hats: breathing presence + Barlow accents (D16)</span><span class="muted">line 1342</span></div>
           <p>A flat 16-grid at one gain was fatiguing. Presence now draws per phrase (full / sparse / off, section-weighted — the hats <em>rest</em>), velocities follow inverse indispensability (accents push against the grid the skeleton holds down), and levels sit lower with density capped at 6. <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>: the hat is a costume too — damp and closed in the undergrowth, bright at the canopy, and at the zenith not a hat at all but a high-passed hiss on the same mask: rhythm surviving as texture.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1323
-1324
-1325
-1326
-1327
-1328
-1329
-1330
-1331
-1332
-1333
-1334
-1335
-1336
-1337
-1338
-1339
-1340
-1341
-1342
-1343
-1344
-1345
-1346
-1347
-1348
-1349
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1349
 1350
 1351
 1352
@@ -4401,7 +4425,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1378
 1379
 1380
-1381</pre><pre class="src"><code>
+1381
+1382
+1383
+1384
+1385
+1386
+1387
+1388
+1389
+1390
+1391
+1392
+1393
+1394
+1395
+1396
+1397
+1398
+1399
+1400
+1401
+1402
+1403
+1404
+1405
+1406
+1407</pre><pre class="src"><code>
   <span class="k">if</span> (!ambient &amp;&amp; !dissolveExit &amp;&amp; !silent) { <span class="c">// D18: on a dissolve the hats leave with the promise</span>
     <span class="k">const</span> hp = pal.hats ?? {};
     <span class="k">let</span> hatMode;
@@ -4462,35 +4512,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">bass: isorhythm — talea E(k,16) × pentatonic color walk (lcm cycling)</span><span class="muted">line 1381</span></div>
+          <div class="step-head"><span class="step-title">bass: isorhythm — talea E(k,16) × pentatonic color walk (lcm cycling)</span><span class="muted">line 1407</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1381
-1382
-1383
-1384
-1385
-1386
-1387
-1388
-1389
-1390
-1391
-1392
-1393
-1394
-1395
-1396
-1397
-1398
-1399
-1400
-1401
-1402
-1403
-1404
-1405
-1406
-1407
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1407
 1408
 1409
 1410
@@ -4584,7 +4608,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1498
 1499
 1500
-1501</pre><pre class="src"><code>
+1501
+1502
+1503
+1504
+1505
+1506
+1507
+1508
+1509
+1510
+1511
+1512
+1513
+1514
+1515
+1516
+1517
+1518
+1519
+1520
+1521
+1522
+1523
+1524
+1525
+1526
+1527</pre><pre class="src"><code>
   <span class="k">if</span> (bassIn) { <span class="c">// the floor leaves with the drums; the drop restores it whole</span>
     <span class="k">const</span> bp = pal.bass ?? {};
     <span class="c">// the zenith's floor is absent for whole phrases (altitude = nothing</span>
@@ -4707,27 +4757,27 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">landing arrival (D18): the boundary hit and its afterglow</span><span class="muted">line 1501</span></div>
+          <div class="step-head"><span class="step-title">landing arrival (D18): the boundary hit and its afterglow</span><span class="muted">line 1527</span></div>
           <p>One impact tail exactly on the new track's downbeat (the sample rings past the bar on its own), and the floor as <em>promise</em>: a one-note root pedal in whole notes, fading with the heartbeat. Both exist only in intro phrase 0.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1504
-1505
-1506
-1507
-1508
-1509
-1510
-1511
-1512
-1513
-1514
-1515
-1516
-1517
-1518
-1519
-1520
-1521
-1522</pre><pre class="src"><code>
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1530
+1531
+1532
+1533
+1534
+1535
+1536
+1537
+1538
+1539
+1540
+1541
+1542
+1543
+1544
+1545
+1546
+1547
+1548</pre><pre class="src"><code>
   <span class="k">if</span> (landingArrival) {
     layers.push(
       <span class="c">// D36 — halved: the impact marks the boundary, it no longer announces it</span>
@@ -4748,35 +4798,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">pads: the ether (ground) — slow, wide, drowned, half-time and slower</span><span class="muted">line 1522</span></div>
+          <div class="step-head"><span class="step-title">pads: the ether (ground) — slow, wide, drowned, half-time and slower</span><span class="muted">line 1548</span></div>
           <p>Survives the seam AND the dropout untouched: the continuity layer, the common tone (<span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>). In the breakdown it swells — the ether becomes figure. <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>: warmth chooses the voicing (glad 6th / neutral 7th / third-less quartal) and the track's tuning decides whether it locks or shimmers — this is where &quot;bright but not happy&quot; is actually implemented.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1527
-1528
-1529
-1530
-1531
-1532
-1533
-1534
-1535
-1536
-1537
-1538
-1539
-1540
-1541
-1542
-1543
-1544
-1545
-1546
-1547
-1548
-1549
-1550
-1551
-1552
-1553
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1553
 1554
 1555
 1556
@@ -4837,7 +4861,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1611
 1612
 1613
-1614</pre><pre class="src"><code>
+1614
+1615
+1616
+1617
+1618
+1619
+1620
+1621
+1622
+1623
+1624
+1625
+1626
+1627
+1628
+1629
+1630
+1631
+1632
+1633
+1634
+1635
+1636
+1637
+1638
+1639
+1640</pre><pre class="src"><code>
   <span class="k">const</span> pp = pal.pad ?? {};
   <span class="k">const</span> swell = sec === <span class="s">'breakdown'</span>;
   <span class="c">// N3 — the plane cycle. `palette.pad.plane` lists diatonic step offsets and</span>
@@ -4927,34 +4977,34 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1614</span></div>
+          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1640</span></div>
           <p>The block chord is the continuity layer and must stay a block — it is the common tone across the seam (<span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>), so it cannot start arpeggiating. The movement therefore goes to a SEPARATE quiet voice an octave up, walking the same chord tones one at a time. Same harmony, but something is audibly moving. Loudest exactly where the complaint was — the early sections, where the arrangement is otherwise a held pad and a heartbeat.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1620
-1621
-1622
-1623
-1624
-1625
-1626
-1627
-1628
-1629
-1630
-1631
-1632
-1633
-1634
-1635
-1636
-1637
-1638
-1639
-1640
-1641
-1642
-1643
-1644
-1645</pre><pre class="src"><code>
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1646
+1647
+1648
+1649
+1650
+1651
+1652
+1653
+1654
+1655
+1656
+1657
+1658
+1659
+1660
+1661
+1662
+1663
+1664
+1665
+1666
+1667
+1668
+1669
+1670
+1671</pre><pre class="src"><code>
     <span class="k">if</span> (motion &gt; <span class="n">0.5</span>) {
       <span class="k">const</span> tones = padVoicing(mode, warmth, { oct: (pp.oct ?? <span class="n">1</span>) + <span class="n">1</span>, tuning, width: <span class="n">0</span> });
       layers.push(
@@ -4982,35 +5032,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1645</span></div>
+          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1671</span></div>
           <p>ambience.current = [bed, ...accents]: 32-bar field recordings played one phrase-long slice at a time — chunk <code>c</code> advances with the phrase index, so consecutive phrases play consecutive audio and the loop only repeats every AMB_BARS. Retriggers stay phrase-aligned (slow(4) at absolute cycles), which is what keeps biome changes and the seam crossfade landing on their bars. The bed is always on — loud where the ether is figure (intro/breakdown/seam), tucked under the full arrangement elsewhere. Accent layers ride slow presence walks: below threshold they rest, above it their gain follows the walk (the walk is continuous through the threshold, so entries fade rather than pop). During the seam the INCOMING biome's bed crossfades in early — <span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>'s infiltrating ether. Envelopes are deliberately near-instant: superdough keeps the source playing for <code>release</code> past the event end, and since the next chunk starts on that same audio, any real release would sum the recording with itself.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1659
-1660
-1661
-1662
-1663
-1664
-1665
-1666
-1667
-1668
-1669
-1670
-1671
-1672
-1673
-1674
-1675
-1676
-1677
-1678
-1679
-1680
-1681
-1682
-1683
-1684
-1685
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1685
 1686
 1687
 1688
@@ -5027,7 +5051,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1699
 1700
 1701
-1702</pre><pre class="src"><code>
+1702
+1703
+1704
+1705
+1706
+1707
+1708
+1709
+1710
+1711
+1712
+1713
+1714
+1715
+1716
+1717
+1718
+1719
+1720
+1721
+1722
+1723
+1724
+1725
+1726
+1727
+1728</pre><pre class="src"><code>
   <span class="k">if</span> (ambience?.current?.length) {
     <span class="k">const</span> chunk = ((ambience.phraseIndex ?? <span class="n">0</span>) % AMB_CHUNKS + AMB_CHUNKS) % AMB_CHUNKS;
     <span class="c">// D30 — how loud, and how often, the biome is: part of the cast like</span>
@@ -5073,35 +5123,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1702</span></div>
+          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1728</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1702
-1703
-1704
-1705
-1706
-1707
-1708
-1709
-1710
-1711
-1712
-1713
-1714
-1715
-1716
-1717
-1718
-1719
-1720
-1721
-1722
-1723
-1724
-1725
-1726
-1727
-1728
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1728
 1729
 1730
 1731
@@ -5119,7 +5143,33 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1743
 1744
 1745
-1746</pre><pre class="src"><code>
+1746
+1747
+1748
+1749
+1750
+1751
+1752
+1753
+1754
+1755
+1756
+1757
+1758
+1759
+1760
+1761
+1762
+1763
+1764
+1765
+1766
+1767
+1768
+1769
+1770
+1771
+1772</pre><pre class="src"><code>
   <span class="k">if</span> (leadPresent) {
     <span class="k">const</span> lp = pal.lead ?? {};
     <span class="k">const</span> featured = sec === <span class="s">'breakdown'</span>;
@@ -5166,35 +5216,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1746</span></div>
+          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1772</span></div>
           <p>The migrating pluck plays everywhere except the ambient sections (where the ether is the figure) — and its costume is what changes across the set.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1748
-1749
-1750
-1751
-1752
-1753
-1754
-1755
-1756
-1757
-1758
-1759
-1760
-1761
-1762
-1763
-1764
-1765
-1766
-1767
-1768
-1769
-1770
-1771
-1772
-1773
-1774
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1774
 1775
 1776
 1777
@@ -5268,7 +5292,43 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1845
 1846
 1847
-1848</pre><pre class="src"><code>
+1848
+1849
+1850
+1851
+1852
+1853
+1854
+1855
+1856
+1857
+1858
+1859
+1860
+1861
+1862
+1863
+1864
+1865
+1866
+1867
+1868
+1869
+1870
+1871
+1872
+1873
+1874
+1875
+1876
+1877
+1878
+1879
+1880
+1881
+1882
+1883
+1884</pre><pre class="src"><code>
   <span class="k">if</span> (pal.pluck &amp;&amp; castIn &amp;&amp; !ambient) {
     <span class="k">const</span> pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng, rs);
     <span class="k">if</span> (pluck) layers.push(gate(pluck));
@@ -5313,8 +5373,18 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
     <span class="k">if</span> (call) layers.push(call);
   }
   <span class="k">if</span> (pal.bowl &amp;&amp; castIn) layers.push(bowlLayer(ctx, pal.bowl, mode, tuning, rs));
-  <span class="k">if</span> (pal.ghost &amp;&amp; castIn &amp;&amp; !ambient) {
-    layers.push(gate(ghostLayer(ctx, pal.ghost, rng, pal.<span class="k">break</span>?.s ?? <span class="s">'jbreak'</span>, rs)));
+  <span class="c">// R4 — the granular ghost, in the section it was written for. The backlog's</span>
+  <span class="c">// &quot;granular/halfspeed break ghost — the drums heard as *weather*&quot; is exactly</span>
+  <span class="c">// this layer, and it was gated `!ambient`, which excludes the breakdown: the</span>
+  <span class="c">// one section with no drums, and therefore the only one where a drum-shaped</span>
+  <span class="c">// texture can be heard as weather rather than as drums. The gate stays for</span>
+  <span class="c">// the intro (nothing has been stated yet, so there is nothing to ghost).</span>
+  <span class="k">if</span> (pal.ghost &amp;&amp; castIn &amp;&amp; sec !== <span class="s">'intro'</span>) {
+    <span class="k">const</span> inBreakdown = sec === <span class="s">'breakdown'</span>;
+    <span class="k">const</span> g = ghostLayer(ctx, pal.ghost, rng, pal.<span class="k">break</span>?.s ?? <span class="s">'jbreak'</span>, rs);
+    <span class="c">// in the breakdown it is the figure rather than a haze under one, so it</span>
+    <span class="c">// comes up and slows down — the timestretch artifact §3.4 asks for</span>
+    layers.push(gate(inBreakdown ? g.gain((pal.ghost.gain ?? <span class="n">0.15</span>) * <span class="n">1.9</span>).slow(<span class="n">2</span>) : g));
   }
   <span class="c">// spent once: the hoover, on the canopy's drop bar. 1992, once, never again.</span>
   <span class="k">if</span> (pal.hoover &amp;&amp; sec === <span class="s">'peak'</span> &amp;&amp; firstPhraseOf &amp;&amp; !silent) {
@@ -5371,17 +5441,7 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 </code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">752 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1097
-1098
-1099
-1100
-1101
-1102
-1103
-1104
-1105
-1106
-1107
+    <details class="source"><summary>source <span class="muted">778 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1107
 1108
 1109
 1110
@@ -6122,7 +6182,43 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1845
 1846
 1847
-1848</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
+1848
+1849
+1850
+1851
+1852
+1853
+1854
+1855
+1856
+1857
+1858
+1859
+1860
+1861
+1862
+1863
+1864
+1865
+1866
+1867
+1868
+1869
+1870
+1871
+1872
+1873
+1874
+1875
+1876
+1877
+1878
+1879
+1880
+1881
+1882
+1883
+1884</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
   <span class="k">const</span> { s, note, stack } = ctx;
   <span class="k">const</span> rng = makeRng(p.seed);
   <span class="k">const</span> mode = modeAt(brightness);
@@ -6204,7 +6300,23 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
     : <span class="l">null</span>;
   <span class="c">/** Apply a drop variant's mask for one layer family, if it has one. */</span>
   <span class="k">const</span> held = (pat, family) =&gt; (drop?.[family] ? pat.mask(drop[family]) : pat);
-  <span class="k">const</span> gate = (pat) =&gt; (dropout ? pat.mask(<span class="s">'[1 1 1 0]/4'</span>) : pat);
+  <span class="c">/**
+   * R4 — holes. `gate` used to serve exactly one caller: the build2 dropout
+   * bar. It is a general device and the set's entire silence budget was about
+   * six seconds in 389, so it now also carries a per-section HOLES table.
+   *
+   * Mini-notation nests, so sub-bar holes cost nothing: `[1 1 1 [1 1 0 0]]/4`
+   * empties the second half of the phrase's last bar. The release gets one,
+   * because a track that is letting go should occasionally stop talking, and
+   * the hole lands where R1 would otherwise have put a turnaround — the two
+   * read as one gesture, a fill that falls into a gap.
+   */</span>
+  <span class="k">const</span> hole = HOLES[sec];
+  <span class="k">const</span> gate = (pat) =&gt; {
+    <span class="k">let</span> x = dropout ? pat.mask(<span class="s">'[1 1 1 0]/4'</span>) : pat;
+    <span class="k">if</span> (hole &amp;&amp; !seam?.active) x = x.mask(hole);
+    <span class="k">return</span> x;
+  };
 
   <span class="k">const</span> layers = [];
 
@@ -6818,8 +6930,18 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
     <span class="k">if</span> (call) layers.push(call);
   }
   <span class="k">if</span> (pal.bowl &amp;&amp; castIn) layers.push(bowlLayer(ctx, pal.bowl, mode, tuning, rs));
-  <span class="k">if</span> (pal.ghost &amp;&amp; castIn &amp;&amp; !ambient) {
-    layers.push(gate(ghostLayer(ctx, pal.ghost, rng, pal.<span class="k">break</span>?.s ?? <span class="s">'jbreak'</span>, rs)));
+  <span class="c">// R4 — the granular ghost, in the section it was written for. The backlog's</span>
+  <span class="c">// &quot;granular/halfspeed break ghost — the drums heard as *weather*&quot; is exactly</span>
+  <span class="c">// this layer, and it was gated `!ambient`, which excludes the breakdown: the</span>
+  <span class="c">// one section with no drums, and therefore the only one where a drum-shaped</span>
+  <span class="c">// texture can be heard as weather rather than as drums. The gate stays for</span>
+  <span class="c">// the intro (nothing has been stated yet, so there is nothing to ghost).</span>
+  <span class="k">if</span> (pal.ghost &amp;&amp; castIn &amp;&amp; sec !== <span class="s">'intro'</span>) {
+    <span class="k">const</span> inBreakdown = sec === <span class="s">'breakdown'</span>;
+    <span class="k">const</span> g = ghostLayer(ctx, pal.ghost, rng, pal.<span class="k">break</span>?.s ?? <span class="s">'jbreak'</span>, rs);
+    <span class="c">// in the breakdown it is the figure rather than a haze under one, so it</span>
+    <span class="c">// comes up and slows down — the timestretch artifact §3.4 asks for</span>
+    layers.push(gate(inBreakdown ? g.gain((pal.ghost.gain ?? <span class="n">0.15</span>) * <span class="n">1.9</span>).slow(<span class="n">2</span>) : g));
   }
   <span class="c">// spent once: the hoover, on the canopy's drop bar. 1992, once, never again.</span>
   <span class="k">if</span> (pal.hoover &amp;&amp; sec === <span class="s">'peak'</span> &amp;&amp; firstPhraseOf &amp;&amp; !silent) {
@@ -18681,7 +18803,7 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
     <p>130 of 157 exports carry a comment. The rest are listed here,
       which is the honest version of a documentation tool: the page cannot invent an explanation, so
       it says where one is missing.</p>
-    <ul class="gaps"><li><a href="#src-bus-js--makeRng"><code>makeRng</code></a> <span class="muted">src/bus.js:18</span></li><li><a href="#src-bus-js--makeDrift"><code>makeDrift</code></a> <span class="muted">src/bus.js:45</span></li><li><a href="#src-bus-js--SEAM_LATE_BARS"><code>SEAM_LATE_BARS</code></a> <span class="muted">src/bus.js:364</span></li><li><a href="#src-bus-js--SEAM_SECONDS"><code>SEAM_SECONDS</code></a> <span class="muted">src/bus.js:365</span></li><li><a href="#src-bus-js--SET_BARS"><code>SET_BARS</code></a> <span class="muted">src/bus.js:367</span></li><li><a href="#src-bus-js--SET_SECONDS"><code>SET_SECONDS</code></a> <span class="muted">src/bus.js:368</span></li><li><a href="#src-bus-js--bus"><code>bus</code></a> <span class="muted">src/bus.js:545</span></li><li><a href="#src-midi-js--initMidi"><code>initMidi</code></a> <span class="muted">src/midi.js:53</span></li><li><a href="#src-music-engine-js--initEngine"><code>initEngine</code></a> <span class="muted">src/music/engine.js:25</span></li><li><a href="#src-music-engine-js--toggle"><code>toggle</code></a> <span class="muted">src/music/engine.js:163</span></li><li><a href="#src-music-engine-js--stopEngine"><code>stopEngine</code></a> <span class="muted">src/music/engine.js:174</span></li><li><a href="#src-music-generators-js--euclid"><code>euclid</code></a> <span class="muted">src/music/generators.js:22</span></li><li><a href="#src-music-generators-js--SNARE_BAGS"><code>SNARE_BAGS</code></a> <span class="muted">src/music/generators.js:167</span></li><li><a href="#src-music-generators-js--SNARE_GHOSTS"><code>SNARE_GHOSTS</code></a> <span class="muted">src/music/generators.js:177</span></li><li><a href="#src-music-generators-js--dropVariantFor"><code>dropVariantFor</code></a> <span class="muted">src/music/generators.js:313</span></li><li><a href="#src-music-generators-js--SEAM_FILLS"><code>SEAM_FILLS</code></a> <span class="muted">src/music/generators.js:336</span></li><li><a href="#src-music-scales-js--bassNotes"><code>bassNotes</code></a> <span class="muted">src/music/scales.js:160</span></li><li><a href="#src-osc-js--initOsc"><code>initOsc</code></a> <span class="muted">src/osc.js:51</span></li><li><a href="#src-perform-js--PERFORM_KEYS"><code>PERFORM_KEYS</code></a> <span class="muted">src/perform.js:40</span></li><li><a href="#src-perform-js--EQ_MID_HZ"><code>EQ_MID_HZ</code></a> <span class="muted">src/perform.js:96</span></li><li><a href="#src-ui-js--initUI"><code>initUI</code></a> <span class="muted">src/ui.js:10</span></li><li><a href="#src-visuals-biomes-js--WORLD_TOP"><code>WORLD_TOP</code></a> <span class="muted">src/visuals/biomes.js:68</span></li><li><a href="#src-visuals-figure-js--initFigure"><code>initFigure</code></a> <span class="muted">src/visuals/figure.js:18</span></li><li><a href="#src-visuals-look-js--TINT_THIN"><code>TINT_THIN</code></a> <span class="muted">src/visuals/look.js:59</span></li><li><a href="#src-visuals-look-js--pitchAt"><code>pitchAt</code></a> <span class="muted">src/visuals/look.js:138</span></li><li><a href="#src-visuals-look-js--FOV_DOLLY"><code>FOV_DOLLY</code></a> <span class="muted">src/visuals/look.js:401</span></li><li><a href="#src-visuals-weather-js--WORLD_TOP_DEFAULT"><code>WORLD_TOP_DEFAULT</code></a> <span class="muted">src/visuals/weather.js:75</span></li></ul>
+    <ul class="gaps"><li><a href="#src-bus-js--makeRng"><code>makeRng</code></a> <span class="muted">src/bus.js:18</span></li><li><a href="#src-bus-js--makeDrift"><code>makeDrift</code></a> <span class="muted">src/bus.js:45</span></li><li><a href="#src-bus-js--SEAM_LATE_BARS"><code>SEAM_LATE_BARS</code></a> <span class="muted">src/bus.js:364</span></li><li><a href="#src-bus-js--SEAM_SECONDS"><code>SEAM_SECONDS</code></a> <span class="muted">src/bus.js:365</span></li><li><a href="#src-bus-js--SET_BARS"><code>SET_BARS</code></a> <span class="muted">src/bus.js:367</span></li><li><a href="#src-bus-js--SET_SECONDS"><code>SET_SECONDS</code></a> <span class="muted">src/bus.js:368</span></li><li><a href="#src-bus-js--bus"><code>bus</code></a> <span class="muted">src/bus.js:545</span></li><li><a href="#src-midi-js--initMidi"><code>initMidi</code></a> <span class="muted">src/midi.js:53</span></li><li><a href="#src-music-engine-js--initEngine"><code>initEngine</code></a> <span class="muted">src/music/engine.js:25</span></li><li><a href="#src-music-engine-js--toggle"><code>toggle</code></a> <span class="muted">src/music/engine.js:163</span></li><li><a href="#src-music-engine-js--stopEngine"><code>stopEngine</code></a> <span class="muted">src/music/engine.js:174</span></li><li><a href="#src-music-generators-js--euclid"><code>euclid</code></a> <span class="muted">src/music/generators.js:22</span></li><li><a href="#src-music-generators-js--SNARE_BAGS"><code>SNARE_BAGS</code></a> <span class="muted">src/music/generators.js:167</span></li><li><a href="#src-music-generators-js--SNARE_GHOSTS"><code>SNARE_GHOSTS</code></a> <span class="muted">src/music/generators.js:177</span></li><li><a href="#src-music-generators-js--dropVariantFor"><code>dropVariantFor</code></a> <span class="muted">src/music/generators.js:313</span></li><li><a href="#src-music-generators-js--SEAM_FILLS"><code>SEAM_FILLS</code></a> <span class="muted">src/music/generators.js:346</span></li><li><a href="#src-music-scales-js--bassNotes"><code>bassNotes</code></a> <span class="muted">src/music/scales.js:160</span></li><li><a href="#src-osc-js--initOsc"><code>initOsc</code></a> <span class="muted">src/osc.js:51</span></li><li><a href="#src-perform-js--PERFORM_KEYS"><code>PERFORM_KEYS</code></a> <span class="muted">src/perform.js:40</span></li><li><a href="#src-perform-js--EQ_MID_HZ"><code>EQ_MID_HZ</code></a> <span class="muted">src/perform.js:96</span></li><li><a href="#src-ui-js--initUI"><code>initUI</code></a> <span class="muted">src/ui.js:10</span></li><li><a href="#src-visuals-biomes-js--WORLD_TOP"><code>WORLD_TOP</code></a> <span class="muted">src/visuals/biomes.js:68</span></li><li><a href="#src-visuals-figure-js--initFigure"><code>initFigure</code></a> <span class="muted">src/visuals/figure.js:18</span></li><li><a href="#src-visuals-look-js--TINT_THIN"><code>TINT_THIN</code></a> <span class="muted">src/visuals/look.js:59</span></li><li><a href="#src-visuals-look-js--pitchAt"><code>pitchAt</code></a> <span class="muted">src/visuals/look.js:138</span></li><li><a href="#src-visuals-look-js--FOV_DOLLY"><code>FOV_DOLLY</code></a> <span class="muted">src/visuals/look.js:401</span></li><li><a href="#src-visuals-weather-js--WORLD_TOP_DEFAULT"><code>WORLD_TOP_DEFAULT</code></a> <span class="muted">src/visuals/weather.js:75</span></li></ul>
   </section>
 
   <footer>
