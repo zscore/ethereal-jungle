@@ -1,6 +1,8 @@
 # Audio Pizzazz — the brainstorm
 
-Status: **proposal only. Nothing here is built.** This is the audio-side
+Status: **partly built** — see the *What shipped* section at the end for exactly
+which items landed, which were rejected on evidence, and what is left. Item
+letters here are the ones the commit subjects reference. This is the audio-side
 counterpart to `visuals_expansion_proposal.md` (A–E), `visuals_fancy_proposal.md`
 (F–J) and `visuals_pizzaz_proposal.md` (K–M) — same ladder, so the item letters
 continue at **N**. Where those three made the picture worth looking at, this one
@@ -708,3 +710,78 @@ ducking); the CPU cost of a per-event feedback comb; and the load cost of `ir`.
 falling from the first third to the last third of the window (3–5 dB). That may
 be a real tendency of the phrase envelope or it may be an artifact of the
 probe's seek and re-anchor. It wants a longer recording before anyone acts on it.
+
+---
+
+## What shipped
+
+One commit per item, so each can be listened to on its own (`git log --oneline`).
+Every commit ran `test/palette.mjs` and `test/seams.mjs`; the branch ends green
+on the full suite (500 checks) and on `npm run smoke`.
+
+**Harmony (N).** All six. N1 gave each voicing the one degree its own mode
+change moves — the forest floor went from **1 pad chord in 68 bars to 3**, and
+the set from 11 to 19. N2 put the bass walk on an authored per-phrase harmonic
+centre. N3 planes the stack diatonically (undergrowth 2→4 chords, forest floor
+1→5). N4 gave the seam a mode dip where three of four boundaries previously
+interpolated a value into itself. N5 made harmonic rhythm a section device that
+borrows forward along the plane cycle, so build2 and peak change chord twice per
+phrase. N6 holds the common tones and re-attacks only what moves — the forest
+floor's chord change is now **one voice moving inside five sustained ones**.
+
+**Cast (P).** P0 fixed a real bug: the lead's gate compared a per-track-rescaled
+tension curve to an absolute number, which left the undergrowth's melody at gain
+0.024 in its own groove and the zenith's at zero. P1 gave the Reese a synced
+filter LFO and three unequal detunes — the first moving filter in the project.
+P2 added the stridulator, P3 the stab (and the set's first filter envelope), P4
+and P5 a spent-once gesture to each of the first two tracks.
+
+**Effects (Q).** Q3 put `drift(t)` on the music's signal surface, which it had
+never been on despite `bus.js` advertising it since the first commit; three
+parameters that were single constants now wander. Q2 gave each orbit a room
+*character* (`roomlp`/`roomdim`/`roomfade`), finishing what D35 started with
+size alone.
+
+**Arrangement (R).** R1 the turnaround, closing 240 unmarked phrase endings per
+pass. R3 four drop variants drawn per track per set. R4 holes, plus the granular
+ghost finally reaching the breakdown it was written for.
+
+**Mix (T).** T4 made the peak a measurable arrival (+12% over the groove → +20%,
+and +39% over the release). T2 was the biggest single mix win: high-passing the
+undergrowth's oct-0 pad at 240 Hz took **120–250 Hz from 38.1% to 22.3%** and
+brought the 879 Hz ring down with it.
+
+### Rejected on evidence, not taste
+
+- **A granular ghost for the first two tracks.** The obvious way to put R4's
+  breakdown texture where the brief wants it — and `test/palette.mjs` stopped
+  it. "Only the zenith hears the set as grains" is one of that track's three
+  exclusive layers, and sprinkling it is the exact failure mode this repo's own
+  rule names. Reverted.
+- **A seam weight of 1.** `test/seams.mjs` caught the break stepping *up* on the
+  way into a window D36 made a wind-down.
+- **The release's hole taking beat 3.** `test/groove.mjs` caught it. The
+  backbeat is an anchor; both holes moved to the last quarter of an inner bar.
+
+### Not fixed — T1, the top end
+
+Stated plainly because the measurement is unambiguous. The hats were lifted and
+high-passed, and P2 added a band-passed 3.6 kHz layer that the offline census
+confirms is playing (20 events in the probed window, present in 8 of the
+undergrowth's 17 phrases). **The 2–4 kHz band went from 0.4% to 0.4%.** Raising
+the stridulator 2.7× moved it by 0.1 points.
+
+Either a narrow band-pass on pink noise cannot carry enough energy to register in
+a 2 kHz-wide average while still being perceptually present, or the band-pass is
+not doing what it appears to. That distinction needs a listen on real speakers,
+not another probe run — the layer may be entirely audible and the metric simply
+the wrong instrument for a narrowband source.
+
+### Left for later
+
+N7 (D13, key movement) deliberately — it deserves its own change and its own
+listen, and it carries the `tune()` hazard documented above. R2 (the half-time
+flip), R6 (per-track `SECTION_LAYOUT`), Q1's filter envelopes beyond the stab,
+Q8 (`ir` convolution through the biome recordings), the master-bus items and the
+mischief layer. The 879 Hz ring is improved but not gone; the direct fix is a
+narrow notch on the ether orbit, which wants a `masterchain.js` node.
