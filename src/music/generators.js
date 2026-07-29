@@ -1296,20 +1296,43 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // Deliberately not symmetric — an even in-out is its own kind of static.
     const breath = (k) => Math.round(cutoff * (1 + motion * k));
     const drift = 0.09 * motion; // stereo wander, widest where the pad is barest
-    layers.push(
-      note(`<${chords.map((c) => `[${c.map(fmt).join(',')}]`).join(' ')}>`)
+    // one pad voice-group: the same costume, a different note string and rate
+    const padVoice = (noteStr, slowVal, gainMul = 1, relMul = 1) =>
+      note(noteStr)
         .s(pp.s ?? 'sawtooth')
         .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
-        .release(swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4))
+        .release((swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4)) * relMul)
         .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`)
         .room(0.9).roomsize(rs(3))   // low DRR: distance, the heavens
-        .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1))
+        .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1) * gainMul)
         .pan(`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`)
-        // harmonic rhythm as warmth (the glad track re-voices twice as often)
-        // AND as section (N5): each alternation gets one slot of the phrase
-        .slow(Math.max(1, (pp.slow ?? 4) / changes))
-        .orbit(3),
-    );
+        .slow(slowVal)
+        .orbit(3);
+    const asChord = (c) => `[${c.map(fmt).join(',')}]`;
+    const phraseSlow = pp.slow ?? 4;
+
+    if (chords.length > 1) {
+      // N6 — the held frame and the moving voices. The pad must stay a block —
+      // it is the common tone across the seam (§6.1) — but "a block" and "every
+      // voice re-attacks together" are not the same requirement, and the second
+      // one is why a chord change used to read as a reset rather than a move.
+      // So the tones the phrase's chords SHARE are held for the whole phrase
+      // and only the tones that differ re-articulate. One or two voices moving
+      // inside four sustained ones is what voice leading sounds like.
+      const same = (a, b) => Math.abs(a - b) < 0.01;
+      const common = chords[0].filter((n) => chords.every((c) => c.some((m) => same(m, n))));
+      const moving = chords.map((c) => c.filter((n) => !common.some((m) => same(m, n))));
+      if (common.length) layers.push(padVoice(asChord(common), phraseSlow, 1, 1.25));
+      if (moving.some((c) => c.length)) {
+        layers.push(padVoice(
+          `<${moving.map((c) => (c.length ? asChord(c) : '~')).join(' ')}>`,
+          Math.max(1, phraseSlow / chords.length),
+        ));
+      }
+    } else {
+      // harmonic rhythm as warmth: the glad track re-voices twice as often
+      layers.push(padVoice(asChord(chord), phraseSlow));
+    }
     // ---- motion between notes ----
     // The block chord is the continuity layer and must stay a block — it is the
     // common tone across the seam (§6.1), so it cannot start arpeggiating. The

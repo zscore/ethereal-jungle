@@ -324,7 +324,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>18</b><span>modules</span></div>
       <div><b>153</b><span>exports</span></div>
-      <div><b>6,785</b><span>lines</span></div>
+      <div><b>6,808</b><span>lines</span></div>
       <div><b>84%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
@@ -393,6 +393,11 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <tr>
       <td><code>degradeBy</code></td>
       <td>Randomly drop a fraction of events — thinning without rewriting the figure.</td>
+      <td class="where"><a href="#src-music-generators-js">generators.js</a></td>
+    </tr>
+    <tr>
+      <td><code>every</code></td>
+      <td>Apply a function on every nth cycle.</td>
       <td class="where"><a href="#src-music-generators-js">generators.js</a></td>
     </tr>
     <tr>
@@ -1923,7 +1928,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>generators.js</h3>
       <a class="srcref" href="../../src/music/generators.js">src/music/generators.js</a>
-      <span class="muted">1485 lines · 16 exported</span>
+      <span class="muted">1508 lines · 16 exported</span>
     </header>
     <div class="doc lead"><p>generators.js — the machine room (music doc <span class="ref sec" title="a section of the theory docs in docs/">§4</span>).</p>
 <p>Every generator is a pure function of (bus params, seeded rng) → Strudel pattern. ENGINE DISCIPLINE: generators emit <em>events with abstract params</em> (sample slot, note, orbit, dynamics). superdough is merely the current renderer of those events — keep renderer-specific hacks out of here so the whole layer can be re-pointed at SuperDirt/scsynth over OSC without touching composition logic.</p>
@@ -4321,7 +4326,30 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1310
 1311
 1312
-1313</pre><pre class="src"><code>
+1313
+1314
+1315
+1316
+1317
+1318
+1319
+1320
+1321
+1322
+1323
+1324
+1325
+1326
+1327
+1328
+1329
+1330
+1331
+1332
+1333
+1334
+1335
+1336</pre><pre class="src"><code>
   <span class="k">const</span> pp = pal.pad ?? {};
   <span class="k">const</span> swell = sec === <span class="s">'breakdown'</span>;
   <span class="c">// N3 — the plane cycle. `palette.pad.plane` lists diatonic step offsets and</span>
@@ -4369,51 +4397,74 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <span class="c">// Deliberately not symmetric — an even in-out is its own kind of static.</span>
     <span class="k">const</span> breath = (k) =&gt; Math.round(cutoff * (<span class="n">1</span> + motion * k));
     <span class="k">const</span> drift = <span class="n">0.09</span> * motion; <span class="c">// stereo wander, widest where the pad is barest</span>
-    layers.push(
-      note(<span class="s">`&lt;${chords.map((c) =&gt; `[${c.map(fmt).join(',')}]`).join(' ')}&gt;`)
-        .s(pp.s ?? 'sawtooth')
-        .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
-        .release(swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4))
-        .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`</span>)
+    <span class="c">// one pad voice-group: the same costume, a different note string and rate</span>
+    <span class="k">const</span> padVoice = (noteStr, slowVal, gainMul = <span class="n">1</span>, relMul = <span class="n">1</span>) =&gt;
+      note(noteStr)
+        .s(pp.s ?? <span class="s">'sawtooth'</span>)
+        .attack(swell ? (pp.attack ?? <span class="n">1.2</span>) * <span class="n">2</span> : (pp.attack ?? <span class="n">1.2</span>))
+        .release((swell ? (pp.release ?? <span class="n">4</span>) * <span class="n">1.5</span> : (pp.release ?? <span class="n">4</span>)) * relMul)
+        .lpf(<span class="s">`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`</span>)
         .room(<span class="n">0.9</span>).roomsize(rs(<span class="n">3</span>))   <span class="c">// low DRR: distance, the heavens</span>
-        .gain((pp.gain ?? <span class="n">0.32</span>) * (swell ? <span class="n">1.4</span> : <span class="n">1</span>))
+        .gain((pp.gain ?? <span class="n">0.32</span>) * (swell ? <span class="n">1.4</span> : <span class="n">1</span>) * gainMul)
         .pan(<span class="s">`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`</span>)
-        <span class="c">// harmonic rhythm as warmth (the glad track re-voices twice as often)</span>
-        <span class="c">// AND as section (N5): each alternation gets one slot of the phrase</span>
-        .slow(Math.max(<span class="n">1</span>, (pp.slow ?? <span class="n">4</span>) / changes))
-        .orbit(<span class="n">3</span>),
-    );
+        .slow(slowVal)
+        .orbit(<span class="n">3</span>);
+    <span class="k">const</span> asChord = (c) =&gt; <span class="s">`[${c.map(fmt).join(',')}]`</span>;
+    <span class="k">const</span> phraseSlow = pp.slow ?? <span class="n">4</span>;
+
+    <span class="k">if</span> (chords.length &gt; <span class="n">1</span>) {
+      <span class="c">// N6 — the held frame and the moving voices. The pad must stay a block —</span>
+      <span class="c">// it is the common tone across the seam (§6.1) — but &quot;a block&quot; and &quot;every</span>
+      <span class="c">// voice re-attacks together&quot; are not the same requirement, and the second</span>
+      <span class="c">// one is why a chord change used to read as a reset rather than a move.</span>
+      <span class="c">// So the tones the phrase's chords SHARE are held for the whole phrase</span>
+      <span class="c">// and only the tones that differ re-articulate. One or two voices moving</span>
+      <span class="c">// inside four sustained ones is what voice leading sounds like.</span>
+      <span class="k">const</span> same = (a, b) =&gt; Math.abs(a - b) &lt; <span class="n">0.01</span>;
+      <span class="k">const</span> common = chords[<span class="n">0</span>].filter((n) =&gt; chords.every((c) =&gt; c.some((m) =&gt; same(m, n))));
+      <span class="k">const</span> moving = chords.map((c) =&gt; c.filter((n) =&gt; !common.some((m) =&gt; same(m, n))));
+      <span class="k">if</span> (common.length) layers.push(padVoice(asChord(common), phraseSlow, <span class="n">1</span>, <span class="n">1.25</span>));
+      <span class="k">if</span> (moving.some((c) =&gt; c.length)) {
+        layers.push(padVoice(
+          <span class="s">`&lt;${moving.map((c) =&gt; (c.length ? asChord(c) : '~')).join(' ')}&gt;`</span>,
+          Math.max(<span class="n">1</span>, phraseSlow / chords.length),
+        ));
+      }
+    } <span class="k">else</span> {
+      <span class="c">// harmonic rhythm as warmth: the glad track re-voices twice as often</span>
+      layers.push(padVoice(asChord(chord), phraseSlow));
+    }
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1313</span></div>
+          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1336</span></div>
           <p>The block chord is the continuity layer and must stay a block — it is the common tone across the seam (<span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>), so it cannot start arpeggiating. The movement therefore goes to a SEPARATE quiet voice an octave up, walking the same chord tones one at a time. Same harmony, but something is audibly moving. Loudest exactly where the complaint was — the early sections, where the arrangement is otherwise a held pad and a heartbeat.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1319
-1320
-1321
-1322
-1323
-1324
-1325
-1326
-1327
-1328
-1329
-1330
-1331
-1332
-1333
-1334
-1335
-1336
-1337
-1338
-1339
-1340
-1341
-1342
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1342
 1343
-1344</pre><pre class="src"><code>
+1344
+1345
+1346
+1347
+1348
+1349
+1350
+1351
+1352
+1353
+1354
+1355
+1356
+1357
+1358
+1359
+1360
+1361
+1362
+1363
+1364
+1365
+1366
+1367</pre><pre class="src"><code>
     <span class="k">if</span> (motion &gt; <span class="n">0.5</span>) {
       <span class="k">const</span> tones = padVoicing(mode, warmth, { oct: (pp.oct ?? <span class="n">1</span>) + <span class="n">1</span>, tuning, width: <span class="n">0</span> });
       layers.push(
@@ -4441,32 +4492,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1344</span></div>
+          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1367</span></div>
           <p>ambience.current = [bed, ...accents]: 32-bar field recordings played one phrase-long slice at a time — chunk <code>c</code> advances with the phrase index, so consecutive phrases play consecutive audio and the loop only repeats every AMB_BARS. Retriggers stay phrase-aligned (slow(4) at absolute cycles), which is what keeps biome changes and the seam crossfade landing on their bars. The bed is always on — loud where the ether is figure (intro/breakdown/seam), tucked under the full arrangement elsewhere. Accent layers ride slow presence walks: below threshold they rest, above it their gain follows the walk (the walk is continuous through the threshold, so entries fade rather than pop). During the seam the INCOMING biome's bed crossfades in early — <span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>'s infiltrating ether. Envelopes are deliberately near-instant: superdough keeps the source playing for <code>release</code> past the event end, and since the next chunk starts on that same audio, any real release would sum the recording with itself.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1358
-1359
-1360
-1361
-1362
-1363
-1364
-1365
-1366
-1367
-1368
-1369
-1370
-1371
-1372
-1373
-1374
-1375
-1376
-1377
-1378
-1379
-1380
-1381
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1381
 1382
 1383
 1384
@@ -4486,7 +4514,30 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1398
 1399
 1400
-1401</pre><pre class="src"><code>
+1401
+1402
+1403
+1404
+1405
+1406
+1407
+1408
+1409
+1410
+1411
+1412
+1413
+1414
+1415
+1416
+1417
+1418
+1419
+1420
+1421
+1422
+1423
+1424</pre><pre class="src"><code>
   <span class="k">if</span> (ambience?.current?.length) {
     <span class="k">const</span> chunk = ((ambience.phraseIndex ?? <span class="n">0</span>) % AMB_CHUNKS + AMB_CHUNKS) % AMB_CHUNKS;
     <span class="c">// D30 — how loud, and how often, the biome is: part of the cast like</span>
@@ -4532,32 +4583,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1401</span></div>
+          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1424</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1401
-1402
-1403
-1404
-1405
-1406
-1407
-1408
-1409
-1410
-1411
-1412
-1413
-1414
-1415
-1416
-1417
-1418
-1419
-1420
-1421
-1422
-1423
-1424
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1424
 1425
 1426
 1427
@@ -4576,7 +4604,30 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1440
 1441
 1442
-1443</pre><pre class="src"><code>
+1443
+1444
+1445
+1446
+1447
+1448
+1449
+1450
+1451
+1452
+1453
+1454
+1455
+1456
+1457
+1458
+1459
+1460
+1461
+1462
+1463
+1464
+1465
+1466</pre><pre class="src"><code>
   <span class="k">if</span> (leadPresent) {
     <span class="k">const</span> lp = pal.lead ?? {};
     <span class="k">const</span> featured = sec === <span class="s">'breakdown'</span>;
@@ -4621,32 +4672,9 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1443</span></div>
+          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1466</span></div>
           <p>The migrating pluck plays everywhere except the ambient sections (where the ether is the figure) — and its costume is what changes across the set.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1445
-1446
-1447
-1448
-1449
-1450
-1451
-1452
-1453
-1454
-1455
-1456
-1457
-1458
-1459
-1460
-1461
-1462
-1463
-1464
-1465
-1466
-1467
-1468
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1468
 1469
 1470
 1471
@@ -4663,7 +4691,30 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1482
 1483
 1484
-1485</pre><pre class="src"><code>
+1485
+1486
+1487
+1488
+1489
+1490
+1491
+1492
+1493
+1494
+1495
+1496
+1497
+1498
+1499
+1500
+1501
+1502
+1503
+1504
+1505
+1506
+1507
+1508</pre><pre class="src"><code>
   <span class="k">if</span> (pal.pluck &amp;&amp; castIn &amp;&amp; !ambient) {
     <span class="k">const</span> pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng, rs);
     <span class="k">if</span> (pluck) layers.push(gate(pluck));
@@ -4706,7 +4757,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 </code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">601 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">885
+    <details class="source"><summary>source <span class="muted">624 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">885
 886
 887
 888
@@ -5306,7 +5357,30 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 1482
 1483
 1484
-1485</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
+1485
+1486
+1487
+1488
+1489
+1490
+1491
+1492
+1493
+1494
+1495
+1496
+1497
+1498
+1499
+1500
+1501
+1502
+1503
+1504
+1505
+1506
+1507
+1508</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
   <span class="k">const</span> { s, note, stack } = ctx;
   <span class="k">const</span> rng = makeRng(p.seed);
   <span class="k">const</span> mode = modeAt(brightness);
@@ -5720,20 +5794,43 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <span class="c">// Deliberately not symmetric — an even in-out is its own kind of static.</span>
     <span class="k">const</span> breath = (k) =&gt; Math.round(cutoff * (<span class="n">1</span> + motion * k));
     <span class="k">const</span> drift = <span class="n">0.09</span> * motion; <span class="c">// stereo wander, widest where the pad is barest</span>
-    layers.push(
-      note(<span class="s">`&lt;${chords.map((c) =&gt; `[${c.map(fmt).join(',')}]`).join(' ')}&gt;`)
-        .s(pp.s ?? 'sawtooth')
-        .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
-        .release(swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4))
-        .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`</span>)
+    <span class="c">// one pad voice-group: the same costume, a different note string and rate</span>
+    <span class="k">const</span> padVoice = (noteStr, slowVal, gainMul = <span class="n">1</span>, relMul = <span class="n">1</span>) =&gt;
+      note(noteStr)
+        .s(pp.s ?? <span class="s">'sawtooth'</span>)
+        .attack(swell ? (pp.attack ?? <span class="n">1.2</span>) * <span class="n">2</span> : (pp.attack ?? <span class="n">1.2</span>))
+        .release((swell ? (pp.release ?? <span class="n">4</span>) * <span class="n">1.5</span> : (pp.release ?? <span class="n">4</span>)) * relMul)
+        .lpf(<span class="s">`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`</span>)
         .room(<span class="n">0.9</span>).roomsize(rs(<span class="n">3</span>))   <span class="c">// low DRR: distance, the heavens</span>
-        .gain((pp.gain ?? <span class="n">0.32</span>) * (swell ? <span class="n">1.4</span> : <span class="n">1</span>))
+        .gain((pp.gain ?? <span class="n">0.32</span>) * (swell ? <span class="n">1.4</span> : <span class="n">1</span>) * gainMul)
         .pan(<span class="s">`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`</span>)
-        <span class="c">// harmonic rhythm as warmth (the glad track re-voices twice as often)</span>
-        <span class="c">// AND as section (N5): each alternation gets one slot of the phrase</span>
-        .slow(Math.max(<span class="n">1</span>, (pp.slow ?? <span class="n">4</span>) / changes))
-        .orbit(<span class="n">3</span>),
-    );
+        .slow(slowVal)
+        .orbit(<span class="n">3</span>);
+    <span class="k">const</span> asChord = (c) =&gt; <span class="s">`[${c.map(fmt).join(',')}]`</span>;
+    <span class="k">const</span> phraseSlow = pp.slow ?? <span class="n">4</span>;
+
+    <span class="k">if</span> (chords.length &gt; <span class="n">1</span>) {
+      <span class="c">// N6 — the held frame and the moving voices. The pad must stay a block —</span>
+      <span class="c">// it is the common tone across the seam (§6.1) — but &quot;a block&quot; and &quot;every</span>
+      <span class="c">// voice re-attacks together&quot; are not the same requirement, and the second</span>
+      <span class="c">// one is why a chord change used to read as a reset rather than a move.</span>
+      <span class="c">// So the tones the phrase's chords SHARE are held for the whole phrase</span>
+      <span class="c">// and only the tones that differ re-articulate. One or two voices moving</span>
+      <span class="c">// inside four sustained ones is what voice leading sounds like.</span>
+      <span class="k">const</span> same = (a, b) =&gt; Math.abs(a - b) &lt; <span class="n">0.01</span>;
+      <span class="k">const</span> common = chords[<span class="n">0</span>].filter((n) =&gt; chords.every((c) =&gt; c.some((m) =&gt; same(m, n))));
+      <span class="k">const</span> moving = chords.map((c) =&gt; c.filter((n) =&gt; !common.some((m) =&gt; same(m, n))));
+      <span class="k">if</span> (common.length) layers.push(padVoice(asChord(common), phraseSlow, <span class="n">1</span>, <span class="n">1.25</span>));
+      <span class="k">if</span> (moving.some((c) =&gt; c.length)) {
+        layers.push(padVoice(
+          <span class="s">`&lt;${moving.map((c) =&gt; (c.length ? asChord(c) : '~')).join(' ')}&gt;`</span>,
+          Math.max(<span class="n">1</span>, phraseSlow / chords.length),
+        ));
+      }
+    } <span class="k">else</span> {
+      <span class="c">// harmonic rhythm as warmth: the glad track re-voices twice as often</span>
+      layers.push(padVoice(asChord(chord), phraseSlow));
+    }
     <span class="c">// ---- motion between notes ----</span>
     <span class="c">// The block chord is the continuity layer and must stay a block — it is the</span>
     <span class="c">// common tone across the seam (§6.1), so it cannot start arpeggiating. The</span>
