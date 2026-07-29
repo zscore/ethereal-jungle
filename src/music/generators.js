@@ -1209,15 +1209,36 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const g = bp.gain ?? 0.5;
       const body = (offset, gain) => {
         let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(lo + span * tension).gain(gain);
+        // P1 — the Reese finally moves. `track_identities.md` §4.1 describes
+        // this patch as "stasis outside, seething inside", but its cutoff was
+        // one number per phrase, held: a Reese without motion is a chorus. A
+        // tempo-synced filter LFO (`lpsync` is cycles per BAR, so 0.25 is one
+        // sweep per phrase) with resonance on it puts the growl back, and the
+        // notch moving under a held note is the whole sound.
+        if (bp.wobble) {
+          const wb = bp.wobble;
+          x = x.lpsync(wb.sync ?? 0.25).lpdepth(wb.depth ?? 0.55);
+          if (wb.resonance) x = x.resonance(wb.resonance);
+        }
         if (bp.release) x = x.attack(0.005).decay(bp.release).sustain(0.25).release(bp.release);
         if (bp.shape) x = x.shape(bp.shape);
         return gate(x.slow(2).orbit(2)); // half-time layer (§1.4): the felt pulse
       };
-      layers.push(body(0, g));
-      // the Reese (undergrowth): a second saw a few cents away — the beating IS
-      // the timbre. Split-band: the detune stays in the mids, the sub is clean
-      // mono (§7.2's one rule with teeth — wide detune below 150 Hz smears).
-      if (bp.detune) layers.push(body(bp.detune / 100, g * 0.9));
+      // the Reese (undergrowth): saws a few cents away — the beating IS the
+      // timbre. Split-band: the detune stays in the mids, the sub is clean mono
+      // (§7.2's one rule with teeth — wide detune below 150 Hz smears).
+      //
+      // P1 — `detune` accepts a LIST of cents offsets now. A symmetric pair
+      // beats at one rate and reads as a chorus; three voices at unequal
+      // distances beat at three rates that never line up, which is what makes
+      // the classic patch sound alive rather than doubled. Gains fall across
+      // the stack so the total sits where the single pair used to.
+      const detunes = bp.detune == null ? [] : [].concat(bp.detune);
+      const spread = [1, 0.75, 0.6];
+      layers.push(body(0, g * (detunes.length > 1 ? spread[0] : 1)));
+      detunes.forEach((cents, i) => {
+        layers.push(body(cents / 100, g * (detunes.length > 1 ? spread[(i + 1) % spread.length] : 0.9)));
+      });
       if (bp.sub) layers.push(gate(note(str(-12)).s('sine').gain(g * 0.8).slow(2).orbit(2)));
       // N2 — the pedal, and it only sounds when there is news. On tonic phrases
       // the walk already says D and a drone under it would just be more of the

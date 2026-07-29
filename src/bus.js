@@ -160,7 +160,12 @@ export const TRACKS = [
       // phrases against a seventeen-phrase track, so it never lands the same
       // way twice. The floor here mostly holds the tonic and leans on bVI —
       // the darkest move available without leaving the mode.
-      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: 8, sub: true, lpf: [130, 220], gain: 0.46,
+      // P1 — three saws at unequal distances (a symmetric pair beats at one rate
+      // and reads as a chorus), and a filter that sweeps once per phrase with
+      // resonance on it. This is where "stasis outside, seething inside"
+      // actually lives; before, the cutoff was one held number.
+      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: [-13, 5], sub: true, lpf: [130, 220], gain: 0.46,
+        wobble: { sync: 0.25, depth: 0.55, resonance: 7 },
         roots: [1, 1, 6, 1, 1, 3, 1, 5] },
       // N3 — five phrases against seventeen and against N2's eight: the pad,
       // the floor and the form never line up the same way twice
@@ -188,6 +193,8 @@ export const TRACKS = [
       // major, and the 2 at the end of the cycle is the one genuinely unsettled
       // phrase in the track
       bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42,
+        // faster and shallower than the undergrowth's brood: this floor walks
+        wobble: { sync: 0.5, depth: 0.3, resonance: 4 },
         roots: [1, 1, 3, 1, 6, 1, 3, 2] },
       // step +2 on the neutral stack is Fmaj9 — the relative major, from the
       // track that used to voice one chord for all 68 of its bars
