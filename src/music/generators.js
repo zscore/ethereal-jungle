@@ -679,6 +679,51 @@ function pluckLayer(ctx, pk, mode, tuning, rng, rs) {
 }
 
 /**
+ * P3 — the stab (forest floor): the genre signifier this set never had.
+ *
+ * Every layer in the first two tracks is continuous — a break, a walk, a pad,
+ * a breath. Nothing punctuates. The stab is the oldest fix in the idiom: the
+ * chord already on the pad, struck short on the syncopated eighths, with a
+ * filter envelope that snaps shut.
+ *
+ * That envelope is the point. It is the first use of `lpenv`/`lpdecay` in this
+ * project, and it is the mechanism behind most of what "produced" means in this
+ * genre — a sound whose brightness has a *shape* rather than a value. Because
+ * the decay is short and the resonance is up, the stab reads as **hard** rather
+ * than **lit**, which is what lets the forest floor have punctuation without
+ * breaking its "wet, not lit" rule (§4.2's forbidden list).
+ *
+ * It takes the pad's own chord, so it spends no new pitch material and follows
+ * N3's planing for free.
+ */
+function stabLayer(ctx, sb, chord, tension, rng, rs) {
+  const { note } = ctx;
+  // the syncopated eighths: off the anchors the skeleton holds down, so the
+  // stab lands in the holes rather than doubling the backbeat
+  const slots = [3, 6, 10, 14];
+  const k = Math.max(1, Math.round((sb.k ?? 2) + tension * 1.5));
+  const chosen = [];
+  for (const i of slots) if (chosen.length < k && rng() < 0.75) chosen.push(i);
+  if (!chosen.length) return null;
+  const voices = chord.slice(0, sb.voices ?? 4).map(fmt).join(',');
+  const seq = [...Array(16).keys()].map((i) => (chosen.includes(i) ? `[${voices}]` : '~')).join(' ');
+  return note(seq)
+    .s(sb.s ?? 'sawtooth')
+    .attack(0.004).decay(sb.decay ?? 0.16).sustain(0).release(0.1)
+    // the filter envelope: opens to `lpenv` octaves above the cutoff and shuts
+    // inside 90 ms. `fanchor` 0 anchors the sweep at the bottom, so the note
+    // starts dark and cracks open rather than starting bright and dulling.
+    .lpf(sb.lpf ?? 900).resonance(sb.resonance ?? 11)
+    .lpenv(sb.lpenv ?? 2.6).lpattack(0.002).lpdecay(sb.lpdecay ?? 0.09).lpsustain(0).fanchor(0)
+    // the NEAR orbit, not the floor's: a stab is a struck, close, dry thing
+    // that wants the drums' short room, and the bass orbit is spoken for
+    .room(sb.room ?? 0.22).roomsize(rs(1))
+    .gain((sb.gain ?? 0.2) * (0.7 + 0.3 * tension))
+    .pan(`[0.42 0.58]`)
+    .orbit(1);
+}
+
+/**
  * P2 — the stridulator (undergrowth): a cricket with a rhythm.
  *
  * The undergrowth's problem was measurable rather than aesthetic: 2–8 kHz was
@@ -1565,6 +1610,14 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   }
   if (pal.breath && castIn && sec !== 'intro') {
     for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, tension, rs)) layers.push(gate(l));
+  }
+  // P3 — the stab, on its OWN rng. Drawing from the shared one here would
+  // re-deal every layer built after it (the squawk's hashed-rng idiom, applied
+  // for the same reason). It takes the pad's chord, so N3's planing comes free.
+  if (pal.stab && castIn && !ambient) {
+    const stab = stabLayer(ctx, pal.stab, chord, tension,
+      makeRng((p.seed ^ 0x57ab) >>> 0), rs);
+    if (stab) layers.push(gate(stab));
   }
   if (pal.choir && castIn && !dropout) {
     layers.push(choirLayer(ctx, pal.choir, chord, brightness, rs));

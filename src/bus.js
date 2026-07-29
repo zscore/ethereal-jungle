@@ -212,6 +212,12 @@ export const TRACKS = [
       // characteristic 2: the dub rail — water made musical. A dotted-eighth
       // (3/16) feedback delay on the SNARE and the LEAD only (§9.3)
       dub: { send: 0.45, sync: 3 / 16, feedback: [0.34, 0.3] },
+      // P3 — the stab: this track's punctuation, and the set's first filter
+      // envelope. Short decay + high resonance + the sweep anchored at the
+      // BOTTOM (fanchor 0) means it cracks open rather than starting bright,
+      // which is how the floor gets an accent without becoming lit.
+      stab: { s: 'sawtooth', k: 2, voices: 4, decay: 0.16, lpf: 900, resonance: 11,
+        lpenv: 2.6, lpdecay: 0.09, room: 0.22, gain: 0.2 },
     },
   },
   {
