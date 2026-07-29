@@ -33,6 +33,10 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   for (const id of ['lpf', 'hpf', 'echo', 'crush', 'space', 'eqLow', 'eqMid', 'eqHigh', 'gate', 'drive']) {
     bindPerform(id, id);
   }
+  // …and the visuals' own live knob (bus.js VISUAL_LIVE_KEYS), on the same
+  // no-rebuild path and for a stronger version of the same reason: no pattern
+  // reads it at all, so a rebuild would recompile the whole set to thin the rain.
+  bindPerform('rainDensity', 'rainDensity');
   // roll is the exception (D19): pattern surgery, so it rides the rebuild.
   bind('roll', 'roll');
 
@@ -94,7 +98,7 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   const LEARNABLE = [
     ['tensionMix', 'tensionMix'], ['tension', 'tensionManual'],
     ['brightnessMix', 'brightnessMix'], ['brightness', 'brightnessManual'],
-    ['wildness', 'wildness'], ['coupling', 'coupling'],
+    ['wildness', 'wildness'], ['coupling', 'coupling'], ['rainDensity', 'rainDensity'],
     ['lpf', 'lpf'], ['hpf', 'hpf'], ['echo', 'echo'], ['crush', 'crush'], ['space', 'space'],
     ['eqLow', 'eqLow'], ['eqMid', 'eqMid'], ['eqHigh', 'eqHigh'],
     ['gate', 'gate'], ['drive', 'drive'], ['roll', 'roll'],

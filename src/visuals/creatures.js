@@ -21,10 +21,12 @@
  */
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
+import { float, vec3, mix, sin, max, uniform, positionLocal } from 'three/tsl';
 import { shadedColor } from './shade.js';
 import { pitchAt } from './look.js';
 import {
-  populationFor, slothReach, wingbeat, throatPulse, slotEvent, flushEnv,
+  populationFor, slothCrawl, wingbeat, throatPulse, slotEvent, flushEnv,
+  glint, branchTaper, SLOTH_TOP_FRAC,
 } from './fauna.js';
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -56,12 +58,58 @@ const CAM_XZ = { x: 0, z: 12 };
  * workaround for the missing surface response and it is exactly what this tier
  * was for; the geometry is plain again.
  */
-function makeCreatureMat(props, shadeOpts = {}) {
+function makeCreatureMat(props, shadeOpts = {}, detail = null) {
   const m = new MeshBasicNodeMaterial({
     transparent: true, opacity: 0, depthWrite: false, ...props,
   });
-  m.colorNode = shadedColor({ worldTop: 62, ...shadeOpts });
+  const lit = shadedColor({ worldTop: 62, ...shadeOpts });
+  // `detail` multiplies the LIT colour rather than replacing it, and it is
+  // written to average 1 — so a surface with a texture on it still sits at the
+  // level the shading tuned it to. That matters more here than it looks: every
+  // creature base colour in this file was re-tuned against the shaded path in
+  // D48, and a detail term with a mean away from unity would silently undo it.
+  m.colorNode = detail ? lit.mul(detail) : lit;
   return m;
+}
+
+// ---------- U2: the fur (requested — texture, reactive to the music) ----------
+/**
+ * A sloth's coat, as a node graph. Two uniforms, both driven from the bus.
+ *
+ * Why procedural and not a texture map: this animal is a sphere, three cylinders
+ * and a smaller sphere, and the limbs are open-ended `CylinderGeometry` — there
+ * is no shared UV layout to paint across, and a canvas map would have to be
+ * authored per part. A function of `positionLocal` is one expression that works
+ * on every part of the body and moves with it, which is what fur does.
+ *
+ * The pattern is the animal that is actually there. A sloth's hair grows in
+ * coarse strands running along the hanging body, and the strands hold algae —
+ * the reason D45 chose a mossy base colour in the first place. So: banded
+ * strands along the body's long axis, warped by a slower wave so they are not a
+ * comb, times a fine three-axis mottle for the clumping. One is the coat's
+ * structure, the other is what is growing in it.
+ *
+ * **Reactive, and reactive in the legal way.** `amt` and `sheen` ride the
+ * tension and brightness walks, which are continuous bus signals and therefore
+ * free on the ground stream (§2.1) — the coat deepens and the algae comes up
+ * green as the arrangement thickens, over seconds, the way the mist and the
+ * exposure already do. Nothing here is on a beat. The one beat-locked thing this
+ * animal has is its crawl (`slothCrawl`), which is its single anchored
+ * behaviour, and U1's economy says it may not have two.
+ */
+function furNode(amt, sheen) {
+  const p = positionLocal;
+  // the strands: bands along the body, bent by a slower wave across it
+  const strands = sin(p.y.mul(11.3).add(sin(p.x.mul(2.7)).mul(1.9)));
+  // …and the clumping: a cheap three-axis mottle, which at this scale reads as
+  // matted hair rather than as noise
+  const mottle = sin(p.x.mul(17.3)).mul(sin(p.z.mul(19.1))).mul(sin(p.y.mul(13.7)));
+  const f = strands.mul(0.55).add(mottle.mul(0.45));       // −1…1, mean ≈ 0
+  const shade = float(1).add(f.mul(amt));                  // …so this means ≈ 1
+  // the algae, which only ever ADDS colour to the lit side of a strand: a green
+  // that showed in the troughs too would read as a repaint of the animal
+  const ALGAE = vec3(0.66, 1.05, 0.6);
+  return mix(vec3(shade, shade, shade), ALGAE.mul(shade), max(f, float(0)).mul(sheen));
 }
 
 // ---------- U2: the sloths ----------
@@ -95,7 +143,15 @@ export function makeSloths(rng, spec, name, trees = []) {
   // old base colour across made the animal roughly twice as bright as it had
   // been and it photographed as a white stick figure. The base is the value the
   // shading expects, not the value the old multiplier expected.
-  const mat = makeCreatureMat({ color: '#4a5942', fog: true }, { worldTop: 62 });
+  //
+  // …and it carries a coat now (`furNode`). The two uniforms are written once per
+  // frame in `update`, from the tension and brightness walks: the strands deepen
+  // as the arrangement thickens and the algae comes up green in the light. Both
+  // are continuous bus signals, so the coat costs nothing on the ground stream.
+  const furAmt = uniform(float(0.2));
+  const furSheen = uniform(float(0.25));
+  const mat = makeCreatureMat(
+    { color: '#4a5942', fog: true }, { worldTop: 62 }, furNode(furAmt, furSheen));
   // the branch is bark, not fur: it belongs to the forest and is lit like it
   const barkMat = makeCreatureMat({ color: '#38402d', fog: true }, { worldTop: 62 });
   const bodyGeo = new THREE.SphereGeometry(1, 14, 10);
@@ -113,30 +169,48 @@ export function makeSloths(rng, spec, name, trees = []) {
   // Hosts are chosen near the camera's path — the fog under the crowns eats
   // anything past ~15 units (D45), so a sloth on a far tree is a sloth nobody
   // will ever see — and never twice.
+  //
+  // The height test is `SLOTH_TOP_FRAC`, not a fixed clearance. It used to be
+  // `h > spec.y[1] + 3`, which for the crown band meant `h > 46` — and since a
+  // non-emergent trunk tops out at 43.3, that quietly restricted every crown
+  // sloth to an emergent and then hung it in the last few units of the tallest
+  // tree in the forest. A tree qualifies now if it can carry this animal in its
+  // own lower reaches, which is where the animal belongs.
   const CAM = CAM_XZ;
   const candidates = trees
     .map((tr, idx) => ({ tr, idx, d: Math.hypot(tr.x - CAM.x, tr.z - CAM.z) }))
-    .filter((c) => c.d > 4 && c.d < 17 && c.tr.h > spec.y[1] + 3)
+    .filter((c) => c.d > 4 && c.d < 17 && c.tr.h * SLOTH_TOP_FRAC > spec.y[0])
     .sort((a, b) => a.d - b.d);
 
   const beasts = [];
   for (let i = 0; i < n; i++) {
     const g = new THREE.Group();
     const host = candidates.length ? candidates[i % candidates.length].tr : null;
-    const hy = spec.y[0] + rng() * (spec.y[1] - spec.y[0]);
+    // Never above 78% of the host's height, whatever the band asks for: the
+    // guarantee is against the TREE, because that is the thing that was being
+    // topped out (see `SLOTH_TOP_FRAC`). A sloth hangs under a canopy.
+    const want = spec.y[0] + rng() * (spec.y[1] - spec.y[0]);
+    const hy = host ? Math.min(want, host.h * SLOTH_TOP_FRAC) : want;
+    // …and how big everything is up there. One factor drives the branch's length,
+    // the branch's thickness and the animal together — which is the requested
+    // proportionality and also just what a tree is: a bough near the ground is a
+    // metre thick, the same tree's upper branches bend under a bird.
+    const size = branchTaper(hy, host ? host.h : hy / 0.6);
     // the branch points back toward the camera's side of the trunk, so the
     // sloth travels ACROSS the view rather than away down it
     const toCam = host ? Math.atan2(CAM.z - host.z, CAM.x - host.x) : 0;
     const theta = toCam + (rng() < 0.5 ? 1 : -1) * (0.5 + rng() * 0.7);
-    const len = 7 + rng() * 4;
+    const len = (7 + rng() * 4) * size;
     const bx = host ? host.x : (rng() - 0.5) * 12;
     const bz = host ? host.z : 2 - rng() * 8;
     const r0 = host ? host.rad * 0.9 : 0;
 
     const branch = new THREE.Mesh(branchGeo, barkMat);
-    // built along +Y then laid down along theta, with a slight droop
+    // built along +Y then laid down along theta, with a slight droop. The girth
+    // tapers with the height too — a shorter branch at the old radius reads as a
+    // stump, and it is the pair of them that says "high up this tree".
     const droop = 0.11 + rng() * 0.07;
-    branch.scale.y = len;
+    branch.scale.set(size, len, size);
     branch.rotation.order = 'YZX';
     branch.rotation.set(0, -theta, Math.PI / 2 - droop);
     branch.position.set(
@@ -146,6 +220,9 @@ export function makeSloths(rng, spec, name, trees = []) {
     );
     group.add(branch);
 
+    // the animal scales with its branch — `g` holds body, head and limbs, so one
+    // scale on the group carries all four and the pose is unchanged
+    g.scale.setScalar(size);
     const body = new THREE.Mesh(bodyGeo, mat);
     body.scale.set(1.5, 0.9, 0.92);          // a long hanging bundle, not a ball
     g.add(body);
@@ -168,7 +245,7 @@ export function makeSloths(rng, spec, name, trees = []) {
     }
     group.add(g);
     beasts.push({
-      g, head, limbs, i, sway: rng() * 9, headRest: 0,
+      g, head, limbs, i, sway: rng() * 9, headRest: 0, size,
       // the branch, as a ray the animal travels along
       bx: bx + Math.cos(theta) * r0, bz: bz + Math.sin(theta) * r0, hy, theta, len, droop,
       u: 0.15 + rng() * 0.6,             // where along it, 0..1
@@ -184,7 +261,7 @@ export function makeSloths(rng, spec, name, trees = []) {
     /** What the sloths are doing this frame — the harness cannot see a gait. */
     debug() {
       return beasts.map((b) => ({
-        u: +b.u.toFixed(3), dir: b.dir, y: +b.hy.toFixed(1),
+        u: +b.u.toFixed(3), dir: b.dir, y: +b.hy.toFixed(1), size: +b.size.toFixed(2),
         x: +(b.bx + Math.cos(b.theta) * b.u * b.len).toFixed(1),
       }));
     },
@@ -196,27 +273,57 @@ export function makeSloths(rng, spec, name, trees = []) {
       mat.opacity = presence * 0.95;
       barkMat.opacity = mat.opacity;
 
+      // the coat, from the two continuous walks (see `furNode`). Tension deepens
+      // the strands; the light in the band decides how much algae-green comes up.
+      // `Tf` rather than `T`, like everything else the eye does: the world leads
+      // the sound by two seconds.
+      furAmt.value = 0.14 + 0.34 * clamp01(env.Tf ?? env.T ?? 0);
+      furSheen.value = 0.12 + 0.5 * clamp01(env.b ?? 0);
+
       for (const b of beasts) {
         const wind = windAtOr(env, b.bx, b.hy, b.bz);
 
-        // CONTINUOUS: the reach — slow, and slower still at high tension. A
-        // sloth at the drop is not a faster sloth, and refusing to accelerate
-        // where everything else in the frame is accelerating is the joke.
-        const reach = slothReach(env.t, b.i, env.T ?? 0) * (1 - still * 0.7);
+        // ANCHORED (requested): the crawl, locked to the bar. `slothCrawl` starts
+        // a pull on a downbeat and plants the hand on the next one, once every
+        // two to six bars — each animal on its own multiple and its own offset,
+        // so three sloths reach on three different downbeats and the aggregate
+        // is not a pulse. Read the note over `slothCrawl` in fauna.js: this is
+        // the sloth's one anchored behaviour and U1 prices it at exactly one.
+        //
+        // The refusal to be hurried survives the move: at high tension the
+        // animal skips more of its slots, so it still reaches LESS often at the
+        // drop than in the intro. D45's joke now plays against an audible grid
+        // instead of against nothing, which is what makes it legible.
+        const reach = slothCrawl(env.t, b.i, env.bar ?? 0, env.T ?? 0) * (1 - still * 0.7);
 
         // …and the reach is what MOVES it. This is the animation the first pass
         // was missing: the sloth used to reach in place, so it was a fixed
         // object with a moving arm. Travel is driven by the same envelope, so
         // it advances in pulses — hand, then body, then hand — and is
         // motionless in between, which is what hanging locomotion looks like.
-        // A full traverse of a 10-unit branch takes something over two minutes.
-        b.u += dt * 0.016 * (0.12 + reach) * b.dir * (1 - still * 0.8);
+        //
+        // Re-scaled for the crawl, and the arithmetic is the point of the change.
+        // D46's reach fired once every 44–96 s and moved the animal by a hair, so
+        // most of its travel was actually the constant term — a creep with an
+        // occasional twitch on top. The crawl fires on one downbeat in two to six
+        // bars and takes about half of them at mid tension, so a pulse arrives
+        // roughly every 10 s: ~0.06 of the branch each time, half a world unit,
+        // about a third of the animal's own length. Thirteen or so of those cross
+        // the branch in a little over two minutes — the same traverse D46 had,
+        // spent in steps you can see instead of in a drift you cannot.
+        //
+        // The constant term is what is left of the creep and it is deliberately
+        // tiny (3%): between pulses this animal is meant to be motionless, which
+        // is what makes a pulse read as a step at all.
+        b.u += dt * 0.042 * (0.03 + reach) * b.dir * (1 - still * 0.8);
         if (b.u > 0.92) { b.u = 0.92; b.dir = -1; }
         else if (b.u < 0.08) { b.u = 0.08; b.dir = 1; }
 
-        // where that puts it: along the branch ray, hanging under it
+        // where that puts it: along the branch ray, hanging under it. The drop
+        // scales with the animal, or a small sloth would hang at a full-size
+        // sloth's distance below its own branch.
         const along = b.u * b.len;
-        const drop = 1.75;
+        const drop = 1.75 * b.size;
         b.g.position.set(
           b.bx + Math.cos(b.theta) * along + wind.x * 0.08,
           b.hy - along * Math.sin(b.droop) - drop,
@@ -333,6 +440,15 @@ const DART_SKIN = [
 // and it reads as an animal on a trunk.
 const FROG_NEAR = 7;
 const FROG_FAR = 14;
+
+/**
+ * The colour a wet animal's highlight is (U3's sparkle). A specular is the colour
+ * of the LIGHT, so this is the skylight arriving through the crowns rather than
+ * anything about a frog — faintly green because that is what the air is down
+ * there (`BAND_COLORS[1]`, the green gloom), and never pure white, which in this
+ * palette reads as a hole in the picture.
+ */
+const WET_SHEEN = new THREE.Color('#d8f0e2');
 
 /**
  * A point in front of the lens, `r0`–`r1` out, within `spread` radians of the
@@ -480,6 +596,26 @@ function makeFrogs(rng, spec, name, perch, opts = {}) {
         // what makes it an animal IN the picture rather than a sticker on it.
         // The call is the only thing that brightens it, and it is worth ~2×.
         col.copy(f.skin).multiplyScalar(0.42 + call * 0.38);
+        // …and the SPARKLE (requested: "so I can see them"). Deliberately not a
+        // lift of the base level, which is the tuning above and was arrived at
+        // against the bloom — a brighter frog is a lantern, and this world has
+        // deleted two of those already. What finds the eye instead is movement in
+        // the highlight: a wet body catching light for a fraction of a second,
+        // which is how you actually spot a frog.
+        //
+        // Synced to the music, and to the ONE rhythmic coupling this world
+        // already licenses: `duck` is the kick's own sidechain envelope, the same
+        // constant that ducks the ether, shoves the camera, presses the mist down
+        // and dips the bloom (scene.js's header). The frogs are a fifth rendering
+        // of it rather than a new synch point (§2.2). The carrier is per-frog and
+        // fast, so what the eye gets is a scatter of wet points, never a chorus
+        // flashing in unison — that would be rhythm on the ground stream.
+        //
+        // Toward the colour of the LIGHT, not of the skin: a specular highlight
+        // is the light source's colour, and it is capped well under 1 so that a
+        // sparkle stays a sparkle.
+        const sparkle = glint(env.t, f.i, (env.duck ?? 0) * 0.85 + 0.14 * clamp01(env.T ?? 0), seed);
+        if (sparkle > 0.001) col.lerp(WET_SHEEN, Math.min(0.5, sparkle));
         mesh.setColorAt(k, col);
 
         if (onCall) {
@@ -622,7 +758,15 @@ export function makePoolFrogs(rng, spec, name, pool) {
     // a frog at the water does not hop across the frame; it sits and calls
     hop: false,
     skins: ['#7fbf86', '#94cf8c', '#6fae7e', '#a8d79a'],
-    onCall: (f) => pool?.ripple?.(f.x, f.z, 0.55),
+    // Requested (visuals task 7): a call no longer drops a ring on the water.
+    // D45 tied the two together — "a call and the ripple it makes are one event"
+    // — and the argument still holds; what went wrong is that the pool was the
+    // only thing in the middle of the frame that ever moved, and between these
+    // rings and the ambient drip trickle it was moving constantly. The surface
+    // breaks for RAIN now and nothing else (`makePool`'s splash). The `pool`
+    // argument stays in this function's signature because restoring the link is
+    // then exactly one line:
+    //   onCall: (f) => pool?.ripple?.(f.x, f.z, 0.55),
   });
 }
 

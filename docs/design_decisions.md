@@ -2622,5 +2622,164 @@ worth re-asking, because form and locomotion are exactly what it was short of.
 
 ---
 
+## D49 — Ten notes from watching it, answered (2026-07-29)
+
+**The brief.** `docs/visuals_tasks.md`, ten numbered observations from actually
+sitting in front of the world rather than from reading it. Item 1 (the fireflies'
+flicker) had already shipped; this entry is items 2–10. They are logged as one
+decision because they are one *kind* of decision — every single one is the eye
+reporting that something the code believed was not true on screen — and because
+four of them touch the same three objects (the sloth, the pool, the rain and the
+dot clouds) and could not have been done as ten independent edits.
+
+**Assigned at merge**, per the numbering note at the top of this file: two other
+branches were live on these tasks while this was written. If D49 is taken, this
+is the next free slot and the heading is the only thing that moves.
+
+**The sloths came down out of the treetops (2), and they taper (2).** The band
+was `y 34–43` and the host filter was `h > spec.y[1] + 3`. Those two numbers
+together were worse than either alone: a non-emergent trunk tops out at 43.3, so
+`h > 46` quietly restricted every crown sloth to an *emergent*, and then hung it
+at 34–43 on a tree whose top was 46–53. That is the last few units of the tallest
+tree in the forest — an animal silhouetted against open sky, which is where a
+sloth never is and exactly where it looked silly. The band is now 30–38, inside
+the crown layer with foliage overhead, and the guarantee is expressed against the
+*tree* rather than against the band (`SLOTH_TOP_FRAC`, 0.78) because a band is a
+wish and a tree's height is whatever the forest's RNG said. `branchTaper` then
+scales branch length, branch girth and the animal together, which is the
+requested proportionality and also just what a tree is: a bough near the ground
+is a metre thick, the same tree's upper branches bend under a bird.
+
+**The coat (3).** `furNode` — banded strands along the hanging body, warped by a
+slower wave so they are not a comb, times a three-axis mottle for the clumping,
+with an algae green that only ever adds to the lit side of a strand. Procedural
+rather than a texture map because this animal is a sphere, three cylinders and a
+smaller sphere with no shared UV layout, and a function of `positionLocal` is one
+expression that works on every part and moves with it. It is written to average
+1 so it multiplies the *lit* colour without undoing D48's re-tune. Reactive on
+the two continuous walks (tension deepens the strands, brightness brings the
+algae up), never on a beat — §2.1's ground stream, unspent.
+
+**The crawl is on the bar now (4).** `slothCrawl`: a pull begins on a downbeat
+and the hand plants on the next one, one downbeat in every two to six, each
+animal on its own multiple and its own offset. This is the sloth's ONE anchored
+behaviour and U1 prices it at exactly one; it is affordable because the grid is
+slower than anything in the arrangement, because the population still never
+agrees, and because the refusal survives — at high tension the animal skips more
+of its slots, so D45's joke (the one thing in the frame that will not be hurried)
+now plays against an audible grid instead of against nothing. `env.bar` is the
+one piece of the clock the ground stream may see, and it has exactly one
+consumer; anything else reaching for it needs an argument first.
+
+**The frogs sparkle (5).** Not a lift of the base level — that level was tuned
+against the bloom and a brighter frog is a lantern, and this world has deleted
+two of those. What finds the eye is movement in the *highlight*: `glint`, a fast
+per-frog carrier at a 28% duty, driven by `duck`. That is the kick's own
+sidechain envelope, which already ducks the ether, shoves the camera, presses
+the mist down and dips the bloom — so the frogs are a fifth rendering of one
+constant rather than a new synch point (§2.2). About one frog in eight is lit at
+any instant, so a kick lands a scatter of wet points and never a chorus flashing
+in unison.
+
+**The pool has a light of its own (6), and it is still until it rains (7).**
+Those are one problem from two sides. The pool was two additive caustic cards on
+the litter under an exposure held near 0.62 because the crowns pass ~2% of the
+sky: correct photometry and an invisible object. More caustic does not answer it
+— a brighter web on a black floor is still a black floor — so the water gets a
+broad radiance *under* the caustics and reads as a luminous body first and a
+textured surface second. A bioluminescent pool is something this world has every
+right to; the mycelial net signals and the fireflies blink within twenty units of
+it. The near card tracks the camera in plan, because a radiance pinned to the
+origin is a lit patch you walk away from and the whole complaint was that the
+pool could not be seen.
+
+And the surface only breaks for weather now. The ambient drip trickle is gone and
+so is the pool frogs' call-ripple — D45 tied a call to the ring it makes and that
+argument still holds, but between the two of them the middle of the frame was
+never still. `splash` replaces both: a ring plus a few ballistic droplets, one
+event with two parts. Its rate is driven by `weather.rain` rather than by
+individual streaks, deliberately — the streaks live in a cylinder that follows
+the camera and recycle at `cam.y − 16`, so above camera y ≈ 17 no streak ever
+reaches the water and the splashes would stop while the rain visibly kept
+falling. Rain is a field; what lands on the water is a rate.
+
+**The rain is a knob (8).** `bus.params.rainDensity`, default 0.55 — the first
+param on this bus that only the eye reads, and it lives there rather than in
+`weather.js` because `TRACK_WEATHER` is *authored* (which band storms) while this
+is a *hand* (how much rain you want in the room tonight), and every hand in this
+project writes `bus.params` and nothing else (D7). It arrives with a panel
+slider, MIDI CC 27 and `/jungle/rain` already attached, and joins a new
+`VISUAL_LIVE_KEYS` set so it takes effect without a rebuild — recompiling the set
+because someone thinned the rain would be a rebuild for nothing. It scales
+population and opacity and deliberately not fall speed or streak length: those
+two are what make rain read as rain, and thinning a downpour by slowing it
+produces sleet. The `max(120, …)` floor came down with it, because a hard floor
+was silently ignoring the knob over its bottom third — a control that reads as
+broken.
+
+**The shafts are taller than the canopy (9).** They were 34 units hung with
+their top edge ON `CROWN_Y1`, and the camera flies that band at y 31.7…45.2 — so
+the top of the canopy track put the lens level with the top edge of every shaft
+in the world, and that edge carried the gradient's *brightest* stop. It was not
+a fade running out, it was a lit blade ending in a line across the frame. The
+blade now extends 11 units past the last leaf and the gradient gains a stop above
+its peak, so the light fades IN downward out of the haze instead of beginning at
+a boundary. Crepuscular rays between emergent crowns are one of the sights of a
+rainforest seen from above, which is precisely the altitude that had none.
+`beamAt` is untouched, so the family still fades out on its own where there is
+nothing overhead to shaft through: what moved is where the *geometry* stops, not
+what the doctrine says about where a beam can be seen. Checkably a no-op below
+the roof — the bottom edge still lands at y 11.198 and the old falloff stop still
+resolves to y 28.1.
+
+**The fireflies answer the mood (10).** `fireflyHue` walks the lamp from amber
+(`#ffd98a`, exactly what the swarm has burned since K2, so full gladness changes
+nothing) to a green `#8ae0a8`. This is the one place a hue may answer warmth, and
+W1's rule that it must not — `BAND_GRADES` owns warm-versus-cool as a function of
+altitude and a second one would fight it — survives for a reason worth stating:
+the grade is the colour of the light IN THE AIR, and a firefly is not lit by the
+air. It is self-luminous and its colour is its own chemistry. Real fireflies run
+about 550–590 nm by species, so the two ends are two animals rather than one
+animal with a filter over it. One write per frame for the whole swarm, not per
+agent; the blink is untouched.
+
+**And the ether got the discipline every other cloud already had (10).** It was
+the one particle system in this world with no altitude window at all: the
+fireflies thin above the floor, the pool and the mycelial net fade as you climb
+away, the near field is scaled by `nearFieldAt` — and 4200 motes of *canopy* air
+were drawn at full strength from the litter to the zenith. `etherAt` puts its
+floor at `CANOPY_BASE`, which is the same number twice over: where the crowns'
+underside is, and where the authored brightness spans put the seam into the third
+track. So the eye acquires the ether at the moment the camera enters the layer
+the ether is made of. A floor and not a window — it does not close again at the
+top, because the zenith looks *down* into it and that is what gives the canopy
+sea its depth. It also buys back the whole advection loop in the two tracks that
+do not want it.
+
+**Open, and it needs the author's eye.** Task 10 reported "two sets of dots …
+take away the blue ones". The ether is the best candidate and is now gated, but
+it is not the only one: at the undergrowth altitudes the aperture is at its
+widest (`nearFieldAt` = 1, focal ≈ 26) and the chromatic shift is on, so a single
+defocused mote renders as a large soft disc with a colour-separated ghost beside
+it — which would produce exactly "two sets of dots, one of them blue and not
+firefly-like" out of *one* population. Nothing here has tested that reading. If
+the blue dots survive this change, that is where to look next, and the fix is on
+the optics (L-tier) rather than on any biome.
+
+**A note on the harness, because it cost time.** `isolate(name)` cannot be
+trusted to hide a biome that manages its own visibility: the fireflies, the pool,
+the creatures and now the ether all set `group.visible` from their own band test
+every frame, so they come straight back the frame after `isolate` hides them. Two
+confident conclusions were drawn from those frames during this work before that
+was noticed. Either give `isolate` a latch or read the shots knowing it.
+
+**Not done, deliberately.** The near field was left alone. It is the other
+candidate for a second dot cloud low down, but it is 260 motes at 0.012 scale
+against the ether's 4200, it is what the aperture is *about* under the crowns,
+and it does not exist above them — so it cannot be the thing the brief asks to
+keep for the last two sections.
+
+---
+
 *Add new entries above this line, newest last. If a decision is reversed,
 don't delete it — append the reversal as a new entry referencing the old.*

@@ -12,19 +12,22 @@
  *   { "param": "wildness", "value": 0.7 }                  — plain form
  *
  * The last path segment names the param; `tension` and `brightness` alias the
- * manual knobs. Values clamp to 0..1 (seed: non-negative integer).
+ * manual knobs and `rain` aliases the rain density. Values clamp to 0..1 (seed:
+ * non-negative integer).
  */
-import { bus } from './bus.js';
+import { bus, VISUAL_LIVE_KEYS } from './bus.js';
 import { PERFORM_KEYS, PERFORM_LIVE_KEYS } from './perform.js';
 
 const ALIASES = {
   tension: 'tensionManual', brightness: 'brightnessManual',
   low: 'eqLow', mid: 'eqMid', high: 'eqHigh', // /jungle/low reads better on a fader strip
+  rain: 'rainDensity',                        // /jungle/rain, likewise
 };
 const WRITABLE = new Set([
   'tensionMix', 'tensionManual', 'brightnessMix', 'brightnessManual', 'wildness', 'coupling', 'seed',
   ...PERFORM_KEYS, // the perform rail: echo/crush/space (D17), eq bands/gate/
                    // drive/roll (D19), lpf/hpf (D20)
+  ...VISUAL_LIVE_KEYS, // …and the visuals' own knobs (rainDensity)
 ]);
 
 /**
@@ -86,8 +89,9 @@ export function initOsc({ onChange, url } = {}) {
       let rebuildNeeded = false;
       for (const m of messages) {
         const key = applyOscMessage(bus.params, m);
-        // live perform keys (D17/D19) are read live by the engine — no rebuild
-        if (key && !PERFORM_LIVE_KEYS.has(key)) rebuildNeeded = true;
+        // live perform keys (D17/D19) are read live by the engine, and the
+        // visuals' knobs are read by no pattern at all — neither needs a rebuild
+        if (key && !PERFORM_LIVE_KEYS.has(key) && !VISUAL_LIVE_KEYS.has(key)) rebuildNeeded = true;
       }
       if (rebuildNeeded) scheduleChange();
     };

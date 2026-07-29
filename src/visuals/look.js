@@ -169,6 +169,40 @@ export function nearFieldAt(a) {
   return 1 - clamp01((clamp01(a) - CANOPY_BASE) / (CANOPY_TOP - CANOPY_BASE));
 }
 
+/** How far below the crowns the ether has faded to nothing, in altitude. */
+export const ETHER_FEATHER = 0.09;
+
+/**
+ * How much of the humid canopy ether there is at altitude a — nothing under the
+ * crowns, all of it from their underside up.
+ *
+ * The ether is the CANOPY's system: §3.2 built it as that storey's flow field
+ * and biomes.js's header files it under "canopy y 31–45 … plus the humid ether
+ * advecting through it". But it was the one particle cloud in this world with
+ * no altitude window at all. The fireflies thin out above the floor, the pool
+ * and the mycelial net fade as you climb away from them, the near field is
+ * scaled by `nearFieldAt` — and 4200 motes of canopy air were drawn at full
+ * strength from the litter to the zenith. So the first two tracks were watched
+ * through TWO dot fields at once and only one of them belonged there, which is
+ * exactly what a viewer reported seeing. This gives the last cloud the
+ * discipline every other one already had.
+ *
+ * The boundary is `CANOPY_BASE`, and it is the same number twice over: it is
+ * where the crowns' underside is, and (see the note above it) it is where the
+ * authored brightness spans put the seam between the second track and the
+ * third. So the eye acquires the ether at the moment the camera enters the
+ * layer the ether is made of, which is also the moment the set hands over to
+ * the track that owns it — the traversal doing the work, rather than a fade.
+ *
+ * Note this is a floor, not a window: it does NOT close again at the top. The
+ * ether hangs at y 22–42 and the zenith camera flies at 45–56 looking down, so
+ * up there it is the texture in the gaps between the crowns, which is the one
+ * thing giving that band's canopy sea any depth at all.
+ */
+export function etherAt(a) {
+  return smooth(clamp01((clamp01(a) - (CANOPY_BASE - ETHER_FEATHER)) / ETHER_FEATHER));
+}
+
 /**
  * Where the camera looks, per level, as a world-unit offset from its own
  * altitude. Deliberately not a straight line from down to up: the eye goes to

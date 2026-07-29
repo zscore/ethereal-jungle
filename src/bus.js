@@ -602,6 +602,36 @@ export function phraseStateAt(phraseIndex) {
   }
 }
 
+/**
+ * How much rain there is when it rains (requested).
+ *
+ * The first param on this bus that only the EYE reads, and it is worth being
+ * explicit about why it lives here rather than in `visuals/weather.js` with the
+ * rest of the weather. `TRACK_WEATHER` is *authored*: it says which band storms
+ * and which is still, and it is part of the set the way the tension curve is.
+ * This is a HAND — the amount of rain you want in the room tonight — and every
+ * other hand in this project writes `bus.params` and nothing else (D7). One
+ * writable surface, so it arrives with a slider, a MIDI CC and an OSC address
+ * already attached instead of needing three of its own.
+ *
+ * 0.55 rather than 1: the request was for sparser rain, and this is where
+ * "sparser" is now a number anyone can move.
+ */
+export const RAIN_DENSITY = 0.55;
+
+/**
+ * Params that take effect LIVE, without a rebuild, because no pattern depends on
+ * them. `midi.js` and `osc.js` skip their rebuild coalesce for these exactly the
+ * way they already do for `PERFORM_LIVE_KEYS`.
+ *
+ * Today this is the visuals-only set, and the distinction it draws is real: a
+ * knob the renderer reads every frame is heard the instant the hand moves, while
+ * anything the generators compile has to wait for the phrase clock (§9.2's launch
+ * quantization, which is a feature). Rebuilding a pattern because someone thinned
+ * the rain would be a rebuild for nothing.
+ */
+export const VISUAL_LIVE_KEYS = new Set(['rainDensity']);
+
 // ---------- the bus ----------
 export const bus = {
   // knobs (UI / MIDI-writable). *Mix knobs blend authored curve vs manual knob.
@@ -613,6 +643,8 @@ export const bus = {
     wildness: 0.35,      // base w; effective w also breathes with T
     coupling: 0.6,       // sidechain depth — how much the two worlds touch (§3.3)
     seed: 1,
+    // …and the one knob only the visualizer reads (VISUAL_LIVE_KEYS above)
+    rainDensity: RAIN_DENSITY,
     // the perform rail (D17/D19/D20): DJ color FX applied at the renderer
     // seam, never composition inputs (src/perform.js)
     ...PERFORM_DEFAULTS,
