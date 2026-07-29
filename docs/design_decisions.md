@@ -2474,5 +2474,153 @@ header true.
 
 ---
 
+## D47 — The world gets a surface response (2026-07-29)
+
+Implements `materials_proposal.md` tiers Z, AA and AC. Not a
+`MeshBasicMaterial` → `MeshStandardMaterial` sweep, and not a lighting rig:
+there are still **no lights in this scene**, no shadow maps and no environment
+maps, and D39's "the world is lit analytically instead, and that is a decision
+rather than an omission" is unchanged.
+
+**The gap.** `look.js` already held a real lighting model — `canopyLight(a)`,
+Beer–Lambert extinction calibrated to understory PAR — and it produced **one
+number per object per frame**. So the light was correct and no *surface* was
+lit: a sphere rendered as a filled circle, a 40-unit trunk had one brightness
+from base to crown, and the entire canopy chose between two colours according to
+where the **camera** was. Four workarounds had accumulated in that gap (the
+trunks' baked vertex gradient, the crown lerp, D45's `shadeGeometry`, and real
+surface data smuggled through instance colour), which is how you can tell it was
+structural rather than local.
+
+**The pivot is `MeshBasicNodeMaterial`.** It keeps the unlit pipeline while
+letting the colour be a TSL node graph that can read the surface normal — so the
+same curve is simply evaluated per pixel, at the surface's own altitude.
+`shade.js` is that graph plus a plain-JS mirror, and `test/shade.mjs` asserts
+what it claims without a GPU.
+
+**Three corrections that only arithmetic or a screenshot could have found.**
+
+1. **The surface must not re-apply the extinction the frame already applies.**
+   `look.js` multiplies the whole picture by `0.45 + 0.55·canopyLight^0.3`,
+   precisely because a literal 2% frame is a black frame. A surface that also
+   multiplied by raw `canopyLight` double-counts the canopy — the understory
+   came out about thirty times too dark. The surface's job is FORM, not level,
+   so it uses a compressed curve (`gamma 0.33`, ~3.4× across the world against
+   the raw curve's 41×). There is a test for this now so it cannot come back.
+
+2. **`colorNode` REPLACES `material.color`; it does not multiply with it.**
+   three's `setupDiffuseColor` reads `colorNode = this.colorNode ?? materialColor`
+   and then applies vertex and instance colours on top. The first version wired
+   the raw light amount straight in, every shaded surface lost its colour, and
+   the forest came back as a stand of glowing white sticks — which is the exact
+   failure D39's trunk comment warns about, arrived at from the opposite
+   direction. `shadedColor()` exists so the call sites cannot get this wrong,
+   and it matters because several callers write `material.color` every frame.
+
+3. **A billboard has no surface normal worth reading.** The crowns are cards
+   rotated to face the camera, so their geometric normal says "toward the lens"
+   and nothing about which side of a leaf you are looking at; recovering it from
+   face winding was tried first and produced lit undersides. What is meaningful
+   for a canopy card needs no normal at all — *are you above this crown or under
+   it* — so `billboard: true` uses `cameraPosition.y − positionWorld.y` through a
+   soft feather.
+
+**What AA1 actually buys.** The old model made every crown in the world take one
+colour from the camera's height, so the canopy could not be lit on top and dark
+underneath simultaneously — the single fact that most defines a canopy — and
+passing through the crown layer crossfaded the entire sea together. Now the
+crowns below the camera are lit and the ones above it are dark, in the same
+frame. It brightens the canopy band, which was predicted and is the intended
+change rather than a regression.
+
+**AC2, the hard rail.** This is the first change in the project that alters
+every frame at every altitude, so the invariant is asserted rather than looked
+for: for **any** surface normal at **any** altitude, the four bands keep their
+order (undergrowth < understory < canopy < open air) and the model is monotone
+in altitude. The forest's identity is one extinction curve and a per-pixel model
+is exactly what could have destroyed it.
+
+**AC3 — degrade the model, not the material.** Materials are built once at
+construction, so shedding this tier cannot mean swapping them; rebuilding every
+pipeline mid-frame to save fragment work loses the trade. Instead `sunAmt` is a
+uniform the governor drives to zero below quality 0.6, dropping the directional
+term and keeping the hemisphere one. A full drop to flat materials stays a
+boot-time choice, `?mat=0`, which is what the A/B needs anyway.
+
+**AC1 — `tools/shot_diff.mjs`.** `shots-baseline/` had been in `.gitignore`
+since the pizzaz pass with nothing reading it. Its header records the thing that
+cost the most time here: **this world is time-varying**, so two runs of the same
+build differ by roughly ±25 mean levels on the busiest frames, and several
+confident-looking deltas during this work were that noise plus one real bug.
+Pin the transport or re-run before believing a single frame.
+
+**Not done, deliberately.** Tinting the skylight by the sky's own colour. The
+world's colour already walks with altitude (`BAND_COLORS`) and the picture's
+grade walks the other way (`BAND_GRADES`, L6) — those two were built to
+disagree, and a third colour walk in the shading would flatten the difference.
+Open decision #4 in the proposal stays open. Also not done: PBR, shadow maps,
+subsurface scattering on the leaves (a real candidate for later, and explicitly
+not for the pass that introduces shading at all).
+
+---
+
+## D48 — The forest becomes a jungle, and the sloths get a tree to live on (2026-07-29)
+
+**The brief.** *"Make the big trees look more jungle like, attach the sloths to
+them somehow, and animate the sloths moving slowly."* Done in the same pass as
+D47 because it is the same three objects — trunks, crowns, sloths — and doing
+them as two changes would have meant two conflicting edits to `makeForest`.
+
+**What separates a jungle from a wood, at a glance.** Both are "tall trunks with
+a roof on top". Three things are not shared, and each is a structure rather than
+a decoration:
+
+- **Buttress roots.** The single most characteristic feature of a big tropical
+  tree, and the reason is soil: rainforest soils are thin, so a 45-metre tree
+  cannot anchor with a taproot and braces itself with flying buttresses instead.
+  Triangular fins from the trunk out along the ground, on the emergents and the
+  thicker trunks only — the flare that makes the base of a jungle tree look
+  nothing like the base of an oak.
+- **Lianas.** Woody vines that climb to the canopy and hang back down, filling
+  the vertical space between floor and roof that this world had left as empty
+  air. They hang from the crown layer rather than from a named branch, because
+  that is what they do. They ride the shared wind (K1) and show a gust better
+  than the crowns do — a crown nods, a vine swings.
+- **Epiphytes.** Bromeliads and ferns growing ON the trunks rather than in the
+  soil; a quarter of a rainforest's plant species live this way, and it is why a
+  jungle trunk is lumpy rather than clean. Clustered high, where the light is.
+
+**The sloths get a host tree.** `makeForest` now exposes its `trees`, and each
+sloth picks one — near the camera's path, because the fog under the crowns eats
+anything past ~15 units (D45), and never the same one twice. Its branch grows
+out of that trunk at a real height and angle, with a droop.
+
+This replaces a branch bar that hovered in the air beside each animal. That
+version read, but it read as a *prop*: the branch belonged to nothing, so the
+sloth was attached to the world by an object that was itself attached to
+nothing. The fix is one indirection and it is the difference between an animal
+that is somewhere in the forest and one that is somewhere in the frame.
+
+**And it moves.** The first version reached in place — a fixed object with a
+moving arm. Travel is now driven by the *same envelope as the reach*, so the
+animal advances in pulses and is motionless between them, which is what hanging
+locomotion looks like. The two lead limbs alternate, so it is hand over hand
+rather than one arm waving. A full traverse of a 10-unit branch takes something
+over two minutes, it reverses at the ends, and it faces the way it is going.
+
+The inverse-tension term from D45 survives and now means more than it did: at
+the drop the sloth reaches *less often*, so it also travels *more slowly*. The
+one thing in the frame that refuses to hurry is now visibly refusing.
+
+**Re-tuned, because D47 moved the floor under it.** Every creature's base colour
+was set against the old flat path, where the code multiplied by hand; the shaded
+path applies its own factor, so carrying the old values across made the animals
+roughly twice as bright and the sloth photographed as a white stick figure.
+Their bases are now the values the shading expects. TODO #7's open question —
+whether the sloth reads as an animal *in motion* — is still open, and is now
+worth re-asking, because form and locomotion are exactly what it was short of.
+
+---
+
 *Add new entries above this line, newest last. If a decision is reversed,
 don't delete it — append the reversal as a new entry referencing the old.*

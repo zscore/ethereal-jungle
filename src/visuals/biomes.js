@@ -64,6 +64,8 @@
  */
 import * as THREE from 'three';
 import { canopyLight, beamAt, CANOPY_BASE, CANOPY_TOP } from './look.js';
+import { MeshBasicNodeMaterial } from 'three/webgpu';
+import { shadedColor, sunUniform, uniformScalar } from './shade.js';
 import { cloudShadeAt, makeSky } from './sky.js';
 import { CAST } from './fauna.js';
 import {
@@ -522,8 +524,46 @@ function makeFloor(rng) {
 // be *in front of* another one, which is most of why the frame read as a wash.
 // Cutout foliage (`alphaTest`, opaque queue) buys correct occlusion for the
 // whole additive world behind it and costs one draw call.
-function makeForest(rng) {
+function makeForest(rng, opts = {}) {
   const group = new THREE.Group();
+  const shaded = opts.shaded !== false;   // ?mat=0 keeps the old flat path for A/B
+
+  // ---- the materials (Z2/AA1) ----
+  // `MeshBasicNodeMaterial` is the whole trick: it keeps the UNLIT pipeline —
+  // no lights in the scene, no shadow maps, no environment, no change to the
+  // two-camera layer split — while letting the colour be a node graph that can
+  // read the surface normal. D39's "the world is lit analytically instead, and
+  // that is a decision rather than an omission" survives verbatim; the analysis
+  // is simply evaluated per pixel now instead of once per object.
+  //
+  // Note what is NOT overridden: three multiplies `colorNode` by the material
+  // colour, the vertex colours and the instance colours automatically, so every
+  // existing tint channel keeps working. That is what makes this a surface
+  // change rather than a look change.
+  const sun = sunUniform();
+  const sunAmt = uniformScalar(1);   // AC3 — the governor degrades the model, not the material
+  const makeMat = (extra, opt) => {
+    if (!shaded) return new THREE.MeshBasicMaterial(extra);
+    const m = new MeshBasicNodeMaterial(extra);
+    m.colorNode = shadedColor({ worldTop: WORLD_TOP, sunDir: sun, sunAmt, ...opt });
+    return m;
+  };
+  const trunkMat = makeMat({ side: THREE.DoubleSide });
+  // The crowns are DoubleSide, so the normal MUST be face-corrected or every
+  // underside is shaded as though it were a top — the exact error this work
+  // exists to fix, applied upside down. They are also billboards, so the normal
+  // points at the camera: that makes it a proxy for "am I being seen from above
+  // or below", which is precisely the question, and unlike the old model it is
+  // answered PER CROWN instead of once for the whole canopy.
+  // A crown's underside is genuinely very dark — it is a hole in the sky — so
+  // it takes a lower ambient than anything else in the world. The base colour is
+  // the LIT leaf now rather than a lerp endpoint, and the shading walks it down.
+  const crownMat = makeMat({
+    alphaMap: crownTexture(), color: 0x4a7436,
+    transparent: false, alphaTest: 0.42, depthWrite: true, side: THREE.DoubleSide,
+  }, { billboard: true, weights: { ambient: 0.16, hemi: 0.84 } });
+  const barkMat = makeMat({ side: THREE.DoubleSide });
+  const epiMat = makeMat({ color: 0x3f6b32, side: THREE.DoubleSide });
 
   // ---- layout: an annulus around the camera's path, biased near ----
   const TRUNKS = 26;
@@ -553,23 +593,20 @@ function makeForest(rng) {
   // trunk is dark at the litter and bright where it enters the crowns without
   // costing a shader or a second draw. That gradient IS canopyLight, drawn on
   // an object: the clearest statement in the world of where the light is.
-  const trunkGeo = new THREE.CylinderGeometry(0.55, 1, 1, 7, 4, true);
-  {
-    const pa = trunkGeo.attributes.position;
-    const cols = new Float32Array(pa.count * 3);
-    for (let i = 0; i < pa.count; i++) {
-      const u = pa.getY(i) + 0.5;                 // 0 at the base, 1 at the crown
-      const k = 0.14 + 0.86 * Math.pow(u, 1.45);
-      cols.set([k, k, k], i * 3);
-    }
-    trunkGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  }
+  // Z2 — the vertical gradient used to be BAKED into these vertex colours,
+  // because an unlit material could not produce one. That was the clearest
+  // example in the world of the missing surface response: the gradient *is*
+  // `canopyLight`, drawn on an object by hand, and it gave a 40-unit trunk one
+  // brightness per vertex ring regardless of what was actually lighting it.
+  // `shadeNode` now evaluates the same curve per pixel at the surface's own
+  // altitude, so the attribute is gone and the gradient is real.
+  const trunkGeo = new THREE.CylinderGeometry(0.55, 1, 1, 9, 6, true);
   const trunkMesh = new THREE.InstancedMesh(
     trunkGeo,
     // opaque, depth-writing, fogged: distant trunks haze out into the air
     // rather than staying crisp, which is aerial perspective and is the only
     // depth cue that works at 60 units in a frame with no sun in it
-    new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
+    trunkMat,
     TRUNKS,
   );
   {
@@ -593,6 +630,113 @@ function makeForest(rng) {
     });
   }
   group.add(trunkMesh);
+
+  // ---- what makes it read as a JUNGLE rather than a wood ----
+  // Three additions, in order of how much each one says. A temperate wood and a
+  // tropical forest share "tall trunks with a roof on top"; what separates them
+  // at a glance is that a jungle's trunks are BUTTRESSED at the base, that
+  // things HANG between them, and that things GROW ON them. None of it is
+  // decoration — each is a structure the other one does not have.
+
+  // 1. Buttress roots. The single most characteristic feature of a big tropical
+  // tree, and the reason is soil: rainforest soils are thin, so a 45-metre tree
+  // cannot anchor with a taproot and braces itself with flying buttresses
+  // instead. A triangular fin from the trunk out along the ground — the flare
+  // that makes the base of a jungle tree look nothing like the base of an oak.
+  const buttressGeo = (() => {
+    const g = new THREE.BufferGeometry();
+    // a right triangle: up the trunk, down to the ground, out along it
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      0, 1, 0, 0, 0, 0, 1, 0, 0,
+    ]), 3));
+    g.computeVertexNormals();
+    return g;
+  })();
+  const buttresses = [];
+  for (const tr of trees) {
+    if (!tr.emergent && tr.rad < 0.85) continue;   // only the big ones brace
+    const fins = 3 + Math.floor(rng() * 3);
+    const phase = rng() * Math.PI * 2;
+    for (let f = 0; f < fins; f++) {
+      const a = phase + (f / fins) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+      buttresses.push({
+        x: tr.x, z: tr.z, a,
+        h: (tr.emergent ? 4.5 : 3) + rng() * 3.5,
+        out: tr.rad * (2.2 + rng() * 1.8),
+      });
+    }
+  }
+  if (buttresses.length) {
+    const buttressMesh = new THREE.InstancedMesh(buttressGeo, barkMat, buttresses.length);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const p = new THREE.Vector3();
+    const sv = new THREE.Vector3();
+    buttresses.forEach((b, i) => {
+      e.set(0, -b.a, 0);
+      q.setFromEuler(e);
+      p.set(b.x, 0, b.z);
+      sv.set(b.out, b.h, 1);
+      m.compose(p, q, sv);
+      buttressMesh.setMatrixAt(i, m);
+    });
+    buttressMesh.frustumCulled = false;
+    group.add(buttressMesh);
+  }
+
+  // 2. Lianas. Woody vines that climb to the canopy and hang back down, and the
+  // thing that fills the vertical space between the floor and the roof — which
+  // in this world was empty air. They hang from the crown layer rather than
+  // from any particular branch, because that is what they do: the vine's own
+  // tree is usually not the one you see it hanging from.
+  const LIANAS = 46;
+  const lianaGeo = new THREE.CylinderGeometry(0.055, 0.075, 1, 5, 1, true);
+  const lianas = [];
+  for (let i = 0; i < LIANAS; i++) {
+    const host = trees[Math.floor(rng() * trees.length)];
+    const a = rng() * Math.PI * 2;
+    const r = host.rad + 0.8 + rng() * 5;
+    const top = host.h - 2 - rng() * 8;
+    const len = 6 + rng() * Math.max(4, top - 6);
+    lianas.push({
+      x: host.x + Math.cos(a) * r, z: host.z + Math.sin(a) * r,
+      top, len, phase: rng() * 9, sway: 0.3 + rng() * 0.7,
+    });
+  }
+  const lianaMesh = new THREE.InstancedMesh(lianaGeo, barkMat, LIANAS);
+  lianaMesh.frustumCulled = false;
+  group.add(lianaMesh);
+
+  // 3. Epiphytes — bromeliads and ferns growing ON the trunks, not in the soil.
+  // A quarter of a rainforest's plant species live this way and it is why a
+  // jungle trunk is lumpy rather than clean. Cheap: small clumps, instanced.
+  const EPIS = 64;
+  const epiGeo = new THREE.SphereGeometry(1, 6, 4);
+  const epiMesh = new THREE.InstancedMesh(epiGeo, epiMat, EPIS);
+  {
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const sv = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const c = new THREE.Color();
+    for (let i = 0; i < EPIS; i++) {
+      const host = trees[Math.floor(rng() * trees.length)];
+      const a = rng() * Math.PI * 2;
+      // they cluster where the light is: high on the trunk, not down in the dark
+      const u = 0.45 + Math.pow(rng(), 0.6) * 0.5;
+      const y = host.h * u;
+      const rad = host.rad * (1 - 0.45 * u);
+      p.set(host.x + Math.cos(a) * rad, y, host.z + Math.sin(a) * rad);
+      const sz = 0.5 + rng() * 0.9;
+      sv.set(sz * 1.5, sz, sz * 1.5);
+      m.compose(p, q, sv);
+      epiMesh.setMatrixAt(i, m);
+      epiMesh.setColorAt(i, c.setScalar(0.7 + rng() * 0.6));
+    }
+  }
+  epiMesh.frustumCulled = false;
+  group.add(epiMesh);
 
   // ---- crowns: the ceiling, and the canopy sea beyond it ----
   // A canopy has to be CLOSED, and the first cut of this was not: five small
@@ -649,10 +793,7 @@ function makeForest(rng) {
   }
   const crownMesh = new THREE.InstancedMesh(
     new THREE.PlaneGeometry(1, 1),
-    new THREE.MeshBasicMaterial({
-      alphaMap: crownTexture(), color: 0x101a10,
-      transparent: false, alphaTest: 0.42, depthWrite: true, side: THREE.DoubleSide,
-    }),
+    crownMat,
     crowns.length,
   );
   crownMesh.frustumCulled = false;
@@ -676,10 +817,20 @@ function makeForest(rng) {
   const UP = new THREE.Vector3(0, 1, 0);
   const tint = new THREE.Color();
   const crownTint = new THREE.Color();
+  const lianaQ = new THREE.Quaternion();
+  const lianaE = new THREE.Euler();
+  const lianaP = new THREE.Vector3();
+  const lianaS = new THREE.Vector3();
 
   return {
     name: 'forest',
     group,
+    /**
+     * The stand itself, so the sloths can hang off a real tree rather than off
+     * a branch floating in the air (U2, revised). Read-only by convention —
+     * `creatures.js` picks hosts from it and never writes to it.
+     */
+    trees,
     update(dt, env) {
       const camY = env.cam?.y ?? 0;
       const alt = camY / WORLD_TOP;
@@ -689,20 +840,36 @@ function makeForest(rng) {
       const drawn = crowns.length - Math.round(FAR * (1 - q) * 0.7);
       if (crownMesh.count !== drawn) crownMesh.count = drawn;
 
-      // above/below is the whole lighting model: a crown is a silhouette from
-      // underneath and a lit surface from over the top, and there is nothing in
-      // between except the few seconds the canopy track spends passing through
+      // AA1 — this used to be the whole lighting model, and it was a camera
+      // trick: `above` is how high the CAMERA is, and every crown in the world
+      // took the same colour from it. So the canopy could not be lit on top and
+      // dark underneath at the same time — the single fact that most defines
+      // what a canopy looks like — and passing through the crown layer
+      // crossfaded the entire sea together.
+      //
+      // The billboard's own normal answers it per crown instead: a crown facing
+      // down at you is seen from below and shades dark, one facing up is seen
+      // from above and shades lit, and both happen in the same frame. The
+      // material colour is now just the leaf, and the light is the light.
       const above = Math.min(1, Math.max(0, (camY - (CROWN_Y1 - 4)) / 9));
-      crownMesh.material.color.copy(SHADE).lerp(SUNLIT, above);
-      // Trunks are lit by whatever got down to THEM, which is not much — and
-      // crucially not by whatever is falling on the CAMERA. Keying this to the
-      // camera's altitude made the trunks brighten as you climbed, so from over
-      // the crowns you looked down through the gaps at a stand of glowing white
-      // sticks. A trunk lives under the canopy no matter where you are standing,
-      // so the light it gets is capped at the crowns' underside.
+      if (!shaded) crownMesh.material.color.copy(SHADE).lerp(SUNLIT, above);
+      // Trunks keep their HUE from the palette walk — the colour of the air a
+      // trunk is standing in is still a function of where it is in the world —
+      // but the brightness term is gone, because that is now the shading's job
+      // and doing it twice was the double-count this tier exists to remove.
       const lit = canopyLight(Math.min(alt, CANOPY_BASE));
-      tint.copy(paletteAt(Math.min(0.7, alt * 0.5 + 0.18))).multiplyScalar(0.35 + 1.1 * lit);
+      tint.copy(paletteAt(Math.min(0.7, alt * 0.5 + 0.18)));
+      if (shaded) tint.multiplyScalar(1.12);
+      else tint.multiplyScalar(0.35 + 1.1 * lit);
       trunkMesh.material.color.copy(tint);
+      barkMat.color.copy(tint).multiplyScalar(0.62);
+
+      // AA1 — the sun the frame already computes for the god rays (L2), and
+      // which since D44 points at the storm cell during a strike. Feeding the
+      // same vector in as a weak directional term means a strike briefly rakes
+      // the forest from the bearing it came from.
+      if (shaded && env.sunDir) sun.value.set(env.sunDir.x, env.sunDir.y, env.sunDir.z);
+      if (shaded) sunAmt.value = (env.quality ?? 1) < 0.6 ? 0 : 1;
 
       // K1: the crowns ride the shared wind. They are the highest solid thing
       // in the world, so they get the most of it, and the sway agrees with the
@@ -751,6 +918,22 @@ function makeForest(rng) {
       }
       crownMesh.instanceMatrix.needsUpdate = true;
       if (crownMesh.instanceColor) crownMesh.instanceColor.needsUpdate = true;
+
+      // the lianas ride the same wind as everything else (K1). They are the
+      // longest hanging things in the world, so they show a gust better than
+      // the crowns do — a crown nods, a vine swings.
+      for (let i = 0; i < lianas.length; i++) {
+        const l = lianas[i];
+        const lw = windAtOr(env, l.x, l.top - l.len * 0.5, l.z);
+        const swing = l.sway * 0.09;
+        lianaQ.setFromEuler(lianaE.set(lw.z * swing, 0,
+          -lw.x * swing + Math.sin(env.t * 0.31 + l.phase) * 0.012));
+        lianaP.set(l.x, l.top - l.len * 0.5, l.z);
+        lianaS.set(1, l.len, 1);
+        m4.compose(lianaP, lianaQ, lianaS);
+        lianaMesh.setMatrixAt(i, m4);
+      }
+      lianaMesh.instanceMatrix.needsUpdate = true;
     },
   };
 }
@@ -1473,12 +1656,15 @@ function makeNearField(rng) {
 }
 
 /** Build the whole world into `scene`; returns per-frame updaters + hooks. */
-export function buildWorld(scene, rng) {
+export function buildWorld(scene, rng, opts = {}) {
   // The pool is built first among the things that reference each other, because
   // the frog chorus drops its rings into the pool's own recycled ring pool
   // (U3): a call and the ripple it makes are one event, not two.
   const pool = makePool(rng);
   const sky = makeSky(rng);
+  // …and the forest before the sloths, because a sloth now hangs from a branch
+  // growing out of one of ITS trunks rather than from a bar floating in the air.
+  const forest = makeForest(rng, opts);
   // U4/U5 — the flock is held by name because the toucan startle has to reach
   // it from the event queue in scene.js. It is the only creature with an
   // anchored behaviour, so it is the only one that needs a handle.
@@ -1487,13 +1673,13 @@ export function buildWorld(scene, rng) {
   const biomes = [
     // built bottom-up, which is also the order the set climbs them
     makeAir(), makeRoots(rng), makeMycelium(rng), pool, makeFloor(rng),
-    makeForest(rng), makeCanopy(), sky, makeShafts(rng), makeMist(rng),
+    forest, makeCanopy(), sky, makeShafts(rng), makeMist(rng),
     makeFireflies(rng), makeRain(rng), makeNearField(rng),
     // …and the fauna, in the same bottom-up order (proposal IV, tier U)
     makePoolFrogs(rng, CAST.poolfrog, 'poolfrog', pool),
-    makeSloths(rng, CAST.sloth, 'sloth'),
+    makeSloths(rng, CAST.sloth, 'sloth', forest.trees),
     makeTreeFrogs(rng, CAST.treefrog, 'treefrog'),
-    makeSloths(rng, CAST.slothCrown, 'slothCrown'),
+    makeSloths(rng, CAST.slothCrown, 'slothCrown', forest.trees),
     flock,
     makeSoarer(rng, CAST.soarer, 'soarer'),
   ];
@@ -1516,5 +1702,11 @@ export function buildWorld(scene, rng) {
     /** V2 — the storm cell this frame, so a strike can come FROM it. */
     cell() { return sky.cell(); },
     debugSky() { return sky.debug(); },
+    /** U2 — where each sloth is along its branch, and which way it is going. */
+    debugSloths() {
+      return Object.fromEntries(biomes
+        .filter((b) => b.name === 'sloth' || b.name === 'slothCrown')
+        .map((b) => [b.name, b.debug?.()]));
+    },
   };
 }

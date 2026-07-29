@@ -87,7 +87,9 @@ export async function initScene(canvas) {
   // Everything in it lives in world space. K5's fronds were the one exception —
   // silhouettes parented to the camera — and D42 removed them; what remains of
   // the near field is its dust, which parallaxes in world space like the rest.
-  const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7));
+  // ?mat=0 keeps the old flat materials, for an A/B against the shading (Z2)
+  const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7),
+    { shaded: qp.get('mat') !== '0' });
 
   // There were a DirectionalLight and an AmbientLight here, and they had never
   // lit anything: every material in this world is `MeshBasicMaterial`, which
@@ -306,6 +308,12 @@ export async function initScene(canvas) {
   let camFov = FOV_BASE;               // smoothed dolly zoom on landings (M1)
   let lastSection = 'groove';          // exposed for the harness's style assertions
   const SUN = new THREE.Vector3();     // scratch: the god-ray origin, projected
+  // AA1 — the same light, as a direction, for the surface shading. Computed
+  // before `world.update` rather than reused from the god-ray block below,
+  // which runs after it: sharing that vector would shade every surface with
+  // last frame's bearing, and during a strike that is the one frame that
+  // matters.
+  const SUN_DIR = new THREE.Vector3(0, 1, 0);
   const scratchColor = new THREE.Color();
 
   /**
@@ -563,6 +571,15 @@ export async function initScene(canvas) {
       drift, strength: weather.wind, top: WORLD_TOP,
     });
 
+    // AA1 — where the light is coming from. Straight down out of the sky
+    // normally; from the storm cell while a strike is up (D44), so the flash
+    // rakes the forest from the bearing it actually came from.
+    {
+      const cell = flash > 0.001 ? world.cell?.() : null;
+      if (cell) SUN_DIR.set(cell.x, cell.y, cell.z).normalize();
+      else SUN_DIR.set(0, 1, 0);
+    }
+
     // fire due events (arrived ahead of time, keyed to the audio clock)
     while (pending.length && pending[0].when <= audioNow + dt) fire(pending.shift(), trackInfo.track);
 
@@ -641,6 +658,7 @@ export async function initScene(canvas) {
       strike,                 // …and the bearing it came from (V2: the cell)
       warmth, harmony, fauna, section,
       seed: bus.params.seed, worldTop: WORLD_TOP,
+      sunDir: SUN_DIR,   // AA1 — the same bearing the god rays use (D44's cell)
       sky: skyForce ?? skyTier,   // Y2 — the governor's top rung, read by sky.js
     };
     world.update(dt, env);
