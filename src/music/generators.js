@@ -736,16 +736,30 @@ const TRANSFORMS = [
   (m) => m.map((d) => 4 - d),                      // inversion about the cell's center
   (m, rng) => { const r = 1 + Math.floor(rng() * (m.length - 1)); return m.map((_, i) => m[(i + r) % m.length]); }, // rotation
   (m, rng) => m.map((d) => d + (rng() < 0.5 ? 1 : 2)), // diatonic transposition
+  // AD15 — fragmentation: the first three notes, augmented — the cell
+  // remembered in pieces, the way the granular ghost remembers the break.
+  // Diet-only: no track draws it unless its palette asks (the zenith's does).
+  (m) => m.slice(0, 3).flatMap((d) => [d, d]),
 ];
+
+// AD15 — the standard bag: everything except fragmentation, which is a
+// dissolution device and must be asked for by name.
+const TRANSFORM_DIET = [0, 1, 2, 3, 4];
 
 /**
  * §3 contour-then-quantize: 80% a transformation of the motif, 20% a fresh
  * smooth contour. Shape is generated apart from pitch set, so mode changes
  * re-color a held shape — motivic identity surviving harmonic change.
+ *
+ * AD15 — `diet` (indices into TRANSFORMS) authors the variation POLICY per
+ * track: the cell was varied identically in minute 1 and minute 11, so the
+ * motif had a distribution but no arc. Undergrowth barely dares move it,
+ * the canopy is permitted everything, the zenith remembers it in pieces —
+ * exposition, development, permission, dissolution.
  */
-export function leadContour(rng, w) {
+export function leadContour(rng, w, diet = TRANSFORM_DIET) {
   if (rng() < 0.8) {
-    const tf = TRANSFORMS[Math.floor(rng() * TRANSFORMS.length)];
+    const tf = TRANSFORMS[diet[Math.floor(rng() * diet.length)] ?? 0];
     return tf(MOTIF, rng);
   }
   // fresh material: a bounded smooth walk (novelty budget, §5)
@@ -921,9 +935,9 @@ function stridulateLayer(ctx, st, phraseIndex, seed, rs) {
  * an oscillator the voice has usually already released — one console error per
  * note. Stacking our own noise costs nothing and lets it be filtered apart.
  */
-function breathLayer(ctx, br, mode, tuning, rng, w, tension, rs) {
+function breathLayer(ctx, br, mode, tuning, rng, w, diet, tension, rs) {
   const { note, s } = ctx;
-  const contour = leadContour(rng, w); // the set's cell, not a new tune
+  const contour = leadContour(rng, w, diet); // the set's cell, not a new tune
   const scale = leadNotes(mode, br.oct ?? 1, tuning);
   const mask = euclid(3, 8, Math.floor(rng() * 8));
   let ci = 0;
@@ -1789,10 +1803,14 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   }
 
   // ---- lead: the set's one melodic cell, transformed (80/20) ----
+  // AD15 — the melody policy is authored per track (palette.motif.transforms,
+  // indices into TRANSFORMS), and the release pins every track's bag to
+  // literal recall: §6.4's argument resolving on recall, four times a set.
+  const diet = sec === 'release' ? [0] : pal.motif?.transforms;
   if (leadPresent) {
     const lp = pal.lead ?? {};
     const featured = sec === 'breakdown';
-    const contour = leadContour(rng, w);
+    const contour = leadContour(rng, w, diet);
     const scale = leadNotes(mode, 2, tuning);
     // sparse placement: E(k,16) with k breathing with tension — the lead is a
     // guest in the ether, not a soloist (visual doc §5's economy applies here too)
@@ -1858,7 +1876,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     if (chirp) layers.push(chirp);
   }
   if (pal.breath && castIn && sec !== 'intro') {
-    for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, tension, rs)) layers.push(gate(l));
+    for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, diet, tension, rs)) layers.push(gate(l));
   }
   // P3 — the stab, on its OWN rng. Drawing from the shared one here would
   // re-deal every layer built after it (the squawk's hashed-rng idiom, applied

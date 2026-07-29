@@ -189,6 +189,10 @@ export const TRACKS = [
         hpf: 240,
         plane: [0, 0, 1, 0, 2] },
       lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8 },
+      // AD15 — the melody policy: exposition. The cell may recall itself and
+      // turn, nothing more — the set's first track barely dares vary its tune,
+      // which is what makes the later tracks' permissions legible.
+      motif: { transforms: [0, 3] },   // literal, rotation
       // the migrating pluck at its near/dry extreme: wooden tuned percussion,
       // struck on the break's non-anchor positions and locked to the grid
       pluck: { fmh: 3.5, fmi: 2.4, oct: 0, k: 3, decay: 0.12, room: 0.05, offGrid: 0, gain: 0.3, orbit: 1 },
@@ -234,6 +238,9 @@ export const TRACKS = [
       pad: { s: 'sawtooth', oct: 1, width: 9, lpf: [900, 2600], attack: 1.2, release: 4, gain: 0.32,
         plane: [0, 2, 0] },
       lead: { s: 'triangle', lpf: [1200, 2400], room: 0.8 },
+      // AD15 — development begins: the retrograde joins the bag. (The canopy
+      // authors no diet at all — the permissive track draws everything.)
+      motif: { transforms: [0, 3, 1] }, // literal, rotation, retrograde
       pluck: { fmh: 3.5, fmi: 2.2, oct: 0, k: 3, decay: 0.16, room: 0.4, offGrid: 0.33, gain: 0.28, orbit: 1 },
       // characteristic 1: bamboo/duduk-ish breath — sine + noise, living pitch
       breath: { vib: 4.5, vibmod: 0.18, noise: 0.32, oct: 1, lpf: [1600, 900], gain: 0.26 },
@@ -344,6 +351,10 @@ export const TRACKS = [
       pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3,
         plane: [0, 0, 0, 2] },
       lead: { s: 'sine', lpf: [2000, 1500], room: 0.9 },
+      // AD15 — dissolution: inversion and fragmentation only. The cell is
+      // remembered upside down and in pieces, the way the granular ghost
+      // remembers the break — nothing up here states anything whole.
+      motif: { transforms: [2, 5] },   // inversion, fragmentation
       // D34 — the pluck's own ceiling: fmh 3.5 puts sidebands at 4.5× the
       // fundamental, and this is the cast that plays them into the biggest room
       pluck: { fmh: 3.5, fmi: 1.4, oct: 1, k: 2, decay: 0.9, room: 0.95, lpf: 2600, offGrid: 1, gain: 0.22, orbit: 3, slow: 2 },
