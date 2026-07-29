@@ -92,6 +92,13 @@ export const AMB_CHUNKS = AMB_BARS / PHRASE_BARS; // 8 slices per loop
 // The brightness walk doubles as the visual altitude (visual doc §4.4):
 // phrygian roots → lydian sky. One axis, two media.
 
+// AD2 — this is now the DEFAULT shape, not the only one: a track may author
+// its own breakpoints (`TRACKS[i].shape`). One curve at four amplitudes meant
+// the timing of every emotional event sat on a fixed grid — the same climax
+// heard four times at four volumes. The canopy keeps the canonical curve on
+// purpose (the climax track is the one that keeps the promise); the other
+// three bend it. The fractal thesis survives: one curve FAMILY, sampled at
+// several scales, rather than one curve.
 const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax, release
   [0, 0.1], [0.2, 0.4], [0.35, 0.3], [0.618, 1.0], [0.75, 0.55], [1, 0.2],
 ];
@@ -120,6 +127,9 @@ const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax
 export const TRACKS = [
   {
     name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30],
+    // AD2 — late, shallow, procrastinated: the world subsides, and even its
+    // climax arrives after the golden ratio has passed
+    shape: [[0, 0.10], [0.3, 0.25], [0.5, 0.35], [0.7, 1.0], [0.85, 0.5], [1, 0.2]],
     // D37 — `ambglint` is the dark sparkle: drips inside an ice-filled lava
     // tube, 15 countable plinks per loop rather than a wash. It is the fourth
     // layer here and the only one anywhere that is *treated* — see
@@ -214,6 +224,9 @@ export const TRACKS = [
   },
   {
     name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55],
+    // AD2 — twin peaks: the violence arrives early, recedes, and returns at
+    // the golden ratio — the track that struts should feint
+    shape: [[0, 0.10], [0.25, 0.68], [0.4, 0.32], [0.618, 1.0], [0.8, 0.45], [1, 0.2]],
     ambience: ['ambrain', 'ambthunder', 'ambdrips'],
     warmth: 0.35,
     tuning: {},                      // plain 12-TET: the neutral middle of the arc
@@ -319,6 +332,13 @@ export const TRACKS = [
   },
   {
     name: 'zenith', bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00],
+    // AD2 — early crest, long decay: altitude is reached in the first third
+    // and the rest of the track is thinning air. The peak SECTION then plays
+    // against a falling curve — the drop is thin on purpose, in the one track
+    // whose form is mostly aftermath. The tail ends at 0.2, not lower: the
+    // seam window must open ABOVE the incoming intro's tension or the D36
+    // wind-down would have to rise to reach it (test/seams.mjs holds the line).
+    shape: [[0, 0.15], [0.35, 1.0], [0.6, 0.4], [1, 0.2]],
     ambience: ['ambwind', 'ambshimmer', 'ambsparkle'],
     warmth: 0.10,                    // brightest AND coldest: the axes cross here
     tuning: { stretch: 3 },          // stretched octaves — nothing ever settles
@@ -645,7 +665,9 @@ export const bus = {
   /** Tension at set-time t. Sample t > now() for foreshadowing. */
   tensionAt(t) {
     const { track, phase } = trackAt(t);
-    let T = lerp(track.floor, track.peak, sampleBreakpoints(SHAPE, phase));
+    // AD2 — each track samples its own curve (falling back to the canonical
+    // one), so the four tellings stop sharing a clock
+    let T = lerp(track.floor, track.peak, sampleBreakpoints(track.shape ?? SHAPE, phase));
     const seam = seamAt(t);
     if (seam.active) {
       // D36 — the seam is a WIND-DOWN, and this function is where that is
@@ -668,7 +690,8 @@ export const bus = {
       // phase settles from there onto the incoming track's own opening tension.
       // No cliff at the boundary in either direction.
       const lateStart = 1 - SEAM_LATE_BARS / SEAM_BARS;
-      const tOpen = lerp(seam.to.floor, seam.to.peak, sampleBreakpoints(SHAPE, 0));
+      const tOpen = lerp(seam.to.floor, seam.to.peak,
+        sampleBreakpoints(seam.to.shape ?? SHAPE, 0)); // AD2 — the incoming track's OWN opening
       // A landing still arrives — something lands on that downbeat and the
       // visuals stage it (look.js M1/I2) — so it keeps more under it than a
       // dissolve, which is allowed to empty out completely.
