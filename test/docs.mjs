@@ -101,7 +101,7 @@ console.log('signatures say what the thing is');
   check(dmax.label === 'constant',
     'a parenthesized expression containing an arrow callback is not reported as a function');
   const bagFor = gen.items.find((i) => i.name === 'bagFor');
-  check(bagFor.label === 'function' && bagFor.signature.includes('(library, override, name)'),
+  check(bagFor.label === 'function' && bagFor.signature.includes('(library, override, name, pass = 0)'),
     'an arrow-function constant is reported as a function, with its parameters');
   const shape = modules.find((m) => m.path.endsWith('bus.js')).items.find((i) => i.name === 'SHAPE');
   check(!shape.signature.includes('//'), 'a trailing comment does not leak into a signature');

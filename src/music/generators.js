@@ -15,7 +15,7 @@
  * from `TRACKS[i].palette` / `.warmth` / `.tuning` in bus.js. That split is the
  * point: variation by re-casting, not by re-coding (§7.3, docs/track_identities.md).
  */
-import { makeRng, phraseStateAt, seamVariant, warmthAt, PHRASE_BARS, SEAM_BARS, AMB_CHUNKS } from '../bus.js';
+import { makeRng, phraseStateAt, seamVariant, warmthAt, PHRASE_BARS, SEAM_BARS, SET_BARS, AMB_CHUNKS } from '../bus.js';
 import { modeAt, padVoicing, bassNotes, BASS_DEGREES, leadNotes, degreeToMidi, tune } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
@@ -184,8 +184,19 @@ export const SNARE_GHOSTS = SNARE_BAGS.shipped;
  */
 export const GROOVE_BAGS = { kick: null, snare: null };
 
+// AD5 — the second telling is more confident: on later passes of the set each
+// groove bag steps to a busier neighbour. sparse stays a temperament (it only
+// rises to shipped), and nothing ladders twice — pass 2 and beyond hold where
+// pass 1 arrived, so the loop settles rather than escalating forever.
+const BAG_NEIGHBOUR = { sparse: 'shipped', shipped: 'busy', busy: 'pushed', pushed: 'busy', laidback: 'shipped' };
+
 /** Resolve which bag a track draws from: lab override, else its cast, else shipped. */
-const bagFor = (library, override, name) => override ?? library[name] ?? library.shipped;
+const bagFor = (library, override, name, pass = 0) => {
+  if (override) return override;
+  let resolved = library[name] ? name : 'shipped';
+  if (pass > 0 && BAG_NEIGHBOUR[resolved]) resolved = BAG_NEIGHBOUR[resolved];
+  return library[resolved] ?? library.shipped;
+};
 
 // How much filling-in each section wants: the intro keeps the heartbeat bare,
 // the peak fills in. Form decides, tension only shades — same rule as D11.
@@ -310,8 +321,10 @@ export const DROP_VARIANTS = [
   { name: 'late',        break: '[0 1 1 1]/4', bass: '[0 1 1 1]/4' },
 ];
 
-export function dropVariantFor(trackIndex, seed) {
-  const rng = makeRng(((seed ^ 0xd80b) + trackIndex * 6151) >>> 0);
+export function dropVariantFor(trackIndex, seed, pass = 0) {
+  // AD5 — the pass folds into the seed, so the second hearing of the set deals
+  // four fresh drops; pass 0 is bit-identical to the pre-ladder draw.
+  const rng = makeRng(((seed ^ 0xd80b) + trackIndex * 6151 + pass * 7451) >>> 0);
   return DROP_VARIANTS[Math.floor(rng() * DROP_VARIANTS.length)];
 }
 
@@ -354,9 +367,12 @@ const TURN_LIFT = {
  * Draw a phrase's turnaround, or null. Deterministic in (seed, phraseIndex) and
  * hashed away from the shared stream, the `squawkLayer` idiom.
  */
-export function turnaroundFor(phraseIndex, seed, sec) {
-  const lift = TURN_LIFT[sec] ?? 0.3;
-  if (lift <= 0) return null;
+export function turnaroundFor(phraseIndex, seed, sec, pass = 0) {
+  // AD5 — the drummer has warmed up: later passes turn phrases around a
+  // little more often. The base appetite per section is unchanged.
+  const base = TURN_LIFT[sec] ?? 0.3;
+  if (base <= 0) return null;
+  const lift = Math.min(1, base + (pass > 0 ? 0.15 : 0));
   const rng = makeRng(((seed ^ 0x7a17) + phraseIndex * 2311) >>> 0);
   if (rng() > lift) return null;
   return TURNAROUNDS[Math.floor(rng() * TURNAROUNDS.length)];
@@ -486,11 +502,16 @@ export const FILL_VOICES = ['snare', 'break', 'pitch', 'weather'];
  * not which snare roll got there. Keeping a second bag would have meant half
  * the boundaries in a set never hearing the new material.
  */
-export const seamFillFor = (toIndex, seed) => {
-  const rot = Math.abs(strHash(`fillvoice:${seed}`)) % FILL_VOICES.length;
+export const seamFillFor = (toIndex, seed, pass = 0) => {
+  // AD5 — the pass XORs into the seed: a later pass re-deals where the voice
+  // rotation starts and which figures are drawn (the no-two-boundaries-alike
+  // guarantee holds within every pass), and pass 0 is bit-identical to the
+  // pre-ladder deal.
+  const s = (seed ^ (pass * 0x9e37)) >>> 0;
+  const rot = Math.abs(strHash(`fillvoice:${s}`)) % FILL_VOICES.length;
   const voice = FILL_VOICES[(((toIndex + rot) % FILL_VOICES.length) + FILL_VOICES.length) % FILL_VOICES.length];
   const bag = SEAM_FILLS.filter((f) => f.voice === voice);
-  return bag[Math.abs(strHash(`fill:${toIndex}:${seed}`)) % bag.length];
+  return bag[Math.abs(strHash(`fill:${toIndex}:${s}`)) % bag.length];
 };
 
 /**
@@ -1106,6 +1127,12 @@ export function makeSetPattern(ctx, p, signals) {
         barInTrack: ps.barInTrack,
         phraseIndex: idx,
         baseSeed: p.seed,
+        // AD5 — which telling of the set this phrase belongs to. The loop used
+        // to loop exactly; the pass index is the free variable R7 named, and
+        // the devices that read it (bags, turnarounds, drops, seam fills) make
+        // minute 12 a more confident telling of minute 3 while staying exactly
+        // as deterministic — same seed, same set, every pass.
+        pass: Math.max(0, Math.floor((idx * PHRASE_BARS) / SET_BARS)),
       };
       pat = buildArrangement(ctx, { ...p, seed }, tension, brightness, seamInfo, ps.section,
         {
@@ -1218,7 +1245,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // R3 — which drop this track gets, and therefore what is withheld from its
   // drop bar. Null everywhere except the peak's first phrase.
   const drop = (sec === 'peak' && firstPhraseOf && !silent)
-    ? dropVariantFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed)
+    ? dropVariantFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed, voice.pass ?? 0)
     : null;
   /** Apply a drop variant's mask for one layer family, if it has one. */
   const held = (pat, family) => (drop?.[family] ? pat.mask(drop[family]) : pat);
@@ -1297,7 +1324,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // here has the phrase index and the track index folded in, so keying to it
     // would re-roll the rotation at every boundary and the guarantee that a set
     // hears four different materials would quietly stop holding.
-    const fill = seamFillFor(seam?.toIndex ?? 0, voice.baseSeed ?? p.seed);
+    const fill = seamFillFor(seam?.toIndex ?? 0, voice.baseSeed ?? p.seed, voice.pass ?? 0);
     const track = { palette: pal, ambience: ambience?.current };
     layers.push(seamFillLayer(ctx, fill, {
       snd: seamFillSound(fill, track),
@@ -1324,7 +1351,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // coupling constant between the two media (§3.3) and the visual duck is
       // on beat 1 — one pump per bar in both worlds, whatever else the floor
       // is doing down there.
-      const kx = placements(bagFor(KICK_BAGS, GROOVE_BAGS.kick, pal.kick?.bag), pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
+      const kx = placements(bagFor(KICK_BAGS, GROOVE_BAGS.kick, pal.kick?.bag, voice.pass ?? 0), pal.kick?.extras ?? 0.6, SKEL_LIFT[sec] ?? 0.5, rng);
       if (kx) {
         layers.push(gate(
           steps(s, pal.kick?.s ?? 'bd', kx.at)
@@ -1352,7 +1379,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // bar, not seven). Skipped in the dropout bar, which is already a
       // gesture, and at the seam, which has a much bigger one of its own.
       const turn = (!dropout && !seamLate && !seamEarly)
-        ? turnaroundFor(voice.phraseIndex ?? 0, voice.baseSeed ?? p.seed, sec)
+        ? turnaroundFor(voice.phraseIndex ?? 0, voice.baseSeed ?? p.seed, sec, voice.pass ?? 0)
         : null;
       if (turn) {
         layers.push(gate(
@@ -1368,7 +1395,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // D23: ghosts stay OFF the dub rail. The 3/16 feedback is answering one
       // transient per bar (§9.3); answering six would be mud, and the rail's
       // job is to be heard as an echo, not as a texture.
-      const gh = placements(bagFor(SNARE_BAGS, GROOVE_BAGS.snare, pal.snare?.bag), pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
+      const gh = placements(bagFor(SNARE_BAGS, GROOVE_BAGS.snare, pal.snare?.bag, voice.pass ?? 0), pal.snare?.ghosts ?? 0.5, SKEL_LIFT[sec] ?? 0.5, rng);
       if (gh) {
         layers.push(gate(
           steps(s, pal.snare?.s ?? 'sd', gh.at)
