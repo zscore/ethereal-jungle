@@ -1,7 +1,22 @@
 # Materials — giving the world a surface response
 
-Status: **proposal only. Nothing here is built.** Written against `fc7e056`
-(D44–D46 merged).
+Status: **built — D47.** Written against `fc7e056` (D44–D46 merged), then
+implemented. Tiers Z, AA and AC are done; §AB is a written rule in `shade.js`'s
+header rather than code, which is what it always was.
+
+**Three things the plan got wrong**, all found by arithmetic or a screenshot
+rather than by reasoning, and all recorded in D47:
+
+| | the plan said | what was true |
+|---|---|---|
+| the curve | evaluate `canopyLight` at the surface | the *frame* already applies it (`exposure`), so the surface must use a **compressed** curve or the understory is ~30× too dark |
+| `colorNode` | three multiplies it by the material colour | it **replaces** it — only vertex and instance colours are applied on top, and wiring the raw light amount in turned the forest into glowing white sticks |
+| the crowns | face-correct the normal with `faceDirection` | a billboard has no useful normal at all; the honest question is *above or below this crown*, and `faceDirection` was untrustworthy here besides (TODO #11) |
+
+§AC1's `shot_diff.mjs` exists now, and its header records the thing that cost
+the most time: **this world is time-varying**, so two runs of the same build
+differ by roughly ±25 mean levels and several confident-looking deltas during
+this work were that noise plus one real bug.
 
 This continues the ladder set by `visuals_expansion_proposal.md` (A–E),
 `visuals_fancy_proposal.md` (F–J), `visuals_pizzaz_proposal.md` (K–M),

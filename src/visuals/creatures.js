@@ -20,7 +20,8 @@
  * that reads as a sack is a sloth that needs a slower reach, not more polygons.
  */
 import * as THREE from 'three';
-import { canopyLight, CANOPY_BASE } from './look.js';
+import { MeshBasicNodeMaterial } from 'three/webgpu';
+import { shadedColor } from './shade.js';
 import {
   populationFor, slothReach, wingbeat, throatPulse, slotEvent, flushEnv,
 } from './fauna.js';
@@ -33,27 +34,25 @@ const SOAR_SCALE = new THREE.Vector3(2.6, 2.6, 2.6);
 
 
 /**
- * Bake a top-lit gradient into a geometry's vertex colours.
+ * A solid-creature material (AA2).
  *
- * Every material in this world is `MeshBasicMaterial`, which is unlit by
- * definition — so a sphere renders as a flat filled CIRCLE and an animal built
- * from spheres reads as a stack of discs. (It photographed as two pale saucers
- * with sticks coming out of them, which is how this function came to exist.)
- * The forest already solved this: D39's trunks "bake it into their vertex
- * colours". Same move, same reason — a cheap fake lambert against an overhead
- * light gives the shape form without giving the renderer a lit path.
+ * Every animal here is opaque-ish and normal-blended, which by `shade.js`'s rule
+ * makes it a shading candidate — so they all go through one factory. The fade
+ * in and out of a band still rides `opacity`, which is why they stay
+ * `transparent` with `depthWrite: false`: a creature that popped the depth
+ * buffer as it faded would punch a hole in the additive world behind it.
+ *
+ * This replaces `shadeGeometry()`, which baked a fake lambert into vertex
+ * colours because an unlit sphere renders as a filled circle. That was a
+ * workaround for the missing surface response and it is exactly what this tier
+ * was for; the geometry is plain again.
  */
-function shadeGeometry(geo, floor = 0.35) {
-  const pos = geo.attributes.position;
-  const nrm = geo.attributes.normal;
-  const col = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    // overhead light, softened: the underside stays readable rather than black
-    const k = floor + (1 - floor) * Math.max(0, nrm.getY(i) * 0.5 + 0.5);
-    col[i * 3] = k; col[i * 3 + 1] = k; col[i * 3 + 2] = k;
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  return geo;
+function makeCreatureMat(props, shadeOpts = {}) {
+  const m = new MeshBasicNodeMaterial({
+    transparent: true, opacity: 0, depthWrite: false, ...props,
+  });
+  m.colorNode = shadedColor({ worldTop: 62, ...shadeOpts });
+  return m;
 }
 
 // ---------- U2: the sloths ----------
@@ -70,71 +69,83 @@ function shadeGeometry(geo, floor = 0.35) {
  * nothing else. (`CAST.slothCrown` is the same system placed where sloths
  * actually live, for the canopy track — one constant apart.)
  */
-export function makeSloths(rng, spec, name) {
+export function makeSloths(rng, spec, name, trees = []) {
   const group = new THREE.Group();
   const n = spec.count;
-  // The first version of this was near-black (#0d1410) on the theory that a
-  // sloth is a silhouette. It photographed as *nothing at all*, and the shot is
-  // why: the undergrowth is at 2% of open-sky light, so the background is
-  // already near-black and a dark shape on it is not a silhouette, it is an
-  // absence. A silhouette needs something bright behind it, which is exactly
-  // what the birds have (sky) and the sloths do not.
+  // The fur is now shaded by `shadeNode` like every other solid surface, so the
+  // baked fake-lambert that `shadeGeometry` used to provide is gone. That
+  // function existed only because an unlit sphere renders as a filled circle
+  // and this animal photographed as "two pale saucers with sticks coming out of
+  // them" (D45); a material that can read a normal retires it.
   //
-  // So a sloth is lit the way a TRUNK is lit — off the same extinction curve,
-  // a shade darker — because that is how this world makes a shape legible down
-  // here, and the trunks are the proof it works. Mossy rather than brown: the
-  // algae that really does grow in sloth fur, and it agrees with the band.
-  const mat = new THREE.MeshBasicMaterial({
-    color: '#5c6b4a', transparent: true, opacity: 0, depthWrite: false, fog: true,
-    vertexColors: true,
-  });
-  const FUR = new THREE.Color('#5c6b4a');
-  const BARK = new THREE.Color('#3a4030');
-  const bodyGeo = shadeGeometry(new THREE.SphereGeometry(1, 14, 10));
-  const limbGeo = shadeGeometry(new THREE.CylinderGeometry(0.13, 0.17, 1, 6, 1, true), 0.5);
-  const branchGeo = shadeGeometry(new THREE.CylinderGeometry(0.24, 0.3, 11, 6), 0.45);
+  // Mossy rather than brown: the algae that really does grow in sloth fur, and
+  // it agrees with the band it hangs in.
+  // Tuned against the shot, twice. The old flat path multiplied FUR by
+  // `0.18 + 1.2·canopyLight(min(alt, CANOPY_BASE))` by hand — about 0.35 in the
+  // crowns — and the shaded path applies its own ~0.64 there, so carrying the
+  // old base colour across made the animal roughly twice as bright as it had
+  // been and it photographed as a white stick figure. The base is the value the
+  // shading expects, not the value the old multiplier expected.
+  const mat = makeCreatureMat({ color: '#4a5942', fog: true }, { worldTop: 62 });
   // the branch is bark, not fur: it belongs to the forest and is lit like it
-  const barkMat = new THREE.MeshBasicMaterial({
-    color: '#2a2f22', transparent: true, opacity: 0, depthWrite: false, fog: true,
-    vertexColors: true,
-  });
+  const barkMat = makeCreatureMat({ color: '#38402d', fog: true }, { worldTop: 62 });
+  const bodyGeo = new THREE.SphereGeometry(1, 14, 10);
+  const limbGeo = new THREE.CylinderGeometry(0.13, 0.17, 1, 6, 1, true);
+  const branchGeo = new THREE.CylinderGeometry(0.2, 0.34, 1, 6);
+
+  // ---- pick a host tree, and hang a real branch off it ----
+  // The first version put each sloth at a free-floating point with its own
+  // branch bar hovering in the air beside it. It read, but it read as a prop:
+  // the branch belonged to nothing, so the animal was attached to the world by
+  // an object that was itself attached to nothing. Now the branch grows out of
+  // an actual trunk from `makeForest.trees`, which means the sloth is somewhere
+  // in the forest rather than somewhere in the frame.
+  //
+  // Hosts are chosen near the camera's path — the fog under the crowns eats
+  // anything past ~15 units (D45), so a sloth on a far tree is a sloth nobody
+  // will ever see — and never twice.
+  const CAM = { x: 0, z: 12 };
+  const candidates = trees
+    .map((tr, idx) => ({ tr, idx, d: Math.hypot(tr.x - CAM.x, tr.z - CAM.z) }))
+    .filter((c) => c.d > 4 && c.d < 17 && c.tr.h > spec.y[1] + 3)
+    .sort((a, b) => a.d - b.d);
+
   const beasts = [];
   for (let i = 0; i < n; i++) {
     const g = new THREE.Group();
-    // Placed CLOSE and in front, not scattered around a ring. Two measurements
-    // forced this. The fog under the crowns is dense on purpose (`aerial` ≈ 1.05
-    // in look.js, because that is what a rainforest understory is), so at
-    // FogExp2 density ~0.079 an object 15 units out is about three-quarters
-    // fogged — the first placement put them on a 9–21 unit ring and they
-    // photographed as nothing whatever. And the camera in this band sits near
-    // z ≈ 12 looking toward the origin, so a full circle puts two of the three
-    // behind it. A resident of a place you can actually see is worth more than
-    // a statistically even distribution.
-    const y = spec.y[0] + rng() * (spec.y[1] - spec.y[0]);
-    g.position.set((rng() - 0.5) * 14, y, 4 - rng() * 9);
-    g.rotation.y = (rng() - 0.5) * 1.4;   // roughly facing across the view
+    const host = candidates.length ? candidates[i % candidates.length].tr : null;
+    const hy = spec.y[0] + rng() * (spec.y[1] - spec.y[0]);
+    // the branch points back toward the camera's side of the trunk, so the
+    // sloth travels ACROSS the view rather than away down it
+    const toCam = host ? Math.atan2(CAM.z - host.z, CAM.x - host.x) : 0;
+    const theta = toCam + (rng() < 0.5 ? 1 : -1) * (0.5 + rng() * 0.7);
+    const len = 7 + rng() * 4;
+    const bx = host ? host.x : (rng() - 0.5) * 12;
+    const bz = host ? host.z : 2 - rng() * 8;
+    const r0 = host ? host.rad * 0.9 : 0;
 
-    // The branch it hangs from. Added because without it the pose is unreadable:
-    // a body with four limbs pointing UP and nothing above them photographed as
-    // a mushroom with legs, or a table. The limbs need something to hook over
-    // for "hanging" to be the thing you see — this one object does more for
-    // legibility than the body, the head and the gait put together.
     const branch = new THREE.Mesh(branchGeo, barkMat);
-    branch.position.y = 2.35;
-    branch.rotation.z = Math.PI / 2;          // horizontal, along the sloth's axis
-    branch.rotation.y = (rng() - 0.5) * 0.5;
-    g.add(branch);
+    // built along +Y then laid down along theta, with a slight droop
+    const droop = 0.11 + rng() * 0.07;
+    branch.scale.y = len;
+    branch.rotation.order = 'YZX';
+    branch.rotation.set(0, -theta, Math.PI / 2 - droop);
+    branch.position.set(
+      bx + Math.cos(theta) * (r0 + len * 0.5),
+      hy - len * 0.5 * Math.sin(droop),
+      bz + Math.sin(theta) * (r0 + len * 0.5),
+    );
+    group.add(branch);
 
     const body = new THREE.Mesh(bodyGeo, mat);
-    body.scale.set(1.55, 0.92, 0.95);         // a long hanging bundle, not a ball
+    body.scale.set(1.5, 0.9, 0.92);          // a long hanging bundle, not a ball
     g.add(body);
     const head = new THREE.Mesh(bodyGeo, mat);
-    head.scale.setScalar(0.66);
-    head.position.set(1.55, 0.2, 0);
+    head.scale.setScalar(0.64);
+    head.position.set(1.5, 0.2, 0);
     g.add(head);
 
-    // four limbs, reaching UP to the branch it hangs from — the pose is the
-    // whole silhouette, so the limbs are longer than a body would suggest
+    // four limbs, reaching UP to the branch — the pose is the whole silhouette
     const limbs = [];
     for (let k = 0; k < 4; k++) {
       const limb = new THREE.Mesh(limbGeo, mat);
@@ -144,51 +155,82 @@ export function makeSloths(rng, spec, name) {
       limb.scale.y = 2.3;
       limb.rotation.z = fx > 0 ? -0.22 : 0.22;
       g.add(limb);
-      limbs.push({ mesh: limb, rest: limb.rotation.z, side: fx > 0 ? -1 : 1 });
+      limbs.push({ mesh: limb, rest: limb.rotation.z, side: fx > 0 ? -1 : 1, lead: k < 2 });
     }
     group.add(g);
-    beasts.push({ g, head, limbs, i, sway: rng() * 9, headRest: 0 });
+    beasts.push({
+      g, head, limbs, i, sway: rng() * 9, headRest: 0,
+      // the branch, as a ray the animal travels along
+      bx: bx + Math.cos(theta) * r0, bz: bz + Math.sin(theta) * r0, hy, theta, len, droop,
+      u: 0.15 + rng() * 0.6,             // where along it, 0..1
+      dir: rng() < 0.5 ? 1 : -1,         // and which way it is going
+      lastReach: 0,
+      step: 0,
+    });
   }
 
   return {
     name,
     group,
+    /** What the sloths are doing this frame — the harness cannot see a gait. */
+    debug() {
+      return beasts.map((b) => ({
+        u: +b.u.toFixed(3), dir: b.dir, y: +b.hy.toFixed(1),
+        x: +(b.bx + Math.cos(b.theta) * b.u * b.len).toFixed(1),
+      }));
+    },
     update(dt, env) {
-      const alt = (env.cam?.y ?? 0) / (env.worldTop ?? 62);
       const presence = env.fauna?.presence?.[name] ?? 0;
       const still = env.fauna?.life?.still ?? 0;
       group.visible = presence > 0.01;
       if (!group.visible) return;
       mat.opacity = presence * 0.95;
-      // lit by whatever got down to the branch it is hanging from, capped at the
-      // crowns' underside for the same reason the trunks cap it: a sloth lives
-      // under the canopy no matter where the camera is standing
-      const lit = canopyLight(Math.min(alt, CANOPY_BASE));
-      // Tuned against the shot, not guessed. At 0.55 + 2.6·lit this came out
-      // about three times brighter than the air behind it and read as a lantern;
-      // the target is *just* enough separation to be a shape — a sloth is a dark
-      // animal in a dark place, and the frame should make you look for it.
-      mat.color.copy(FUR).multiplyScalar(0.18 + 1.2 * lit);
       barkMat.opacity = mat.opacity;
-      barkMat.color.copy(BARK).multiplyScalar(0.3 + 1.8 * lit);
 
       for (const b of beasts) {
-        const wind = windAtOr(env, b.g.position.x, b.g.position.y, b.g.position.z);
-        // CONTINUOUS: it hangs, and the branch it hangs from moves in the same
-        // wind the crowns 20 units up are moving in. That agreement is most of
-        // what makes it belong to the place rather than sit in front of it.
-        b.g.rotation.z = wind.x * 0.055 + Math.sin(env.t * 0.21 + b.sway) * 0.03;
-        b.g.rotation.x = wind.z * 0.045;
+        const wind = windAtOr(env, b.bx, b.hy, b.bz);
 
-        // CONTINUOUS: the reach. Slow, and slower still at high tension —
-        // a sloth at the drop is not a faster sloth, and refusing to accelerate
+        // CONTINUOUS: the reach — slow, and slower still at high tension. A
+        // sloth at the drop is not a faster sloth, and refusing to accelerate
         // where everything else in the frame is accelerating is the joke.
         const reach = slothReach(env.t, b.i, env.T ?? 0) * (1 - still * 0.7);
-        const lead = b.limbs[0];
-        lead.mesh.rotation.z = lead.rest + reach * 1.15 * lead.side;
-        lead.mesh.position.y = 1.15 + reach * 0.4;
-        // the body swings a little with the arm that is moving it
-        b.g.rotation.z += reach * 0.06;
+
+        // …and the reach is what MOVES it. This is the animation the first pass
+        // was missing: the sloth used to reach in place, so it was a fixed
+        // object with a moving arm. Travel is driven by the same envelope, so
+        // it advances in pulses — hand, then body, then hand — and is
+        // motionless in between, which is what hanging locomotion looks like.
+        // A full traverse of a 10-unit branch takes something over two minutes.
+        b.u += dt * 0.016 * (0.12 + reach) * b.dir * (1 - still * 0.8);
+        if (b.u > 0.92) { b.u = 0.92; b.dir = -1; }
+        else if (b.u < 0.08) { b.u = 0.08; b.dir = 1; }
+
+        // where that puts it: along the branch ray, hanging under it
+        const along = b.u * b.len;
+        const drop = 1.75;
+        b.g.position.set(
+          b.bx + Math.cos(b.theta) * along + wind.x * 0.08,
+          b.hy - along * Math.sin(b.droop) - drop,
+          b.bz + Math.sin(b.theta) * along + wind.z * 0.08,
+        );
+        // it faces the way it is travelling, and hangs level with its branch
+        b.g.rotation.order = 'YZX';
+        b.g.rotation.set(
+          wind.z * 0.045,
+          -b.theta + (b.dir > 0 ? 0 : Math.PI),
+          wind.x * 0.05 + Math.sin(env.t * 0.21 + b.sway) * 0.03 + reach * 0.07 - b.droop * b.dir,
+        );
+
+        // the two lead limbs alternate, so it is hand over hand rather than a
+        // single arm waving. `step` flips each time a reach completes.
+        if (b.lastReach > 0.5 && reach <= 0.5) b.step ^= 1;
+        b.lastReach = reach;
+        b.limbs.forEach((l, k) => {
+          const active = l.lead && (k % 2) === b.step;
+          const a = active ? reach : 0;
+          l.mesh.rotation.z = l.rest + a * 1.15 * l.side;
+          l.mesh.position.y = 1.3 + a * 0.4;
+        });
 
         // EPISODIC: a head turn on a seeded slot schedule. That is the entire
         // remaining vocabulary, and it is enough.
@@ -196,7 +238,7 @@ export function makeSloths(rng, spec, name) {
         const turning = turn ? Math.exp(-turn.since * 0.55) * (turn.roll - 0.5) * 2 : 0;
         b.headRest += (turning - b.headRest) * Math.min(1, dt * 0.8);
         b.head.position.z = b.headRest * 0.45;
-        b.head.position.x = 1.55 - Math.abs(b.headRest) * 0.15;
+        b.head.position.x = 1.5 - Math.abs(b.headRest) * 0.15;
       }
     },
   };
@@ -225,9 +267,7 @@ export function makeTreeFrogs(rng, spec, name) {
   // more emissive blob reads as another particle system rather than an animal.
   // A frog is a small WET BODY: normal blending, a body colour, and only the
   // throat brightens when it calls.
-  const mat = new THREE.MeshBasicMaterial({
-    color: '#5f9c62', transparent: true, opacity: 0, depthWrite: false,
-  });
+  const mat = makeCreatureMat({ color: '#5a9160' });
   const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.20, 10, 7), mat, n);
   mesh.frustumCulled = false;
   const frogs = [];
@@ -298,9 +338,7 @@ export function makeTreeFrogs(rng, spec, name) {
  */
 export function makePoolFrogs(rng, spec, name, pool) {
   const n = spec.count;
-  const mat = new THREE.MeshBasicMaterial({
-    color: '#6aa87a', transparent: true, opacity: 0, depthWrite: false,
-  });
+  const mat = makeCreatureMat({ color: '#649c74' });
   const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.24, 10, 7), mat, n);
   mesh.frustumCulled = false;
   const frogs = [];
@@ -387,10 +425,13 @@ function birdGeometry() {
  */
 export function makeBirds(rng, spec, name) {
   const N = spec.count;
-  const mat = new THREE.MeshBasicMaterial({
-    color: '#20313a', transparent: true, opacity: 0, side: THREE.DoubleSide,
-    depthWrite: false,
-  });
+  // NOT face-corrected, deliberately. `doubleSided` was tried here and the
+  // flock came back white — these were the only two materials in the world
+  // using `faceDirection` and the only two that went wrong, which is about as
+  // clean a bisection as a renderer ever offers. A bird is a thin V seen from
+  // tens of units away; one side lit and the other dark is fine, and is arguably
+  // what a banking bird should do anyway.
+  const mat = makeCreatureMat({ color: '#20313a', side: THREE.DoubleSide });
   const mesh = new THREE.InstancedMesh(birdGeometry(), mat, N);
   mesh.frustumCulled = false;
 
@@ -544,9 +585,7 @@ function hashish(x) {
  * stillness is the point.
  */
 export function makeSoarer(rng, spec, name) {
-  const mat = new THREE.MeshBasicMaterial({
-    color: '#243542', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
-  });
+  const mat = makeCreatureMat({ color: '#243542', side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(birdGeometry(), mat);
   mesh.matrixAutoUpdate = false;   // the matrix is composed by hand each frame
   const radius = 46 + rng() * 22;

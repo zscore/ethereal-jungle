@@ -580,3 +580,28 @@ tree or mark it `hmr: false`, or have `initUI` clear `#tracks`/`#sections`
 before it fills them. The second is one line and would make the symptom
 impossible regardless of what triggers a re-init.
 
+## 10. `isolate()` does not work on anything that writes its own visibility (opened 2026-07-29, minor)
+
+Found while A/B-ing the material change. `world.isolate(name)` sets
+`group.visible` on every biome, but the creature systems — and the fireflies
+before them — write `group.visible = presence > 0.01` on **every frame**, so
+they reappear on the next tick and an "isolated" shot quietly contains them.
+That cost real time during D47: an isolated-forest comparison was actually a
+forest-plus-sloths comparison, and the sloths were the thing that had gone
+wrong.
+
+Fix is small — have `isolate` set a latch the per-frame writes respect
+(`visible = wanted && presence > 0.01`), the way `setVisible` used to for the
+fronds. Worth doing before the next visual A/B rather than after it.
+
+## 11. `faceDirection` is not trusted on this backend (opened 2026-07-29, D47)
+
+The birds and the soarer were the only two materials in the world using TSL's
+`faceDirection` to flip a double-sided normal, and they were the only two that
+came back white. Dropped rather than debugged, because a bird seen from tens of
+units away does not need a face-corrected normal — but that means **nothing in
+this project currently exercises `faceDirection`**, and anything that wants
+genuinely two-sided shading later (leaves lit from behind is the obvious one)
+should expect to have to establish whether it works here first, on both
+backends, before designing around it.
+
