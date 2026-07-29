@@ -71,13 +71,38 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   kick ducks the ether. Plus the living layer: flocking fireflies, phyllotaxis
   leaves, rain and a caustic pool, a signalling mycelial net, and a near field
   of dust wrapping the camera (the parallax gradient the frame lacked).
+- `visuals/fauna.js` + `visuals/creatures.js` — the animals (D45). The world had
+  thirteen systems and one animal while the ambience beds were full of frogs,
+  insects and birds, so: sloths hanging under branches in the undergrowth (and
+  in the crowns, where they actually live), tree frogs at eye level among the
+  trunks, a pool chorus whose calls drop rings into the pool's own ripples, a
+  banking flock in the canopy, and one bird circling alone at the zenith. The
+  logic is pure and tested (`test/fauna.mjs`); `creatures.js` only builds
+  geometry. **The rule they all obey** is the reason this is safe on the ground
+  stream: behaviours are continuous (aperiodic, no two individuals ever in
+  phase), episodic (a seeded slot schedule, licensed exactly the way lightning
+  is), or anchored to a published bus event — and **at most one anchored
+  behaviour per creature**. The set has exactly one: the toucan's call, which
+  fires every two phrases, startles the birds nearest it.
+- `visuals/sky.js` — the sky, pure schedules plus meshes (`test/sky.mjs`). A
+  cloud field the camera flies *inside* rather than a deck overhead (the old one
+  sat at y 72–82 while the zenith camera flies at y 45–56 tilted down), high
+  cirrus above it, and a **storm cell**: a seeded, time-addressable object with
+  an anvil, a dark base and virga that arrives on the wind, crosses, and leaves.
+  Strikes originate inside it, so a strike finally comes *from* somewhere. Its
+  shadow is one analytic field the crowns sample at their own position, the same
+  way they sample the wind.
 - `visuals/weather.js` — the shared atmosphere, pure and tested
   (`test/weather.mjs`): one analytic wind field that **every** biome samples at
   its own position, so a gust crosses the floor, tips the shafts, shears the
   mist and bends the ether as one event moving through a place; a per-track
-  weather axis (mist/rain/wind/storm) crossfaded across seams; and lightning on
-  a seeded, time-addressable slot schedule. Weather is never rhythm — that is
-  what makes it legal on the ground stream.
+  weather axis (mist/rain/wind/storm/stormFar) crossfaded across seams; and
+  lightning on a seeded, time-addressable slot schedule. Weather is never rhythm
+  — that is what makes it legal on the ground stream. Since D44 **`storm` is its
+  own authored column rather than `rain · T`**: it used to mean the one band
+  with a visible sky (the zenith, rain 0) could never contain lightning while
+  the band that storms hardest sits under a canopy that hides the clouds, so
+  every strike in the set was fired at a sky nobody could see.
 - `visuals/look.js` — the renderer seam, pure and tested (`test/look.mjs`): bus
   params + frame state → every post-chain uniform (ground-only depth of field —
   which since D41 has a **resting aperture**, so the focal plane sits on the
@@ -86,7 +111,14 @@ renderer falls back to WebGL2 automatically anywhere WebGPU is missing.
   bloom, anamorphic streak, god rays, shimmer, the perform-rail twins, artifact
   operators) plus the camera's orbit, the per-band colour grade, each seam
   flavor's staging, and `styleAt` — which decides what *kind* of picture the
-  frame is. `perform.js` is its audio-side sibling.
+  frame is. Since D46 it renders **all eleven** rail knobs rather than five —
+  the gater as a strobe (depth-capped: 5.6 Hz is inside the photosensitive
+  band), drive as a highlight soft-clip, the three EQ kills by spatial
+  frequency, the roll as a held frame — and reads the two bus signals it had
+  been ignoring: the **warmth** axis, rendered as how much the world agrees with
+  itself, and each track's **tuning**, rendered as chromatic misregistration
+  (so the canopy, the one track that locks, is the one band in register).
+  `perform.js` is its audio-side sibling.
 - `perform.js` + `music/masterchain.js` + `knob.js` — the perform rail
   (D17/D19/D20/D21): the DJ half of the panel. Independent lpf/hpf rotary
   dials (the two controls a hand rides), echo, crush, space, three

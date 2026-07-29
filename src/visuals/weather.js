@@ -109,11 +109,36 @@ export function windCeiling(strength = 1) {
 // that is *per track by character* rather than by curve. Each row is the
 // visual half of the biome's ambience bed (D16) — the forest floor's `ambrain`
 // finally has rain in front of it, and `ambthunder` finally has lightning.
+// V3 — `storm` is its own column now, and that is the whole item. It used to be
+// derived (`storm = rain · T`), which coupled two things that are not the same
+// thing and produced a world where the strikes and the sky could never meet:
+// the zenith's rain is 0, so its storm was identically 0, so the ONE band with a
+// visible sky could never have lightning in it — while the forest floor, which
+// storms hard, sits under a crown layer that hides the cloud deck completely.
+// Every strike in the set was therefore fired at a sky nobody could see.
+//
+// Decoupling them costs one column and buys the set its best available image:
+// you can be dry and still be watching a storm, and from above a cloud field
+// that is exactly what the top of the set should be. Rain is what falls on YOU;
+// a storm is a thing over THERE — which is why the second column is `stormFar`.
+//
+//   storm      how much thunder this band's weather has in it at all
+//   stormFar   where the cells are: 0 = overhead and on top of you,
+//              1 = on the horizon, lighting from inside at a distance
 export const TRACK_WEATHER = [
-  { mist: 0.85, rain: 0.00, wind: 0.25 }, // undergrowth — still, damp, close
-  { mist: 0.55, rain: 0.90, wind: 0.45 }, // forest floor — rain (and thunder)
-  { mist: 0.35, rain: 0.15, wind: 1.00 }, // canopy      — the windy band
-  { mist: 0.15, rain: 0.00, wind: 0.60 }, // zenith      — clear and high
+  // undergrowth — still, damp, close. No sky at all down here: a strike this
+  // deep under the crowns is a rumour, so the cells stay far and faint.
+  { mist: 0.85, rain: 0.00, wind: 0.25, storm: 0.10, stormFar: 0.95 },
+  // forest floor — rain, and the thunder you are underneath (its bed is
+  // `ambrain` + `ambthunder`, D16). This is the one band the storm is ON.
+  { mist: 0.55, rain: 0.90, wind: 0.45, storm: 0.95, stormFar: 0.15 },
+  // canopy — the windy band, the storm moving off
+  { mist: 0.35, rain: 0.15, wind: 1.00, storm: 0.35, stormFar: 0.55 },
+  // zenith — clear and high, and storming somewhere else. Dry and electric at
+  // once, which is the combination the old derivation could not express: rain
+  // stays 0 (the brief for this band is "clear"), and the cells go to the
+  // horizon, below and beside a camera that is finally above the weather.
+  { mist: 0.15, rain: 0.00, wind: 0.60, storm: 0.70, stormFar: 0.95 },
 ];
 
 /**
@@ -154,9 +179,21 @@ export function weatherAt(env = {}) {
     mist: clamp01(lerp('mist')),
     rain,
     wind: clamp01(lerp('wind') * (0.6 + 0.6 * T)),
-    // thunder is likelier near the climax — section_ideas' open ambience item,
-    // answered on the visual side first
-    storm: clamp01(rain * clamp01(T * 1.15)),
+    // V3 — thunder on its own episode walk, at a period coprime-ish with the
+    // rain's 37 s and offset in the seed, so a storm is not simply "when it is
+    // raining hardest". A cell arrives, crosses, and leaves on its own clock;
+    // that is what makes it an object rather than an amount (the same argument
+    // the travelling gust makes against a global multiplier).
+    //
+    // The tension factor stays, and stays multiplicative-to-zero: thunder is
+    // still likelier near the climax and there is still no thunder in a calm
+    // section. That was the one good property of the old derivation and it is
+    // the only part worth keeping.
+    storm: clamp01(lerp('storm') * (0.3 + 0.95 * episode(t, seed * 3 + 11, 53)) * clamp01(T * 1.15)),
+    // …and where the cells are. Blended like everything else here, so crossing
+    // from the floor to the canopy walks the storm away from you rather than
+    // teleporting it.
+    stormFar: clamp01(lerp('stormFar')),
   };
 }
 

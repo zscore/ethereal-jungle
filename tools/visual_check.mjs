@@ -268,6 +268,101 @@ await page.evaluate(() => {
   window.jungle.visuals.setLateral(null);
 });
 
+// ---- the fauna and the sky (proposal IV, tiers U and V) ----
+// Every one of these pins what it photographs. A creature bound to an altitude
+// band is exactly as easy to *believe* is present as a style bound to a section
+// was, and `debugFauna()` is here for the same reason `debugStyle()` is: a PNG
+// cannot tell you a band window was zero or a population was culled to nothing.
+await page.evaluate(() => {
+  window.jungle.visuals.setStyles(false);
+  window.jungle.visuals.setSky(true);
+  window.jungle.bus.params.brightnessMix = 1;
+});
+
+for (const [name, alt, weather] of [
+  // U2 — the sloths, in the band whose gaze climbs into them
+  ['fauna-sloth', 0.18, { mist: 0.8, rain: 0, wind: 0.35, storm: 0 }],
+  // U3 — tree frogs at eye level among the trunks
+  ['fauna-treefrog', 0.40, { mist: 0.55, rain: 0.5, wind: 0.45, storm: 0 }],
+  // U4/U5 — the flock, in the crowns
+  ['fauna-birds', 0.64, { mist: 0.35, rain: 0, wind: 1, storm: 0 }],
+  // U2 again, where sloths actually live
+  ['fauna-slothcrown', 0.60, { mist: 0.35, rain: 0, wind: 0.6, storm: 0 }],
+  // U4 — the zenith's one bird
+  ['fauna-soarer', 0.92, { mist: 0.15, rain: 0, wind: 0.6, storm: 0 }],
+]) {
+  await page.evaluate(([a, w]) => {
+    window.jungle.visuals.setAltitude(a, true);
+    window.jungle.bus.params.brightnessManual = a;
+    window.jungle.visuals.setWeather(w);
+    window.jungle.visuals.setLateral(0);
+  }, [alt, weather]);
+  await shot(name, 3000);
+  const f = await page.evaluate(() => window.jungle.visuals.debugFauna());
+  console.log(`  ${name} presence:`, JSON.stringify(f?.presence));
+}
+
+// U5 — the toucan startle. The real one fires once every two phrases, which is
+// not something a sweep can wait for; `flush()` exists so it can be seen.
+await page.evaluate(() => {
+  window.jungle.visuals.setAltitude(0.64, true);
+  window.jungle.bus.params.brightnessManual = 0.64;
+  window.jungle.visuals.flush(0, null, -14);
+});
+await shot('fauna-flush', 900);   // the envelope is ~1 s: catch it early
+
+// V1 — the cloud field, from inside it. This is the shot the whole tier exists
+// for, and the one that settles the proposal's one unverified premise: the old
+// deck sat at y 72/82 while this camera flies at y 45–56 tilted 8° DOWN.
+await page.evaluate(() => {
+  window.jungle.visuals.setWeather({ mist: 0.2, rain: 0, wind: 0.6, storm: 0 });
+  window.jungle.visuals.setAltitude(0.90, true);
+  window.jungle.bus.params.brightnessManual = 0.90;
+});
+await shot('sky-clouds', 3500);
+
+// V2/V4 — a storm cell with its virga, pinned, at the two distances that make
+// it two different images: overhead on the forest floor, on the horizon above.
+for (const [name, alt, far] of [['sky-storm-near', 0.42, 0.15], ['sky-storm-far', 0.90, 0.95]]) {
+  await page.evaluate(([a, f]) => {
+    window.jungle.visuals.setAltitude(a, true);
+    window.jungle.bus.params.brightnessManual = a;
+    window.jungle.visuals.setWeather({ mist: 0.4, rain: 0.3, wind: 0.6, storm: 1, stormFar: f });
+    window.jungle.visuals.storm(1);
+  }, [alt, far]);
+  await shot(name, 3000);
+  console.log(`  ${name} sky:`, JSON.stringify(await page.evaluate(() => window.jungle.visuals.debugSky()?.cell)));
+}
+
+// V3 — the item this tier exists for: a strike, at the zenith, which was
+// impossible before (rain 0 → storm 0 → no lightning, ever, in the one band
+// with a visible sky). If this frame is dark, the decoupling did not land.
+await page.evaluate(() => window.jungle.visuals.strike(1));
+await shot('sky-zenith-strike', 1200);
+await page.evaluate(() => {
+  window.jungle.visuals.strike(null);
+  window.jungle.visuals.storm(null);
+  window.jungle.visuals.setWeather(null);
+  window.jungle.visuals.setLateral(null);
+  window.jungle.visuals.setStyles(null);
+  window.jungle.bus.params.brightnessMix = 0;
+  window.jungle.visuals.setAltitude(null);
+});
+
+// X — the rail knobs that had no eye until now. Same shape as the H1 sweep
+// above; `gate` is capped at GATE_FLOOR and must never reach black.
+for (const [name, params] of [
+  ['rail-gate', { gate: 1 }],
+  ['rail-drive', { drive: 1 }],
+  ['rail-eqlow', { eqLow: 0 }],
+  ['rail-eqhigh', { eqHigh: 0 }],
+  ['rail-roll', { roll: 0.9 }],
+]) {
+  await setParams({ gate: 0, drive: 0, eqLow: 1, eqMid: 1, eqHigh: 1, roll: 0, ...params });
+  await shot(name, 1800);
+}
+await setParams({ gate: 0, drive: 0, eqLow: 1, eqMid: 1, eqHigh: 1, roll: 0 });
+
 // seam flavors (I2): seek each track's seam, capture whichever variants the
 // seed dealt — the landing flashes on the boundary, the dissolve never does
 await page.evaluate(() => window.jungle.visuals.setAltitude(null));

@@ -2237,5 +2237,242 @@ orbit, which wants a `masterchain.js` node.
 
 ---
 
+## D44 — The storm and the sky are allowed to meet (2026-07-29)
+
+**The finding, which is arithmetic and not taste.** Three constants, in two
+files, had never been read against each other:
+
+```
+weather.js   TRACK_WEATHER[3] = { rain: 0.00 }        the zenith
+weather.js   storm = clamp01(rain * clamp01(T * 1.15))
+biomes.js    open  = (alt − CANOPY_BASE) / (CANOPY_TOP − CANOPY_BASE)
+```
+
+The zenith's rain is 0, so its storm was identically 0, so **the one band in the
+set with a visible sky could never contain lightning**. Meanwhile the cloud deck
+was gated on `open`, which is zero below the crowns' underside — so during the
+forest floor, the one track that actually storms (rain 0.90), the clouds were
+invisible. Every strike in the set was fired at a sky nobody could see, and the
+deck floated over a band that never struck. Each constant was locally
+reasonable, which is why nothing caught it: the bug was in the *relationship*,
+and no test asserted one.
+
+**Decision. `storm` becomes its own authored column, with `stormFar` beside
+it.** Rain is what falls on you; a storm is a thing over there. Decoupling them
+costs one table column and buys the set an image it could not previously
+express — dry and electric at once, which is what the top of the set should be:
+
+| track | rain | storm | stormFar |
+|---|---|---|---|
+| undergrowth | 0.00 | 0.10 | 0.95 |
+| forest floor | 0.90 | 0.95 | 0.15 |
+| canopy | 0.15 | 0.35 | 0.55 |
+| zenith | **0.00** | **0.70** | **0.95** |
+
+The tension factor stays and stays multiplicative-to-zero — thunder is still
+likelier near the climax and there is still none in a calm section, which was
+the one good property of the old derivation. The storm walks on its own episode
+period (53 s) rather than the rain's (37 s), so a storm is not merely "when it
+is raining hardest".
+
+**And the cell is an object.** `sky.js` gains `cellAt(t, seed, storm, far)` — a
+seeded, time-addressable storm cell with a position, an anvil, a dark base and
+virga, which arrives on the prevailing wind, crosses, and leaves. Same argument
+K1 makes about gusts: an amount that rises everywhere at once reads as a fade,
+and a thing that crosses the world reads as weather. `stormFar` is what lets the
+same object be "the storm you are inside" (forest floor, ~57 units) and "the
+storm you are watching from above" (zenith, ~180 units).
+
+Strikes now originate **inside** the cell: `lightningAt`'s free-hash azimuth is
+replaced by the bearing to the cell, so the god-ray origin points at an object
+that is actually in the frame. The upper-air comment has wanted this since it
+was written ("a strike lights cloud from inside") and could not have it while
+the only thing above the trees was an empty direction.
+
+**Verified**, not argued: `test/sky.mjs` sweeps every track asking "does this
+band ever get a cloud AND a strike?", which is the check that would have caught
+the original bug. The zenith now answers yes.
+
+---
+
+## D45 — The world gets animals, and a rule for what an animal may do (2026-07-29)
+
+**The brief.** Clouds at the zenith, birds in the canopy, frogs on the forest
+floor, sloths in the undergrowth, thunderclouds, and more effects bound to the
+music's parameters. The census behind it: `buildWorld` composed **thirteen
+systems and one animal** — the fireflies, built as a demonstration of boid rules
+rather than as a creature — while the ambience beds (D16/D30) contain frogs,
+insects, a rustle, a screaming piha and a toucan. The canopy has a bird calling
+every two phrases into an 11-second ether and there was not one bird in the
+picture. K3 earned the rain with exactly this argument; a call is a louder
+promise than rain is.
+
+**Decision. `fauna.js` is pure, `creatures.js` is meshes, and every creature
+obeys one rule stated once.** The rule is the interesting part, because an
+animal is the first thing in this world that wants to be continuous like weather
+AND discrete when it moves — the first thing that can break §2.1's ban on rhythm
+in the ground stream. Three tiers:
+
+- **continuous** — locomotion, breathing, sway. Aperiodic across individuals,
+  no common multiple inside a track. Free.
+- **episodic** — rare behaviours on a seeded slot schedule, licensed exactly the
+  way lightning is: nothing about the schedule knows where the downbeat is.
+- **anchored** — bound to a published bus event, priced by the synch-point
+  economy. **At most one per creature.**
+
+Exactly one anchored behaviour exists in the whole set: the toucan flush (U5).
+`scene.js`'s event filter was `bd || sd` — two sound names out of everything the
+set plays — and widening it to include `toucan` is the entire change. The squawk
+fires once every two phrases, which is what makes it affordable.
+
+The desynchronisation discipline is generalised from the fireflies' comment into
+`periodFor`, on the golden-ratio conjugate: an additive recurrence with that
+stride is the optimal low-discrepancy 1-D sequence, so periods spread evenly at
+*any* population size where a random draw would sometimes clump. `test/fauna.mjs`
+measures the claim the fireflies have only ever asserted in prose — over a whole
+track, at most 23% of a flock is ever in phase.
+
+**Where they went, and why it is not where the brief said.** Two placements
+moved, and both were forced by measurements rather than preference:
+
+- **Frogs.** The brief said forest floor. `ambfrogs` is track 0's bed, the pool
+  fades out by camera y ≈ 26, and the forest floor's camera sits at y 18–32 —
+  20–30 units above the litter, looking roughly level. A frog on the ground
+  there is out of frame. The answer is not to overrule the brief: **tree frogs**
+  live at exactly that height. So the forest floor gets tree frogs at eye level
+  (as asked) and the undergrowth gets a pool chorus where `ambfrogs` actually
+  sounds — the calls drop rings into `makePool`'s existing recycled ring pool,
+  so a call and its ripple are one event.
+- **Sloths.** Kept in the undergrowth as asked, on camera grounds: `BAND_PITCH[0]
+  = 5.0`, so that band's gaze *climbs*, and the set opens with 97 seconds of
+  looking up into a band that contained trunks and nothing else. A second pair
+  hangs in the crowns during the canopy track, where sloths actually live — the
+  same system, one constant apart.
+
+**What the shots changed, which is most of what this entry is for.** The sloth
+took four passes and every one was decided by a screenshot rather than by
+reasoning:
+
+1. Near-black (`#0d1410`), on the theory that a sloth is a silhouette.
+   Photographed as **nothing at all** — the undergrowth is at 2% of open-sky
+   light, so a dark shape on a dark background is not a silhouette, it is an
+   absence. A silhouette needs something bright behind it, which is what the
+   birds have (sky) and the sloths do not.
+2. Lit off the extinction curve like the trunks, which is how this world makes a
+   shape legible down there. Still invisible: they were on a 9–21 unit ring, and
+   at the understory's fog density an object 15 units out is ~75% fogged. Moved
+   close and in front.
+3. Now visible and wrong — **two pale saucers with sticks coming out of them**.
+   Cause: every material in this world is `MeshBasicMaterial`, which is unlit, so
+   a sphere renders as a flat filled circle and an animal built from spheres is a
+   stack of discs. Fixed by baking a top-lit gradient into vertex colours, which
+   is what D39's trunks already do.
+4. Still reading as a mushroom with its legs in the air, because four limbs
+   pointing up with nothing above them is not a hanging pose. **Added the
+   branch.** One object, and it did more for legibility than the body, the head
+   and the gait together.
+
+The general lesson, worth keeping: *in an unlit world, form comes from baked
+vertex colour and from context objects, not from geometry.*
+
+The tree frogs went the other way — additive green at 0.30 units photographed as
+green lanterns, which in a world already full of glow reads as another particle
+system. They are normal-blended bodies now, and only the throat brightens.
+
+**Not done, and named.** The sloth is the least certain thing here. It reads as
+a hanging mass under a branch in a still frame at three altitudes; whether it
+reads as an *animal* to a human eye in motion is unverified, and D28/D42 are two
+precedents for a figure that survived every constraint and still had to go. If
+it fails, the fallback is in the proposal: motion-only, a disturbance you infer
+rather than a body you see — which is what `ambrustle` is doing in the audio.
+
+---
+
+## D46 — The signals the eye was not reading (2026-07-29)
+
+**The finding.** The bus publishes more than the visuals consume, and the gap
+was never a decision:
+
+- `bus.warmthAt` — the entire D22 second harmonic axis — was read by **zero
+  pixels**. `grep -rn warmth src/visuals/` returned one comment about the sun,
+  meaning something else. So the zenith, whose whole point is that brightness
+  climbs while warmth falls off a cliff ("awe rather than triumph"), was
+  rendered as *only* the climb — triumph, the exact reading D22 exists to avoid.
+- Every event publishes `note` and `orbit`. Neither had ever reached a pixel,
+  and `orbit` is the *room* the sound is in (D35), i.e. how far away it is —
+  published since D35 and ignored by a renderer whose entire doctrine is that
+  fog IS distance.
+- `look.js` read 5 of the rail's 11 knobs. The six it was silent about included
+  the two most visual gestures on it: `gate` (a bar-locked square gater — a
+  strobe) and `roll` (a stutter — a repeated frame).
+- The visual duck was a flat `duck = 1` while the audio duck is
+  `p.coupling * (0.4 + 0.6 * tension)`. So `coupling`, documented as "how much
+  the two worlds touch", governed one world, and this file's header claimed
+  otherwise.
+
+**Decisions.**
+
+**Warmth is rendered as agreement, not as colour.** `BAND_GRADES` already owns
+warm-vs-cool over altitude (L6) and a second, contradictory warm/cool would
+fight it. Warmth in the music is the third in the chord, whether the tuning
+locks, whether the drums affirm — the common factor is *how much the parts
+consent to each other*. So `coherenceAt(warmth)` drives flock separation,
+alignment, cohesion, how much each bird leans with the shared wind, and the
+colour variance across the crown sea. The zenith now climbs into more light and
+less agreement, which is the D22 crossing, visible for the first time.
+
+**Tuning becomes chromatic register (W2).** Each track's `tuning` field had
+never been read. Beating is what an out-of-tune stack does; misregistration is
+what an out-of-register picture does. `|stretch|` drives a small chroma
+displacement and `just` drives it to zero — so the canopy, the one glad, locked,
+in-tune track, is the one band whose colour channels are in register, and the
+undergrowth (−4) and zenith (+3) sit out of register in opposite directions.
+First value was 0.0022 and it rainbow-edged the snare shards; 0.0009 is
+perceptible on a bright edge if you look for it, which is the point.
+
+**Orbit becomes distance (W3).** The figure spawns where its room says it is:
+the undergrowth's 2-second near orbit puts a ring in your face, the canopy's
+11-second ether puts one far back, and the zenith's drowned drums finally *look*
+dematerialised. It also removed the two `Math.random()` calls that were the only
+nondeterminism left in the figure stream, so a seek back to a bar now draws the
+same frame.
+
+**The harmonic centre goes on the bus (W4).** N2/N3 made the current chord's
+name a pure function of the phrase index (`bass.roots`, `pad.plane`), so
+`harmonyAt(t, brightness)` belongs next to the other two harmonic axes rather
+than being reconstructed by whoever wants it. `awayness` is circle-of-fifths
+distance, which usefully disagrees with semitone distance: the 5th is one fifth
+from home despite being 7 semitones out, while the bVI the undergrowth leans on
+is four fifths away — exactly why `generators.js` calls it "the darkest move
+available without leaving the mode". It deliberately restates the expression at
+generators.js:1477 rather than importing it, so `test/harmony.mjs` asserts the
+two agree across 300 phrases.
+
+**The Gray–Scott plane gets its second dimension (W5).** §3.3 calls `(F, k)` a
+two-dimensional mode knob. Both coordinates moved, but both were functions of
+`env.b`, so the sim walked the plane along a single line. `k` takes warmth now.
+Bounded deliberately: pattern only forms while `k` is under roughly `(√F − F)/2`
+(0.072–0.084 at this F range), so 0.057–0.065 sits inside it at every brightness
+and the coldest track cannot blank the lattice.
+
+**The six missing rail twins (X).** `gate` → a strobe, and this is the one place
+in the whole visual system where hard rhythmic flashing is legal, because the
+rail is explicitly never a composition input (D17) — so §2.1 does not reach it.
+Capped at `GATE_FLOOR = 0.45` with smoothed edges: eighths at 168 BPM is 5.6 Hz,
+inside the photosensitive-seizure band, and depth is what governs the risk. That
+constant exists for a reason outside the picture and should not be "improved".
+`drive` → a Reinhard soft-clip (the picture running out of ceiling, which is not
+the same as `dim`, which subtracts). The three EQ kills → spatial frequency:
+low = fog and bloom, mid = saturation, high = grain, streak, shimmer. Stated
+plainly in the code as *not* a real band-split — that needs a blur pyramid the
+governor cannot shed. `roll` → a re-triggered afterimage hold; a true frame
+stutter needs a spare render target, and when the chain has one this should
+become one.
+
+**And `duck = params.coupling * (0.4 + 0.6 * T)`,** which makes scene.js's
+header true.
+
+---
+
 *Add new entries above this line, newest last. If a decision is reversed,
 don't delete it — append the reversal as a new entry referencing the old.*

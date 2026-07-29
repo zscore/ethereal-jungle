@@ -60,7 +60,8 @@ import {
   look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt,
   pitchAt, canopyLight, FOV_BASE,
 } from './look.js';
-import { windAt, weatherAt, lightningAt } from './weather.js';
+import { windAt, weatherAt, lightningAt, hash01 } from './weather.js';
+import { faunaAt } from './fauna.js';
 
 const { bus, makeRng } = B;
 const BAR = B.BAR_SECONDS ?? 240 / 168; // fallback if the bus is mid-refactor
@@ -116,7 +117,7 @@ export async function initScene(canvas) {
     bloom: null, shift: null,
     smear: uniform(0), grain: uniform(0.1),
     sat: uniform(1), steps: uniform(64), tint: uniform(new THREE.Vector3()), tintAmt: uniform(0),
-    dim: uniform(1), vignette: uniform(0.18),
+    dim: uniform(1), vignette: uniform(0.18), drive: uniform(0),
     focus: uniform(14), focal: uniform(1200), bokeh: uniform(1),
     // pizzaz L: the style tier's uniforms. All of them idle at zero except the
     // grade, which idles at identity (gain 1, lift 0, gamma 1).
@@ -188,6 +189,13 @@ export async function initScene(canvas) {
     // blended continuously across altitude (look.js gradeAt).
     let rgb = max(frame_.rgb.mul(fx.gain).add(fx.lift), float(0)).pow(fx.gamma);
 
+    // X2 — drive, as a Reinhard soft-clip. `x·(1+d) / (1 + x·d)` is identity at
+    // d = 0 (so an untouched rail is bit-identical, as every twin must be),
+    // lifts everything as d rises, and compresses the highlights hardest —
+    // which is the picture running out of ceiling rather than merely getting
+    // brighter. The master insert's makeup trim, one sense-organ over.
+    rgb = rgb.mul(fx.drive.add(1)).div(rgb.mul(fx.drive).add(1));
+
     // H1 — the perform rail, rendered. Color moves the world (filter), the
     // posterize degrades the medium (crush); both are silent at rest.
     rgb = saturation(rgb, fx.sat);
@@ -249,6 +257,7 @@ export async function initScene(canvas) {
   // and the groove never. J1's ladder, one rung longer.
   const wantOptics = qp.get('dof') !== '0';
   const wantStyles = qp.get('style') !== '0';
+  const wantSky = qp.get('sky') !== '0';   // V1's cloud field — the governor's top rung
   let post = null, opticsOn = false, stylesOn = false;
   function useChain(optics, styles) {
     try {
@@ -269,9 +278,21 @@ export async function initScene(canvas) {
   if (!useChain(wantOptics, wantStyles) && !useChain(wantOptics, false) && !useChain(false, false)) post = null;
 
   // ---- event queue: fire haps on the audio clock (they arrive early) ----
+  // U5/W3 — the filter used to be `bd || sd`, which is two of the set's sound
+  // names. Everything else the set plays — the pluck, the bells, the bowl, the
+  // choir, the hoover, the breath, the ghost, the toucan — arrived here with
+  // its pitch, its orbit and its duration attached and was dropped on the floor.
+  //
+  // The toucan joins the two drums, and it is the ONLY addition. That is the
+  // synch-point economy (§2.2) doing its job rather than an oversight: the
+  // squawk fires once every two phrases (`every: 2`), which makes it about the
+  // rarest recurring event in the set and therefore the one place an anchored
+  // creature behaviour can be afforded. Widening this filter further is how
+  // this world would turn into a drum machine — see fauna.js's U1 note.
+  const WATCHED = new Set(['bd', 'sd', 'toucan']);
   const pending = [];
   bus.subscribe((evt) => {
-    if (evt.type === 'hap' && (evt.sound === 'bd' || evt.sound === 'sd')) pending.push(evt);
+    if (evt.type === 'hap' && WATCHED.has(evt.sound)) pending.push(evt);
   });
 
   let duck = 0;        // the coupling constant, rendered
@@ -287,16 +308,60 @@ export async function initScene(canvas) {
   const SUN = new THREE.Vector3();     // scratch: the god-ray origin, projected
   const scratchColor = new THREE.Color();
 
-  function fire(evt) {
-    const x = camera.position.x + (Math.random() - 0.5) * 8;
-    const z = camera.position.z - 7 - Math.random() * 5;
+  /**
+   * W3 — orbit as distance. D35 gave every track a reverb size per orbit
+   * (`rooms: { 1: 2, 3: 11, 4: 7 }` and so on), the bus has published each
+   * event's `orbit` since then, and the eye — whose entire doctrine is that fog
+   * IS distance — had never once looked at it. So the figure now spawns where
+   * its room says it is: the undergrowth's 2-second near orbit puts a ring in
+   * your face, the canopy's 11-second ether puts one far back, and the zenith's
+   * drowned drums (rooms {1: 9}) finally LOOK dematerialised instead of merely
+   * being described that way in a comment.
+   *
+   * Rooms run about 2–12, and the mapping is deliberately gentle: this is a
+   * depth cue, not a teleport, and a kick that lands 30 units away stops being
+   * the figure stream.
+   */
+  function spawnDistance(evt, track) {
+    const room = track?.rooms?.[evt.orbit ?? 1] ?? 4;
+    return 6 + Math.min(1, Math.max(0, (room - 2) / 10)) * 17;
+  }
+
+  // Deterministic jitter, keyed to the event's own scheduled time. This used to
+  // be two `Math.random()` calls, which were the only nondeterminism left in
+  // the figure stream and the reason a figure shot could not be reproduced
+  // exactly. Same spread, same look, and now a seek back to the same bar draws
+  // the same frame.
+  function jitter(evt, salt) {
+    return hash01(Math.floor((evt.when ?? 0) * 1000) * 2654435761 + salt) - 0.5;
+  }
+
+  function fire(evt, track) {
+    // U5 — the toucan is not a figure event. It startles birds and nothing
+    // else: no ring, no shard, no duck. The call is already the loudest thing
+    // in the canopy; giving it a shape too would spend a synch point twice.
+    if (evt.sound === 'toucan') {
+      world.flush(camera.position.x + jitter(evt, 11) * 26, camY + jitter(evt, 12) * 6,
+        camera.position.z - 10 + jitter(evt, 13) * 20, bus.now());
+      return;
+    }
+    const d = spawnDistance(evt, track);
+    const x = camera.position.x + jitter(evt, 1) * 8;
+    const z = camera.position.z - d + jitter(evt, 2) * 5;
     if (evt.sound === 'bd') {
       figure.kick(x, camY, z, evt.gain ?? 1, fusionNow);
-      duck = 1;                        // kick ducks the ether — heaven touched
+      // X5 — the coupling constant, honestly. This was a flat `duck = 1`, while
+      // the audio duck has always been `p.coupling * (0.4 + 0.6 * tension)`
+      // (generators.js). So the knob documented as "how much the two worlds
+      // touch" governed one world: at coupling 0 the sidechain left the mix
+      // while the camera kept flinching, the bloom kept dipping and the mist
+      // kept pressing down. Same expression as the audio now, which is what
+      // this file's header has claimed since it was written.
+      duck = (bus.params.coupling ?? 0.6) * (0.4 + 0.6 * bus.tensionAt(bus.now()));
       world.onDownbeat();              // blooms: growth's one rhythm contact
       if (fusionNow) world.ignite();   // the climax: figure ignites ground
     } else {
-      figure.snare(x, camY + Math.random() * 2, z, evt.gain ?? 1);
+      figure.snare(x, camY + (jitter(evt, 3) + 0.5) * 2, z, evt.gain ?? 1);
     }
   }
 
@@ -307,11 +372,19 @@ export async function initScene(canvas) {
   let weatherOverride = null; // pins the weather (K/M2) so a rain shot repeats
   let flashOverride = null;   // holds a strike open long enough to photograph
   let styleForce = null;      // pins the style tier against the quality governor
+  let skyTier = qp.get('sky') !== '0';   // Y2 — the cloud field, first thing sold
+  let skyForce = null;        // …and the harness's pin against the governor
+  let stormForce = null;      // pins a storm cell so one can be photographed (V2)
+  let faunaForce = null;      // suppresses every creature, for an A/B (Y3)
+  let lastFauna = null;       // what the animals did this frame, for the harness
+  let lastWeather = null;
   if (qp.has('altitude')) altitudeOverride = parseFloat(qp.get('altitude'));
   if (qp.get('biome')) world.isolate(qp.get('biome'));
   if (qp.has('weather')) {
     try { weatherOverride = JSON.parse(qp.get('weather')); } catch { /* ignore */ }
   }
+  if (qp.get('fauna') === '0') faunaForce = false;
+  if (qp.has('storm')) stormForce = parseFloat(qp.get('storm'));
   (window.jungle ??= {}).visuals = {
     backend: renderer.backend?.isWebGPUBackend ? 'webgpu' : 'webgl',
     get optics() { return opticsOn; },
@@ -341,13 +414,48 @@ export async function initScene(canvas) {
     setLateral(x) { lateralOverride = x; },
     isolate(name) { world.isolate(name); },
     /**
+     * U5 — fire the toucan startle on demand. Waiting two phrases per attempt
+     * makes a flush untestable by hand, which is the same trap `strike()`
+     * exists for.
+     */
+    flush(x = 0, y = null, z = -10) {
+      world.flush(x, y ?? camY, z, bus.now());
+    },
+    /**
+     * V2 — pin a storm cell in frame, or null to hand it back to the schedule.
+     * A cell arrives about every 46 s at best, so without this nobody would
+     * ever photograph one on purpose.
+     */
+    storm(f) { stormForce = f; },
+    /** What the sky is doing this frame: the cell's position and intensity. */
+    debugSky() {
+      return { cell: world.debugSky(), weather: lastWeather, forced: stormForce };
+    },
+    /**
+     * What the fauna are doing this frame (Y3). Same reasoning as `debugStyle`:
+     * "the sloths are in this band" is easy to believe while the presence
+     * window sits at zero, and a screenshot cannot tell you a population was
+     * culled to nothing.
+     */
+    debugFauna() { return lastFauna; },
+    /** Suppress every creature, for an A/B against the world without them. */
+    setFauna(on) { faunaForce = on; },
+    /**
+     * Y2 — pin the cloud field on/off against the governor, null to hand it
+     * back. Same reasoning as `setStyles`: this is the first tier sold, so on a
+     * software rasterizer a harness that merely switched it on would go on to
+     * photograph a world that had already dropped it.
+     */
+    setSky(on) { skyForce = on; },
+    get skyTier() { return skyForce ?? skyTier; },
+    /**
      * What the style tier is actually doing this frame (L). A style bound to a
      * section is easy to *believe* is on while the uniform sits at zero, so
      * the harness asserts it rather than trusting the screenshot.
      */
     debugStyle() {
       return {
-        stylesOn, section: lastSection,
+        stylesOn, section: lastSection, sky: skyForce ?? skyTier,
         ink: +fx.ink.value.toFixed(3), halftone: +fx.halftone.value.toFixed(3),
         kaleido: +fx.kaleido.value.toFixed(3), streak: +fx.streak.value.toFixed(3),
         godrays: +fx.godrays.value.toFixed(3), shimmer: +fx.shimmer.value.toFixed(3),
@@ -386,7 +494,14 @@ export async function initScene(canvas) {
         // sell the ornament first, the sentence second — and buy them back in
         // the reverse order, so the frame never has styles without optics
         const styleLocked = styleForce != null;
-        if (fpsEma < 42 && stylesOn && quality <= 0.6 && !styleLocked) {
+        // Y2 — the clouds are the newest and heaviest thing in the world (V1 is
+        // ~180 billboards the camera flies through), so they go at the TOP of
+        // the sell order: the set survives without ever showing one, exactly
+        // the argument that put the styles above the optics. Order is now
+        // clouds, styles, optics, pixels, and the groove never.
+        if (fpsEma < 44 && skyTier && quality <= 0.8) {
+          skyTier = false; tierHold = 15;
+        } else if (fpsEma < 42 && stylesOn && quality <= 0.6 && !styleLocked) {
           if (useChain(opticsOn, false)) tierHold = 15;
         } else if (fpsEma < 40 && opticsOn && !stylesOn && quality <= 0.4) {
           if (useChain(false, false)) tierHold = 15;
@@ -394,7 +509,7 @@ export async function initScene(canvas) {
           if (!opticsOn && wantOptics) { if (useChain(true, stylesOn)) tierHold = 15; }
           else if (!stylesOn && wantStyles && opticsOn && !styleLocked) {
             if (useChain(opticsOn, true)) tierHold = 15;
-          }
+          } else if (!skyTier && wantSky) { skyTier = true; tierHold = 15; }
         }
       }
       const next = fpsEma < 38 ? Math.max(0.75, pixelRatio - 0.25)
@@ -435,6 +550,11 @@ export async function initScene(canvas) {
       t, index: trackInfo.index, toIndex: seam.toIndex, blend: seamBlend, T,
       seed: bus.params.seed,
     });
+    // V2 — the storm pin. Applied to the WEATHER rather than to the cell, so a
+    // pinned storm drives the cell, the strikes and the cloud opacity together
+    // and cannot produce a lit cloud with no lightning in it.
+    if (stormForce != null) weather.storm = stormForce;
+    lastWeather = weather;
     const strike = lightningAt(t, bus.params.seed, weather.storm);
     const flash = flashOverride ?? strike.flash;
     // one closure per frame, so every biome samples the SAME field at its own
@@ -444,7 +564,7 @@ export async function initScene(canvas) {
     });
 
     // fire due events (arrived ahead of time, keyed to the audio clock)
-    while (pending.length && pending[0].when <= audioNow + dt) fire(pending.shift());
+    while (pending.length && pending[0].when <= audioNow + dt) fire(pending.shift(), trackInfo.track);
 
     duck = Math.max(0, duck - dt * 6);
 
@@ -492,12 +612,36 @@ export async function initScene(canvas) {
       camera.updateProjectionMatrix();
     }
 
+    // ---- W1: the warmth axis, sampled at last ----
+    // D22 shipped warmth as a full second harmonic axis with `bus.warmthAt`
+    // sitting next to `brightnessAt` for symmetry, and `grep -rn warmth
+    // src/visuals/` returned nothing but a comment about the sun. Which meant
+    // the best moment in the set was invisible: at the zenith brightness keeps
+    // climbing while warmth falls off a cliff, so the eye saw only the climb —
+    // triumph, the exact reading D22 was written to avoid.
+    //
+    // Sampled slightly ahead, like everything else the light does: the world
+    // stops agreeing with itself a beat before you can hear that it has.
+    const warmth = bus.warmthAt(t + 2);
+    // W4 — the authored harmonic centre (N2/N3), as a distance from home
+    const harmony = bus.harmonyAt(t);
+
+    // ---- U: the fauna. One sample per frame, shared by every creature, for
+    // the same reason the wind is one closure: they have to agree.
+    const fauna = faunaAt({ t, seed: bus.params.seed, alt, warmth, section, T });
+    if (faunaForce === false) for (const k of Object.keys(fauna.presence)) fauna.presence[k] = 0;
+    lastFauna = fauna;
+
     // ---- world + figure state: bus signals only ----
     const env = {
       t, T, Tf, b, alt, drift, duck, w, quality,
       trackPhase: trackInfo.phase, trackIndex: trackInfo.index,
       cam: camera.position,
       wind, weather, flash,   // the shared atmosphere (K1/K7/M2)
+      strike,                 // …and the bearing it came from (V2: the cell)
+      warmth, harmony, fauna, section,
+      seed: bus.params.seed, worldTop: WORLD_TOP,
+      sky: skyForce ?? skyTier,   // Y2 — the governor's top rung, read by sky.js
     };
     world.update(dt, env);
     figure.update(dt);
@@ -510,6 +654,10 @@ export async function initScene(canvas) {
     const L = look(bus.params, {
       T, Tf, b, alt, duck, w, fusion: fusionNow, arrival, exhale, flash, fusionAmt,
       focusDist: camera.position.distanceTo(lookAt),
+      // X1/X4 need a clock (they are the two rhythmic rail knobs), and W2 needs
+      // the track's tuning — the one piece of per-track palette data the eye
+      // has any business reading, because beating is a thing you can see.
+      t, bar: BAR, tuning: trackInfo.track.tuning,
     });
     const style = styleAt({ section, fusionAmt }, bus.params);
     // the one style that must not snap: a section boundary is a hard edge, and
@@ -549,6 +697,7 @@ export async function initScene(canvas) {
       // to 1.0 over the crowns — the 5.6-stop real difference, compressed.
       fx.dim.value = L.dim * L.exposure;
       fx.vignette.value = L.vignette;
+      fx.drive.value = L.drive;   // X2 — idles at 0, where the soft-clip is identity
       fx.focus.value = L.focus;
       fx.focal.value = L.focal;
       fx.bokeh.value = L.bokeh;
@@ -579,7 +728,14 @@ export async function initScene(canvas) {
         // reaches the eye, because the rays scatter from wherever this point
         // is: a strike now comes FROM somewhere, for the first time.
         if (flash > 0.001) {
-          SUN.set(Math.cos(strike.azimuth) * 60, 30 + b * 25, Math.sin(strike.azimuth) * 60);
+          // V2 — the strike comes FROM the cell now, not from a free hash. The
+          // god-ray origin therefore points at an object that is actually in
+          // the frame, which is what the upper-air comment always wanted ("a
+          // strike lights cloud from inside") and could not have while the
+          // only thing above the trees was an empty direction.
+          const cell = world.cell?.();
+          if (cell) SUN.set(cell.x, cell.y, cell.z);
+          else SUN.set(Math.cos(strike.azimuth) * 60, 30 + b * 25, Math.sin(strike.azimuth) * 60);
         } else {
           SUN.set(0, WORLD_TOP + 6, 0);
         }

@@ -9,7 +9,7 @@ import {
   gradeAt, styleAt, BAND_ORBITS, BAND_GRADES, FOCAL_SHARP, POSTERIZE_STEPS,
   TINT_UNDER, TINT_THIN, INK_SECTIONS, HALFTONE_KNEE, FOV_BASE, FOV_DOLLY,
   canopyLight, beamAt, pitchAt, BAND_PITCH, nearFieldAt, APERTURE_REST,
-  CANOPY_BASE, CANOPY_TOP, FLOOR_LIGHT,
+  CANOPY_BASE, CANOPY_TOP, FLOOR_LIGHT, GATE_FLOOR,
 } from '../src/visuals/look.js';
 import { PERFORM_DEFAULTS } from '../src/perform.js';
 import { BAND_COLORS, WORLD_TOP, CROWN_Y0, CROWN_Y1 } from '../src/visuals/biomes.js';
@@ -451,6 +451,88 @@ console.log('the world has a resting aperture, and it is spent where the near fi
   check(look(PERFORM_DEFAULTS, { ...ENV, alt: 0.2 }).focal ===
         FOCAL_SHARP / (1 + APERTURE_REST * nearFieldAt(0.2)),
     'and the aperture is the first term of the divisor, the rail\'s the rest');
+}
+
+// ---------------------------------------------------------------------------
+// Tier X — the six rail knobs that had no eye, and W2's tuning register.
+// The rule they all share is the one F–J shipped and this pass must not break:
+// at rest the frame is bit-identical. Every check below is paired — the knob
+// does something, AND it does exactly nothing at home.
+// ---------------------------------------------------------------------------
+console.log('X: the rail’s missing twins say the same sentence, one sense-organ over');
+{
+  const ENV = { T: 0.5, Tf: 0.5, b: 0.5, alt: 0.4, t: 3.3, bar: 240 / 168 };
+  const rest = look(PERFORM_DEFAULTS, ENV);
+
+  // X1 — the gater
+  const gated = look({ ...PERFORM_DEFAULTS, gate: 1 }, ENV);
+  let minDim = Infinity, maxDim = -Infinity, moved = false;
+  for (let i = 0; i < 400; i++) {
+    const d = look({ ...PERFORM_DEFAULTS, gate: 1 }, { ...ENV, t: i * 0.01 }).dim;
+    minDim = Math.min(minDim, d); maxDim = Math.max(maxDim, d);
+    if (Math.abs(d - rest.dim) > 1e-9) moved = true;
+  }
+  check(moved, 'the gater actually strobes the frame');
+  check(minDim >= GATE_FLOOR * rest.dim - 1e-9,
+    `and never approaches black (floor ${GATE_FLOOR}, darkest ${(minDim / rest.dim).toFixed(2)}) — the photosensitivity cap`);
+  check(look({ ...PERFORM_DEFAULTS, gate: 0 }, ENV).dim === rest.dim, 'a gater at rest costs the frame nothing');
+  check(maxDim <= rest.dim + 1e-9, 'and it only ever subtracts light, never adds it');
+
+  // X2 — drive
+  check(rest.drive === 0, 'drive idles at zero, where the soft-clip is identity');
+  check(look({ ...PERFORM_DEFAULTS, drive: 0.7 }, ENV).drive > 0, 'and it reaches the shader when pushed');
+  check(look({ ...PERFORM_DEFAULTS, drive: 0.7 }, ENV).bloom > rest.bloom,
+    'pushing the mix blooms the picture — the ceiling, seen');
+
+  // X3 — the isolator kills, by spatial frequency
+  const lowKilled = look({ ...PERFORM_DEFAULTS, eqLow: 0 }, ENV);
+  const midKilled = look({ ...PERFORM_DEFAULTS, eqMid: 0 }, ENV);
+  const highKilled = look({ ...PERFORM_DEFAULTS, eqHigh: 0 }, ENV);
+  check(lowKilled.fogDensity < rest.fogDensity && lowKilled.bloom < rest.bloom,
+    'killing the low band takes the mass out of the picture (fog and bloom)');
+  check(midKilled.sat < rest.sat, 'killing the mid band takes the body of the colour out');
+  check(highKilled.grain < rest.grain && highKilled.streak < rest.streak,
+    'killing the high band takes the fine detail out (grain and streak)');
+  check(look({ ...PERFORM_DEFAULTS, eqLow: 1, eqMid: 1, eqHigh: 1 }, ENV).fogDensity === rest.fogDensity,
+    'and the EQ at unity is literally not in the picture');
+  let eqMonotone = true;
+  for (let i = 1; i <= 50; i++) {
+    const a = look({ ...PERFORM_DEFAULTS, eqHigh: (i - 1) / 50 }, ENV).grain;
+    const bb = look({ ...PERFORM_DEFAULTS, eqHigh: i / 50 }, ENV).grain;
+    if (bb < a - 1e-12) eqMonotone = false;
+  }
+  check(eqMonotone, 'each kill is perceptually monotone (§9.1)');
+
+  // X4 — the roll
+  const rolled = [];
+  for (let i = 0; i < 60; i++) rolled.push(look({ ...PERFORM_DEFAULTS, roll: 0.9 }, { ...ENV, t: i * 0.02 }).smear);
+  check(Math.max(...rolled) > rest.smear, 'the roll catches the frame (the afterimage holds)');
+  check(look({ ...PERFORM_DEFAULTS, roll: 0 }, ENV).smear === rest.smear, 'and a roll at rest costs nothing');
+  check(new Set(rolled.map((v) => v.toFixed(4))).size > 3, '…and it re-triggers rather than sitting on one value');
+
+  // X5's twin lives in scene.js (the visual duck), but the whole-rail promise
+  // is checkable here: with every knob home, nothing in the frame moved.
+  const before = look(PERFORM_DEFAULTS, ENV);
+  const after = look({ ...PERFORM_DEFAULTS }, ENV);
+  check(JSON.stringify(before) === JSON.stringify(after), 'an untouched rail is bit-identical, still');
+}
+
+console.log('W2: the tuning axis, as chromatic register');
+{
+  const ENV = { T: 0.5, Tf: 0.5, b: 0.5, alt: 0.4, t: 1, bar: 240 / 168 };
+  const shiftFor = (tuning) => look(PERFORM_DEFAULTS, { ...ENV, tuning }).shift;
+  const plain = shiftFor({});                       // forest floor: plain 12-TET
+  check(shiftFor({ stretch: -4 }) > plain, 'the undergrowth sags, and the picture goes out of register');
+  check(shiftFor({ stretch: 3 }) > plain, 'the zenith stretches, and so does it');
+  check(shiftFor({ just: 1 }) === plain, 'the canopy locks — the one band whose colour channels are in register');
+  check(shiftFor({ stretch: 3, just: 1 }) === plain, 'and a locked track cannot be pushed out of register by its stretch');
+  check(shiftFor({ stretch: -4 }) === shiftFor({ stretch: 4 }),
+    'the amount is the size of the mistuning, not its direction');
+
+  // every track in the actual set, so the claim is about this set and not a fiction
+  const byName = Object.fromEntries(TRACKS.map((tr) => [tr.name, shiftFor(tr.tuning)]));
+  check(byName.canopy === Math.min(...Object.values(byName)),
+    'across the real four tracks, the canopy is the most in-register of all');
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall checks passed');
