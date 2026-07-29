@@ -346,7 +346,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>21</b><span>modules</span></div>
       <div><b>197</b><span>exports</span></div>
-      <div><b>9,268</b><span>lines</span></div>
+      <div><b>9,544</b><span>lines</span></div>
       <div><b>86%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
@@ -8901,7 +8901,7 @@ roll                 — pattern surgery at rebuild: the ONE perform knob
     <header class="mod-head">
       <h3>scene.js</h3>
       <a class="srcref" href="../../src/visuals/scene.js">src/visuals/scene.js</a>
-      <span class="muted">779 lines · 1 exported</span>
+      <span class="muted">781 lines · 1 exported</span>
     </header>
     <div class="doc lead"><p>scene.js — the visualizer. Two streams, bimodally clustered (visual doc <span class="ref sec" title="a section of the theory docs in docs/">§2.1</span>):</p>
 <pre class="diagram">GROUND — the one-world jungle (biomes.js): family-biomes stacked in
@@ -9638,7 +9638,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 481
 482
 483
-484</pre><pre class="src"><code>
+484
+485
+486</pre><pre class="src"><code>
   <span class="k">let</span> altitudeOverride = <span class="l">null</span>;
   <span class="k">let</span> lateralOverride = <span class="l">null</span>; <span class="c">// pins the wander so a shot is repeatable</span>
   <span class="k">let</span> weatherOverride = <span class="l">null</span>; <span class="c">// pins the weather (K/M2) so a rain shot repeats</span>
@@ -9710,6 +9712,8 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
      * culled to nothing.
      */</span>
     debugFauna() { <span class="k">return</span> lastFauna; },
+    <span class="c">/** U3 — the frogs' positions relative to the lens (see `buildWorld`). */</span>
+    debugFrogs() { <span class="k">return</span> world.debugFrogs(camera.position); },
     <span class="c">/** Suppress every creature, for an A/B against the world without them. */</span>
     setFauna(on) { faunaForce = on; },
     <span class="c">/**
@@ -9748,11 +9752,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">adaptive quality (proposal E1 + J1): trade pixels and optics, never</span><span class="muted">line 484</span></div>
+          <div class="step-head"><span class="step-title">adaptive quality (proposal E1 + J1): trade pixels and optics, never</span><span class="muted">line 486</span></div>
           <p>the groove. Three levers, spent in order of how little they mean: sim/ particle work first, then the DoF tier, then pixel ratio last.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">486
-487
-488
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">488
 489
 490
 491
@@ -9816,7 +9818,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 549
 550
 551
-552</pre><pre class="src"><code>
+552
+553
+554</pre><pre class="src"><code>
   <span class="k">let</span> fpsEma = <span class="n">60</span>, qTimer = <span class="n">0</span>, tierHold = <span class="n">0</span>;
 
   <span class="k">let</span> last = performance.now() / <span class="n">1000</span>;
@@ -9885,11 +9889,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">the weather (M2) and the wind (K1): one atmosphere, sampled by all</span><span class="muted">line 552</span></div>
+          <div class="step-head"><span class="step-title">the weather (M2) and the wind (K1): one atmosphere, sampled by all</span><span class="muted">line 554</span></div>
           <p>Weather crossfades across a seam on the same smoothstep the brightness walk uses, so the incoming track's air arrives before its downbeat does.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">554
-555
-556
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">556
 557
 558
 559
@@ -9921,7 +9923,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 585
 586
 587
-588</pre><pre class="src"><code>
+588
+589
+590</pre><pre class="src"><code>
     <span class="k">const</span> seamBlend = seam.active
       ? seam.progress * seam.progress * (<span class="n">3</span> - <span class="n">2</span> * seam.progress) : <span class="n">0</span>;
     <span class="k">const</span> weather = weatherOverride ?? weatherAt({
@@ -9958,15 +9962,15 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">the traversal: altitude ← brightness walk (transition = travel)</span><span class="muted">line 588</span></div>
+          <div class="step-head"><span class="step-title">the traversal: altitude ← brightness walk (transition = travel)</span><span class="muted">line 590</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">588
-589
-590
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">590
 591
 592
 593
-594</pre><pre class="src"><code>
+594
+595
+596</pre><pre class="src"><code>
     <span class="k">const</span> altitude01 = altitudeOverride ?? bAhead;
     <span class="k">const</span> targetY = <span class="n">2</span> + altitude01 * (WORLD_TOP - <span class="n">8</span>);
     camY += (targetY - camY) * Math.min(<span class="n">1</span>, dt * <span class="n">0.4</span>); <span class="c">// slow — a journey, not a cut</span>
@@ -9975,16 +9979,16 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">seam choreography (D3 + I2): the push-in is staged by the seam's</span><span class="muted">line 594</span></div>
+          <div class="step-head"><span class="step-title">seam choreography (D3 + I2): the push-in is staged by the seam's</span><span class="muted">line 596</span></div>
           <p>seeded flavor, and the boundary is an ARRIVAL only for a landing. The flash fires when the window we were inside ends — bar-exact seams make this a lookup, not an estimate.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">597
-598
-599
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">599
 600
 601
 602
 603
-604</pre><pre class="src"><code>
+604
+605
+606</pre><pre class="src"><code>
     <span class="k">const</span> flourish = seamPush(seam);
     <span class="k">if</span> (wasSeam &amp;&amp; !seam.active &amp;&amp; seamFlashes(wasSeam)) arrival = <span class="n">1</span>;
     wasSeam = seam.active ? seam : <span class="l">false</span>;
@@ -9994,11 +9998,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">camera waypoints (I1): a per-band lateral orbit, blended by</span><span class="muted">line 604</span></div>
+          <div class="step-head"><span class="step-title">camera waypoints (I1): a per-band lateral orbit, blended by</span><span class="muted">line 606</span></div>
           <p>altitude and superimposed on the 1/f sway — the motion signature (the strongest continuity element, <span class="ref sec" title="a section of the theory docs in docs/">§4.2</span>) survives every boundary.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">606
-607
-608
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">608
 609
 610
 611
@@ -10022,7 +10024,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 629
 630
 631
-632</pre><pre class="src"><code>
+632
+633
+634</pre><pre class="src"><code>
     <span class="k">const</span> orbit = orbitAt(altitude01, t, drift);
     <span class="k">const</span> lateral = lateralOverride ?? (camDrift + orbit.x);
     camera.position.x = lateral;
@@ -10051,15 +10055,15 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">W1: the warmth axis, sampled at last</span><span class="muted">line 632</span></div>
+          <div class="step-head"><span class="step-title">W1: the warmth axis, sampled at last</span><span class="muted">line 634</span></div>
           <p><a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a> shipped warmth as a full second harmonic axis with <code>bus.warmthAt</code> sitting next to <code>brightnessAt</code> for symmetry, and <code>grep -rn warmth src/visuals/</code> returned nothing but a comment about the sun. Which meant the best moment in the set was invisible: at the zenith brightness keeps climbing while warmth falls off a cliff, so the eye saw only the climb — triumph, the exact reading <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a> was written to avoid.</p>
 <p>Sampled slightly ahead, like everything else the light does: the world stops agreeing with itself a beat before you can hear that it has.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">641
-642
-643
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">643
 644
 645
-646</pre><pre class="src"><code>
+646
+647
+648</pre><pre class="src"><code>
     <span class="k">const</span> warmth = bus.warmthAt(t + <span class="n">2</span>);
     <span class="c">// W4 — the authored harmonic centre (N2/N3), as a distance from home</span>
     <span class="k">const</span> harmony = bus.harmonyAt(t);
@@ -10067,14 +10071,14 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">U: the fauna. One sample per frame, shared by every creature, for</span><span class="muted">line 646</span></div>
+          <div class="step-head"><span class="step-title">U: the fauna. One sample per frame, shared by every creature, for</span><span class="muted">line 648</span></div>
           <p>the same reason the wind is one closure: they have to agree.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">647
-648
-649
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">649
 650
 651
-652</pre><pre class="src"><code>
+652
+653
+654</pre><pre class="src"><code>
     <span class="k">const</span> fauna = faunaAt({ t, seed: bus.params.seed, alt, warmth, section, T });
     <span class="k">if</span> (faunaForce === <span class="l">false</span>) <span class="k">for</span> (<span class="k">const</span> k <span class="k">of</span> Object.keys(fauna.presence)) fauna.presence[k] = <span class="n">0</span>;
     lastFauna = fauna;
@@ -10082,11 +10086,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">world + figure state: bus signals only</span><span class="muted">line 652</span></div>
+          <div class="step-head"><span class="step-title">world + figure state: bus signals only</span><span class="muted">line 654</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">652
-653
-654
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">654
 655
 656
 657
@@ -10210,7 +10212,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 775
 776
 777
-778</pre><pre class="src"><code>
+778
+779
+780</pre><pre class="src"><code>
     <span class="k">const</span> env = {
       t, T, Tf, b, alt, drift, duck, w, quality,
       trackPhase: trackInfo.phase, trackIndex: trackInfo.index,
@@ -10339,7 +10343,7 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 }</code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">708 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">71
+    <details class="source"><summary>source <span class="muted">710 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">71
 72
 73
 74
@@ -11046,7 +11050,9 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
 775
 776
 777
-778</pre><pre class="src"><code><span class="k">export</span> <span class="k">async</span> <span class="k">function</span> initScene(canvas) {
+778
+779
+780</pre><pre class="src"><code><span class="k">export</span> <span class="k">async</span> <span class="k">function</span> initScene(canvas) {
   <span class="k">const</span> renderer = <span class="k">new</span> WebGPURenderer({ canvas, antialias: <span class="l">true</span> });
   <span class="k">await</span> renderer.init(); <span class="c">// falls back to WebGL2 automatically when WebGPU is absent</span>
   <span class="k">const</span> BASE_PR = Math.min(window.devicePixelRatio, <span class="n">2</span>);
@@ -11424,6 +11430,8 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
      * culled to nothing.
      */</span>
     debugFauna() { <span class="k">return</span> lastFauna; },
+    <span class="c">/** U3 — the frogs' positions relative to the lens (see `buildWorld`). */</span>
+    debugFrogs() { <span class="k">return</span> world.debugFrogs(camera.position); },
     <span class="c">/** Suppress every creature, for an A/B against the world without them. */</span>
     setFauna(on) { faunaForce = on; },
     <span class="c">/**
@@ -11761,7 +11769,7 @@ FIGURE — figure.js: kick shockwave rings and snare shard scatters.
     <header class="mod-head">
       <h3>biomes.js</h3>
       <a class="srcref" href="../../src/visuals/biomes.js">src/visuals/biomes.js</a>
-      <span class="muted">1713 lines · 6 exported</span>
+      <span class="muted">1727 lines · 6 exported</span>
     </header>
     <div class="doc lead"><p>biomes.js — the one-world solution (visual doc <span class="ref sec" title="a section of the theory docs in docs/">§4.4</span>).</p>
 <p>One continuous world in which each visualizer family governs an altitude band. Altitude IS mode brightness: phrygian among the roots, lydian in the light above the canopy. A transition between tracks is a camera traversal, so every boundary is visually legal by construction, and the set is one long shot.</p>
@@ -15893,7 +15901,7 @@ open air     y 45–62   100%        the canopy sea to the horizon, high cloud</
     <pre class="sig"><code>buildWorld(scene, rng, opts = {})</code></pre>
     <div class="doc"><p>Build the whole world into <code>scene</code>; returns per-frame updaters + hooks.</p></div>
     
-    <details class="source"><summary>source <span class="muted">55 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1659
+    <details class="source"><summary>source <span class="muted">69 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1659
 1660
 1661
 1662
@@ -15947,7 +15955,21 @@ open air     y 45–62   100%        the canopy sea to the horizon, high cloud</
 1710
 1711
 1712
-1713</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildWorld(scene, rng, opts = {}) {
+1713
+1714
+1715
+1716
+1717
+1718
+1719
+1720
+1721
+1722
+1723
+1724
+1725
+1726
+1727</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildWorld(scene, rng, opts = {}) {
   <span class="c">// The pool is built first among the things that reference each other, because</span>
   <span class="c">// the frog chorus drops its rings into the pool's own recycled ring pool</span>
   <span class="c">// (U3): a call and the ripple it makes are one event, not two.</span>
@@ -15969,7 +15991,8 @@ open air     y 45–62   100%        the canopy sea to the horizon, high cloud</
     <span class="c">// …and the fauna, in the same bottom-up order (proposal IV, tier U)</span>
     makePoolFrogs(rng, CAST.poolfrog, <span class="s">'poolfrog'</span>, pool),
     makeSloths(rng, CAST.sloth, <span class="s">'sloth'</span>, forest.trees),
-    makeTreeFrogs(rng, CAST.treefrog, <span class="s">'treefrog'</span>),
+    <span class="c">// …and the dart frogs perch on ITS trunks, for the reason the sloths do</span>
+    makeTreeFrogs(rng, CAST.treefrog, <span class="s">'treefrog'</span>, forest.trees),
     makeSloths(rng, CAST.slothCrown, <span class="s">'slothCrown'</span>, forest.trees),
     flock,
     makeSoarer(rng, CAST.soarer, <span class="s">'soarer'</span>),
@@ -15993,6 +16016,19 @@ open air     y 45–62   100%        the canopy sea to the horizon, high cloud</
     <span class="c">/** V2 — the storm cell this frame, so a strike can come FROM it. */</span>
     cell() { <span class="k">return</span> sky.cell(); },
     debugSky() { <span class="k">return</span> sky.debug(); },
+    <span class="c">/**
+     * U3 — where the frogs actually are, relative to the lens.
+     *
+     * `debugFauna` says a band is fully present; it cannot say the population
+     * is sitting twenty units above the top of the frame, which is exactly the
+     * bug that shipped. Distance-from-camera is the number that would have
+     * caught it, so it is the number this returns.
+     */</span>
+    debugFrogs(cam) {
+      <span class="k">return</span> Object.fromEntries(biomes
+        .filter((b) =&gt; b.name === <span class="s">'treefrog'</span> || b.name === <span class="s">'poolfrog'</span>)
+        .map((b) =&gt; [b.name, b.debug?.(cam)]));
+    },
     <span class="c">/** U2 — where each sloth is along its branch, and which way it is going. */</span>
     debugSloths() {
       <span class="k">return</span> Object.fromEntries(biomes
@@ -16018,7 +16054,7 @@ open air     y 45–62   100%        the canopy sea to the horizon, high cloud</
 <p>The style tiers (L, pizzaz proposal) add a fourth object: some effects change WHAT KIND OF PICTURE THIS IS — ink, halftone, a kaleidoscopic fold. Those are governed by one rule, <code>styleAt</code> below: <strong>a style is spent, not sprinkled.</strong> Each is bound to a place in the set that already means something (a breakdown, the far end of the crush knob, the one fusion climax) so that seeing it is information. A style you can see at any moment is wallpaper, and the whole <span class="ref sec" title="a section of the theory docs in docs/">§5</span> argument about the climax applies verbatim.</p></div>
     <div class="deps">
       
-      <div><span class="deplabel">imported by</span><a class="chip" href="#src-visuals-biomes-js">biomes.js</a><a class="chip" href="#src-visuals-scene-js">scene.js</a><a class="chip" href="#src-visuals-shade-js">shade.js</a><a class="chip" href="#src-visuals-sky-js">sky.js</a></div>
+      <div><span class="deplabel">imported by</span><a class="chip" href="#src-visuals-biomes-js">biomes.js</a><a class="chip" href="#src-visuals-creatures-js">creatures.js</a><a class="chip" href="#src-visuals-scene-js">scene.js</a><a class="chip" href="#src-visuals-shade-js">shade.js</a><a class="chip" href="#src-visuals-sky-js">sky.js</a></div>
       
     </div>
     
@@ -20484,14 +20520,14 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
     <header class="mod-head">
       <h3>creatures.js</h3>
       <a class="srcref" href="../../src/visuals/creatures.js">src/visuals/creatures.js</a>
-      <span class="muted">621 lines · 5 exported</span>
+      <span class="muted">858 lines · 5 exported</span>
     </header>
     <div class="doc lead"><p>creatures.js — the animals, as meshes (proposal IV, tier U).</p>
 <p>The logic lives in <a class="modref" href="#src-visuals-fauna-js"><code>fauna.js</code></a>, which is pure and tested; this file builds geometry and moves values, exactly the way <a class="modref" href="#src-visuals-biomes-js"><code>biomes.js</code></a> relates to <a class="modref" href="#src-visuals-look-js"><code>look.js</code></a>. Every system here keeps the biome contract — <code>{ name, group, update(dt, env) }</code> — so <code>buildWorld</code> composes them with everything else.</p>
 <p>Read fauna.js's U1 note before adding a creature. The short version: an animal is the first thing in this world that wants to be continuous like weather AND discrete when it moves, so it is the first thing that can break <span class="ref sec" title="a section of the theory docs in docs/">§2.1</span>'s rule that the ground stream carries no rhythm. Three tiers of behaviour, at most one of them anchored to a bus event, per creature.</p>
 <p><strong>Silhouette first.</strong> This world is soft, additive and near-abstract — glow clouds, cards, instanced spheres — and <a class="ref adr" href="../design_decisions.md#d28-the-glyph-is-removed-the-slot-it-filled-is-not-2026-07-27" title="The glyph is removed; the slot it filled is not (2026-07-27)">D28</a>/<a class="ref adr" href="../design_decisions.md#d42-three-things-removed-by-eye-the-shrine-the-form-again-and-the-fronds-2026-07-29" title="Three things removed by eye: the shrine, the form (again), and the fronds (2026-07-29)">D42</a> removed the recurring glyph twice for looking wrong in it. So no creature here is modelled: they are shapes read against the light, dark where the light is behind them, and what makes them legible is how they MOVE rather than how they are built. A sloth that reads as a sack is a sloth that needs a slower reach, not more polygons.</p></div>
     <div class="deps">
-      <div><span class="deplabel">imports</span><a class="chip" href="#src-visuals-shade-js">shade.js</a><a class="chip" href="#src-visuals-fauna-js">fauna.js</a></div>
+      <div><span class="deplabel">imports</span><a class="chip" href="#src-visuals-shade-js">shade.js</a><a class="chip" href="#src-visuals-look-js">look.js</a><a class="chip" href="#src-visuals-fauna-js">fauna.js</a></div>
       <div><span class="deplabel">imported by</span><a class="chip" href="#src-visuals-biomes-js">biomes.js</a></div>
       <div><span class="deplabel">external</span><span class="chip ext">three</span><span class="chip ext">three/webgpu</span></div>
     </div>
@@ -20503,83 +20539,86 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-creatures-js--clamp01">clamp01</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:29</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:30</a>
     </header>
     <pre class="sig"><code>clamp01(x)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">29</pre><pre class="src"><code><span class="k">const</span> clamp01 = (x) =&gt; (x &lt; <span class="n">0</span> ? <span class="n">0</span> : x &gt; <span class="n">1</span> ? <span class="n">1</span> : x);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">30</pre><pre class="src"><code><span class="k">const</span> clamp01 = (x) =&gt; (x &lt; <span class="n">0</span> ? <span class="n">0</span> : x &gt; <span class="n">1</span> ? <span class="n">1</span> : x);</code></pre></div></details>
   </article>
   <article class="item" id="src-visuals-creatures-js--UP" data-name="up" data-text="">
     <header class="item-head">
       <span class="kind constant">constant</span>
       <h4><a href="#src-visuals-creatures-js--UP">UP</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:30</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:31</a>
     </header>
     <pre class="sig"><code>UP = new THREE.Vector3(0, 1, 0)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">30</pre><pre class="src"><code><span class="k">const</span> UP = <span class="k">new</span> THREE.Vector3(<span class="n">0</span>, <span class="n">1</span>, <span class="n">0</span>);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">31</pre><pre class="src"><code><span class="k">const</span> UP = <span class="k">new</span> THREE.Vector3(<span class="n">0</span>, <span class="n">1</span>, <span class="n">0</span>);</code></pre></div></details>
   </article>
   <article class="item" id="src-visuals-creatures-js--NO_WIND" data-name="no_wind" data-text="">
     <header class="item-head">
       <span class="kind table">table</span>
       <h4><a href="#src-visuals-creatures-js--NO_WIND">NO_WIND</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:31</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:32</a>
     </header>
     <pre class="sig"><code>NO_WIND = { x: 0, y: 0, z: 0, gust: 0, amp: 0 }</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">31</pre><pre class="src"><code><span class="k">const</span> NO_WIND = { x: <span class="n">0</span>, y: <span class="n">0</span>, z: <span class="n">0</span>, gust: <span class="n">0</span>, amp: <span class="n">0</span> }</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">32</pre><pre class="src"><code><span class="k">const</span> NO_WIND = { x: <span class="n">0</span>, y: <span class="n">0</span>, z: <span class="n">0</span>, gust: <span class="n">0</span>, amp: <span class="n">0</span> }</code></pre></div></details>
   </article>
   <article class="item" id="src-visuals-creatures-js--windAtOr" data-name="windator" data-text="">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-creatures-js--windAtOr">windAtOr</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:32</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:33</a>
     </header>
     <pre class="sig"><code>windAtOr(env, x, y, z)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">32</pre><pre class="src"><code><span class="k">const</span> windAtOr = (env, x, y, z) =&gt; (env.wind ? env.wind(x, y, z) : NO_WIND);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">33</pre><pre class="src"><code><span class="k">const</span> windAtOr = (env, x, y, z) =&gt; (env.wind ? env.wind(x, y, z) : NO_WIND);</code></pre></div></details>
   </article>
   <article class="item" id="src-visuals-creatures-js--SOAR_SCALE" data-name="soar_scale" data-text="">
     <header class="item-head">
       <span class="kind constant">constant</span>
       <h4><a href="#src-visuals-creatures-js--SOAR_SCALE">SOAR_SCALE</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:33</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:34</a>
     </header>
     <pre class="sig"><code>SOAR_SCALE = new THREE.Vector3(2.6, 2.6, 2.6)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">33</pre><pre class="src"><code><span class="k">const</span> SOAR_SCALE = <span class="k">new</span> THREE.Vector3(<span class="n">2.6</span>, <span class="n">2.6</span>, <span class="n">2.6</span>);</code></pre></div></details>
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">34</pre><pre class="src"><code><span class="k">const</span> SOAR_SCALE = <span class="k">new</span> THREE.Vector3(<span class="n">2.6</span>, <span class="n">2.6</span>, <span class="n">2.6</span>);</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--CAM_XZ" data-name="cam_xz" data-text="where the camera stands, in plan — scene.js puts it at (0, camy, 12) and lets a small lateral orbit wander it.">
+    <header class="item-head">
+      <span class="kind table">table</span>
+      <h4><a href="#src-visuals-creatures-js--CAM_XZ">CAM_XZ</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:42</a>
+    </header>
+    <pre class="sig"><code>CAM_XZ = { x: 0, z: 12 }</code></pre>
+    <div class="doc"><p>Where the camera stands, in plan — <a class="modref" href="#src-visuals-scene-js"><code>scene.js</code></a> puts it at (0, camY, 12) and lets a small lateral orbit wander it. Every creature small enough to be eaten by the fog has to be placed against this rather than against the origin, so it is one constant instead of three.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">42</pre><pre class="src"><code><span class="k">const</span> CAM_XZ = { x: <span class="n">0</span>, z: <span class="n">12</span> }</code></pre></div></details>
   </article>
   <article class="item" id="src-visuals-creatures-js--makeCreatureMat" data-name="makecreaturemat" data-text="a solid-creature material (aa2).">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-creatures-js--makeCreatureMat">makeCreatureMat</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:50</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:59</a>
     </header>
     <pre class="sig"><code>makeCreatureMat(props, shadeOpts = {})</code></pre>
     <div class="doc"><p>A solid-creature material (AA2).</p>
 <p>Every animal here is opaque-ish and normal-blended, which by <a class="modref" href="#src-visuals-shade-js"><code>shade.js</code></a>'s rule makes it a shading candidate — so they all go through one factory. The fade in and out of a band still rides <code>opacity</code>, which is why they stay <code>transparent</code> with <code>depthWrite: false</code>: a creature that popped the depth buffer as it faded would punch a hole in the additive world behind it.</p>
 <p>This replaces <code>shadeGeometry()</code>, which baked a fake lambert into vertex colours because an unlit sphere renders as a filled circle. That was a workaround for the missing surface response and it is exactly what this tier was for; the geometry is plain again.</p></div>
     
-    <details class="source"><summary>source <span class="muted">23 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">50
-51
-52
-53
-54
-55
-56
-57
-58
-59
+    <details class="source"><summary>source <span class="muted">23 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">59
 60
 61
 62
@@ -20592,7 +20631,16 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 69
 70
 71
-72</pre><pre class="src"><code><span class="k">function</span> makeCreatureMat(props, shadeOpts = {}) {
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81</pre><pre class="src"><code><span class="k">function</span> makeCreatureMat(props, shadeOpts = {}) {
   <span class="k">const</span> m = <span class="k">new</span> MeshBasicNodeMaterial({
     transparent: <span class="l">true</span>, opacity: <span class="n">0</span>, depthWrite: <span class="l">false</span>, ...props,
   });
@@ -20624,7 +20672,7 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-creatures-js--makeSloths">makeSloths</a></h4>
       
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:72</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:81</a>
     </header>
     <pre class="sig"><code>makeSloths(rng, spec, name, trees = [])</code></pre>
     <div class="doc"><p>The thesis of <span class="ref sec" title="a section of the theory docs in docs/">§3.1</span> rendered as an animal: an integrative motion with all memory and no rhythm, incapable of dancing at 168 BPM and therefore incapable of breaking the ground-stream rule even by accident. The one creature in this world that cannot get it wrong.</p>
@@ -20634,19 +20682,10 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
       <h5>Walkthrough <span class="muted">— the annotated steps inside this function</span></h5>
       
         <div class="step">
-          <div class="step-head"><span class="step-title">pick a host tree, and hang a real branch off it</span><span class="muted">line 96</span></div>
+          <div class="step-head"><span class="step-title">pick a host tree, and hang a real branch off it</span><span class="muted">line 105</span></div>
           <p>The first version put each sloth at a free-floating point with its own branch bar hovering in the air beside it. It read, but it read as a prop: the branch belonged to nothing, so the animal was attached to the world by an object that was itself attached to nothing. Now the branch grows out of an actual trunk from <code>makeForest.trees</code>, which means the sloth is somewhere in the forest rather than somewhere in the frame.</p>
 <p>Hosts are chosen near the camera's path — the fog under the crowns eats anything past ~15 units (<a class="ref adr" href="../design_decisions.md#d45-the-world-gets-animals-and-a-rule-for-what-an-animal-may-do-2026-07-29" title="The world gets animals, and a rule for what an animal may do (2026-07-29)">D45</a>), so a sloth on a far tree is a sloth nobody will ever see — and never twice.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">106
-107
-108
-109
-110
-111
-112
-113
-114
-115
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">115
 116
 117
 118
@@ -20776,8 +20815,17 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 242
 243
 244
-245</pre><pre class="src"><code>
-  <span class="k">const</span> CAM = { x: <span class="n">0</span>, z: <span class="n">12</span> };
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254</pre><pre class="src"><code>
+  <span class="k">const</span> CAM = CAM_XZ;
   <span class="k">const</span> candidates = trees
     .map((tr, idx) =&gt; ({ tr, idx, d: Math.hypot(tr.x - CAM.x, tr.z - CAM.z) }))
     .filter((c) =&gt; c.d &gt; <span class="n">4</span> &amp;&amp; c.d &lt; <span class="n">17</span> &amp;&amp; c.tr.h &gt; spec.y[<span class="n">1</span>] + <span class="n">3</span>)
@@ -20918,16 +20966,7 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 }</code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">174 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">72
-73
-74
-75
-76
-77
-78
-79
-80
-81
+    <details class="source"><summary>source <span class="muted">174 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">81
 82
 83
 84
@@ -21091,7 +21130,16 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 242
 243
 244
-245</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeSloths(rng, spec, name, trees = []) {
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeSloths(rng, spec, name, trees = []) {
   <span class="k">const</span> group = <span class="k">new</span> THREE.Group();
   <span class="k">const</span> n = spec.count;
   <span class="c">// The fur is now shaded by `shadeNode` like every other solid surface, so the</span>
@@ -21126,7 +21174,7 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
   <span class="c">// Hosts are chosen near the camera's path — the fog under the crowns eats</span>
   <span class="c">// anything past ~15 units (D45), so a sloth on a far tree is a sloth nobody</span>
   <span class="c">// will ever see — and never twice.</span>
-  <span class="k">const</span> CAM = { x: <span class="n">0</span>, z: <span class="n">12</span> };
+  <span class="k">const</span> CAM = CAM_XZ;
   <span class="k">const</span> candidates = trees
     .map((tr, idx) =&gt; ({ tr, idx, d: Math.hypot(tr.x - CAM.x, tr.z - CAM.z) }))
     .filter((c) =&gt; c.d &gt; <span class="n">4</span> &amp;&amp; c.d &lt; <span class="n">17</span> &amp;&amp; c.tr.h &gt; spec.y[<span class="n">1</span>] + <span class="n">3</span>)
@@ -21269,209 +21317,113 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
     
       <div class="secthead"><h4>U3: the frogs</h4></div>
       
-  <article class="item" id="src-visuals-creatures-js--makeTreeFrogs" data-name="maketreefrogs" data-text="tree frogs, on leaves at eye level for the forest-floor camera (y 18–32).">
+  <article class="item" id="src-visuals-creatures-js--DART_SKIN" data-name="dart_skin" data-text="aposematic colour — the one place in this world where the bright animal is the honest one.">
     <header class="item-head">
-      <span class="kind function">function</span>
-      <h4><a href="#src-visuals-creatures-js--makeTreeFrogs">makeTreeFrogs</a></h4>
-      
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:262</a>
+      <span class="kind table">table</span>
+      <h4><a href="#src-visuals-creatures-js--DART_SKIN">DART_SKIN</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:314</a>
     </header>
-    <pre class="sig"><code>makeTreeFrogs(rng, spec, name)</code></pre>
-    <div class="doc"><p>Tree frogs, on leaves at EYE LEVEL for the forest-floor camera (y 18–32).</p>
-<p>The brief asked for frogs on the forest floor. Three things said undergrowth: <code>ambfrogs</code> is track 0's bed, the pool fades out by camera y ≈ 26, and the litter is 20–30 units below this track's lens and out of frame. A tree frog is the frog that answers all three without overruling the brief — it lives exactly where this camera is looking.</p>
-<p>Real frog choruses DO synchronise, and a synchronised chorus is rhythm on the ground stream. So this is the fireflies' deliberate wrongness one organ over: chorus DENSITY rides tension, individual periods may never agree, and <code>throatPulse</code> goes through <code>phaseFor</code> to guarantee it.</p></div>
+    <pre class="sig"><code>DART_SKIN = [ …</code></pre>
+    <div class="doc"><p>Aposematic colour — the one place in this world where the bright animal is the honest one.</p>
+<p>This file opens with <em>silhouette first</em>, and it is the right rule: the world is soft and near-abstract and <a class="ref adr" href="../design_decisions.md#d28-the-glyph-is-removed-the-slot-it-filled-is-not-2026-07-27" title="The glyph is removed; the slot it filled is not (2026-07-27)">D28</a>/<a class="ref adr" href="../design_decisions.md#d42-three-things-removed-by-eye-the-shrine-the-form-again-and-the-fronds-2026-07-29" title="Three things removed by eye: the shrine, the form (again), and the fronds (2026-07-29)">D42</a> deleted the recurring glyph twice for sitting on top of it like a decal. A poison dart frog is the exception the rule is actually about. Its colour is not decoration, it is a SIGNAL — evolved to be seen at distance, against wet green, by an eye in exactly this light. Rendering one as a dark green pebble is not restraint, it is the wrong animal.</p>
+<p>Still not a glow, which is the distinction the first pass got wrong: these are normal-blended wet bodies with saturated skin, and they take the shading, the fog and the depth buffer like everything else solid. An additive frog was a green lantern hanging in the trunks — one more particle system in a world that already has four.</p></div>
     
-    <details class="source"><summary>source <span class="muted">70 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">262
-263
-264
-265
-266
-267
-268
-269
-270
-271
-272
-273
-274
-275
-276
-277
-278
-279
-280
-281
-282
-283
-284
-285
-286
-287
-288
-289
-290
-291
-292
-293
-294
-295
-296
-297
-298
-299
-300
-301
-302
-303
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
+    <details class="source"><summary>source <span class="muted">7 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">314
 315
 316
 317
 318
 319
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeTreeFrogs(rng, spec, name) {
-  <span class="k">const</span> n = spec.count;
-  <span class="c">// Not additive, and not a glowing orb. The first pass used additive blending</span>
-  <span class="c">// at 0.30 units and photographed as green lanterns hanging in the trunks —</span>
-  <span class="c">// this world is full of glow already (fireflies, motes, the ether) and one</span>
-  <span class="c">// more emissive blob reads as another particle system rather than an animal.</span>
-  <span class="c">// A frog is a small WET BODY: normal blending, a body colour, and only the</span>
-  <span class="c">// throat brightens when it calls.</span>
-  <span class="k">const</span> mat = makeCreatureMat({ color: <span class="s">'#5a9160'</span> });
-  <span class="k">const</span> mesh = <span class="k">new</span> THREE.InstancedMesh(<span class="k">new</span> THREE.SphereGeometry(<span class="n">0.20</span>, <span class="n">10</span>, <span class="n">7</span>), mat, n);
-  mesh.frustumCulled = <span class="l">false</span>;
-  <span class="k">const</span> frogs = [];
-  <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; n; i++) {
-    <span class="k">const</span> ang = rng() * Math.PI * <span class="n">2</span>;
-    <span class="k">const</span> rad = <span class="n">6</span> + rng() * <span class="n">13</span>;
-    frogs.push({
-      x: Math.cos(ang) * rad, z: Math.sin(ang) * rad,
-      y: spec.y[<span class="n">0</span>] + rng() * (spec.y[<span class="n">1</span>] - spec.y[<span class="n">0</span>]),
-      <span class="c">// where a jump would take it — chosen once, so a jump is a move between</span>
-      <span class="c">// two real perches rather than a teleport to a fresh random point</span>
-      jx: Math.cos(ang + <span class="n">0.7</span>) * (rad + <span class="n">2.5</span>), jz: Math.sin(ang + <span class="n">0.7</span>) * (rad + <span class="n">2.5</span>),
-      jy: <span class="n">0</span>,
-      i,
-    });
-  }
-  <span class="k">const</span> m4 = <span class="k">new</span> THREE.Matrix4();
-  <span class="k">const</span> col = <span class="k">new</span> THREE.Color();
-  <span class="k">const</span> base = <span class="k">new</span> THREE.Color(<span class="s">'#7cc47f'</span>);
-
-  <span class="k">return</span> {
-    name,
-    group: mesh,
-    update(dt, env) {
-      <span class="k">const</span> presence = env.fauna?.presence?.[name] ?? <span class="n">0</span>;
-      <span class="k">const</span> life = env.fauna?.life ?? { rate: <span class="n">1</span>, still: <span class="n">0</span> };
-      mesh.visible = presence &gt; <span class="n">0.01</span>;
-      <span class="k">if</span> (!mesh.visible) <span class="k">return</span>;
-      <span class="k">const</span> drawn = populationFor(spec, env.quality ?? <span class="n">1</span>);
-      <span class="k">if</span> (mesh.count !== drawn) mesh.count = drawn;
-      mat.opacity = presence;
-
-      <span class="c">// chorus density rides tension — MORE frogs calling, never faster ones</span>
-      <span class="k">const</span> density = <span class="n">0.25</span> + <span class="n">0.75</span> * clamp01(env.T ?? <span class="n">0</span>) * (<span class="n">1</span> - life.still);
-
-      <span class="k">for</span> (<span class="k">let</span> k = <span class="n">0</span>; k &lt; drawn; k++) {
-        <span class="k">const</span> f = frogs[k];
-        <span class="c">// EPISODIC: a jump between two perches. The one hard-edged motion in</span>
-        <span class="c">// this tier, licensed as weather exactly the way a strike is.</span>
-        <span class="k">const</span> jump = slotEvent(env.t, (f.i + <span class="n">3</span>) * <span class="n">5501</span>, <span class="n">19</span> / Math.max(<span class="n">0.3</span>, life.rate), <span class="n">0.45</span> * (<span class="n">1</span> - life.still));
-        <span class="k">const</span> j = jump ? clamp01(jump.since / <span class="n">0.55</span>) : <span class="n">0</span>;
-        <span class="k">const</span> arc = jump &amp;&amp; jump.since &lt; <span class="n">0.55</span> ? Math.sin(j * Math.PI) * <span class="n">1.4</span> : <span class="n">0</span>;
-        <span class="k">const</span> at = jump ? (jump.since &lt; <span class="n">0.55</span> ? j : <span class="n">1</span>) : <span class="n">0</span>;
-        <span class="k">const</span> x = f.x + (f.jx - f.x) * at;
-        <span class="k">const</span> z = f.z + (f.jz - f.z) * at;
-        <span class="k">const</span> wind = windAtOr(env, x, f.y, z);
-
-        <span class="c">// CONTINUOUS: the throat. Desynchronised by construction.</span>
-        <span class="k">const</span> call = throatPulse(env.t, f.i, <span class="n">1</span>) * density;
-        <span class="k">const</span> s = <span class="n">1</span> + call * <span class="n">0.45</span>;   <span class="c">// the throat swells; the frog does not inflate</span>
-        m4.makeScale(s, s * <span class="n">0.85</span>, s);
-        m4.setPosition(x + wind.x * <span class="n">0.12</span>, f.y + arc + wind.y * <span class="n">0.1</span>, z + wind.z * <span class="n">0.12</span>);
-        mesh.setMatrixAt(k, m4);
-        col.copy(base).multiplyScalar(presence * (<span class="n">0.55</span> + call * <span class="n">0.9</span>));
-        mesh.setColorAt(k, col);
-      }
-      mesh.instanceMatrix.needsUpdate = <span class="l">true</span>;
-      <span class="k">if</span> (mesh.instanceColor) mesh.instanceColor.needsUpdate = <span class="l">true</span>;
-    },
-  };
-}</code></pre></div></details>
+320</pre><pre class="src"><code><span class="k">const</span> DART_SKIN = [
+  <span class="s">'#1f6ad8'</span>,   <span class="c">// Dendrobates tinctorius 'azureus' — cobalt</span>
+  <span class="s">'#e2452c'</span>,   <span class="c">// Oophaga pumilio — strawberry</span>
+  <span class="s">'#f0c020'</span>,   <span class="c">// Phyllobates terribilis — golden</span>
+  <span class="s">'#35b258'</span>,   <span class="c">// D. auratus — green over black</span>
+  <span class="s">'#f07d1e'</span>,   <span class="c">// D. leucomelas — banded</span>
+];</code></pre></div></details>
   </article>
-  <article class="item" id="src-visuals-creatures-js--makePoolFrogs" data-name="makepoolfrogs" data-text="the chorus at the water, in the undergrowth — where ambfrogs actually sounds (d16).">
+  <article class="item" id="src-visuals-creatures-js--FROG_NEAR" data-name="frog_near" data-text="the near field a frog has to live in to survive the fog: past 7 units so it is not in the lens, inside 14 so it is still a quarter-lit when it arrives.">
+    <header class="item-head">
+      <span class="kind constant">constant</span>
+      <h4><a href="#src-visuals-creatures-js--FROG_NEAR">FROG_NEAR</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:334</a>
+    </header>
+    <pre class="sig"><code>FROG_NEAR = 7</code></pre>
+    <div class="doc"><p>The near field a frog has to live in to survive the fog: past 7 units so it is not in the lens, inside 14 so it is still a quarter-lit when it arrives.</p>
+<p>The near end is set by the BLOOM, not by taste. <a class="modref" href="#src-visuals-scene-js"><code>scene.js</code></a> builds <code>bloom(ground, 0.6, 0.5, 0)</code> — threshold <strong>zero</strong>, so everything in this world glows in proportion to its own brightness and there is no level at which an object is merely lit. At 4.5 units a frog subtends 6.6°, which is ~90 px of saturated colour on an 800 px frame, and the bloom turns that into a balloon: the first pass at this fix photographed as a row of coloured lanterns, which is precisely the failure the original additive version was removed for, re-earned from the other direction. At 7–14 units it is 20–40 px and it reads as an animal on a trunk.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">334</pre><pre class="src"><code><span class="k">const</span> FROG_NEAR = <span class="n">7</span>;</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--FROG_FAR" data-name="frog_far" data-text="">
+    <header class="item-head">
+      <span class="kind constant">constant</span>
+      <h4><a href="#src-visuals-creatures-js--FROG_FAR">FROG_FAR</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:335</a>
+    </header>
+    <pre class="sig"><code>FROG_FAR = 14</code></pre>
+    <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">335</pre><pre class="src"><code><span class="k">const</span> FROG_FAR = <span class="n">14</span>;</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--nearPoint" data-name="nearpoint" data-text="a point in front of the lens, r0–r1 out, within spread radians of the gaze.">
     <header class="item-head">
       <span class="kind function">function</span>
-      <h4><a href="#src-visuals-creatures-js--makePoolFrogs">makePoolFrogs</a></h4>
-      
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:339</a>
+      <h4><a href="#src-visuals-creatures-js--nearPoint">nearPoint</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:342</a>
     </header>
-    <pre class="sig"><code>makePoolFrogs(rng, spec, name, pool)</code></pre>
-    <div class="doc"><p>The chorus at the water, in the undergrowth — where <code>ambfrogs</code> actually sounds (<a class="ref adr" href="../design_decisions.md#d16-hat-breathing-barlow-accents-per-biome-ambience-beds-2026-07-26" title="Hat breathing + Barlow accents; per-biome ambience beds (2026-07-26)">D16</a>). Nearly free, because <code>makePool</code> already recycles ten rings on a free index: a call drops one in, so the frogs and the water are the same event rather than two things that happen to be near each other.</p></div>
+    <pre class="sig"><code>nearPoint(rng, cx, cz, r0 = FROG_NEAR, r1 = FROG_FAR, spread = 0.8, bias = 1)</code></pre>
+    <div class="doc"><p>A point in front of the lens, <code>r0</code>–<code>r1</code> out, within <code>spread</code> radians of the gaze. <code>bias</code> above 1 weights the draw toward the near end, which is where an animal this small is still an animal rather than a speck in fog.</p></div>
     
-    <details class="source"><summary>source <span class="muted">52 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">339
-340
-341
-342
+    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">342
 343
 344
 345
-346
-347
-348
-349
-350
-351
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362
-363
-364
-365
-366
+346</pre><pre class="src"><code><span class="k">function</span> nearPoint(rng, cx, cz, r0 = FROG_NEAR, r1 = FROG_FAR, spread = <span class="n">0.8</span>, bias = <span class="n">1</span>) {
+  <span class="k">const</span> a = (rng() * <span class="n">2</span> - <span class="n">1</span>) * spread;
+  <span class="k">const</span> r = r0 + (r1 - r0) * Math.pow(rng(), bias);
+  <span class="k">return</span> { x: cx + Math.sin(a) * r, z: cz - Math.cos(a) * r };
+}</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--offFrame" data-name="offframe" data-text="is this frog outside the frame, and therefore free to be moved unseen?">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-visuals-creatures-js--offFrame">offFrame</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:366</a>
+    </header>
+    <pre class="sig"><code>offFrame(f, cam, alt)</code></pre>
+    <div class="doc"><p>Is this frog outside the frame, and therefore free to be moved unseen?</p>
+<p>This wants to be TIGHT, and the first version's slackness is instructive: a flat 13 units of vertical tolerance sounds safe, and it silently parked the whole population above the top of the frame. A frog 12 units over the lens at 10 units out is 50° up and nowhere near a 60° frame, but it passed the test, so it was never recycled and never seen — the band said <code>presence 1.00</code> and the picture had no frogs in it. A margin that is too slack does not fail safe; it fails invisibly, which is worse.</p>
+<p>So the test is the frustum itself. The frame is 60° tall (<code>FOV_BASE</code>), giving a half-height of <code>tan(30°)·d ≈ 0.577d</code>, and the gaze is PITCHED — <a class="modref" href="#src-visuals-scene-js"><code>scene.js</code></a> looks at <code>camY + pitchAt(alt)</code> from 12 units back, so the frame's vertical centre at distance <code>d</code> climbs by <code>pitch·d/12</code> and is not the lens height. The slack over the true half-height is 1.2 units: enough to cover the frog's own radius and a frame of camera smoothing, not enough to hide a frog behind.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">6 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">366
 367
 368
 369
 370
-371
-372
-373
-374
-375
-376
-377
-378
-379
+371</pre><pre class="src"><code><span class="k">function</span> offFrame(f, cam, alt) {
+  <span class="k">const</span> d = Math.hypot(f.x - cam.x, f.z - cam.z);
+  <span class="k">if</span> (d &gt; FROG_FAR + <span class="n">6</span> || d &lt; <span class="n">2</span> || f.z &gt; cam.z + <span class="n">3</span>) <span class="k">return</span> <span class="l">true</span>;
+  <span class="k">const</span> centre = cam.y + pitchAt(alt) * (d / <span class="n">12</span>);
+  <span class="k">return</span> Math.abs(f.y - centre) &gt; <span class="n">0.577</span> * d + <span class="n">1.2</span>;
+}</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--makeFrogs" data-name="makefrogs" data-text="both frog systems, which differ only in where a perch is.">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-visuals-creatures-js--makeFrogs">makeFrogs</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:379</a>
+    </header>
+    <pre class="sig"><code>makeFrogs(rng, spec, name, perch, opts = {})</code></pre>
+    <div class="doc"><p>Both frog systems, which differ only in where a perch is.</p>
+<p>@param perch (frog, cam) =&gt; void — put this frog somewhere fresh and near @param opts radius/seed/level, and <code>onCall</code> for the pool's ripple</p></div>
+    
+    <details class="source"><summary>source <span class="muted">151 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">379
 380
 381
 382
@@ -21482,73 +21434,11 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 387
 388
 389
-390</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makePoolFrogs(rng, spec, name, pool) {
-  <span class="k">const</span> n = spec.count;
-  <span class="k">const</span> mat = makeCreatureMat({ color: <span class="s">'#649c74'</span> });
-  <span class="k">const</span> mesh = <span class="k">new</span> THREE.InstancedMesh(<span class="k">new</span> THREE.SphereGeometry(<span class="n">0.24</span>, <span class="n">10</span>, <span class="n">7</span>), mat, n);
-  mesh.frustumCulled = <span class="l">false</span>;
-  <span class="k">const</span> frogs = [];
-  <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; n; i++) {
-    <span class="k">const</span> ang = rng() * Math.PI * <span class="n">2</span>;
-    <span class="k">const</span> rad = <span class="n">8</span> + rng() * <span class="n">20</span>;
-    frogs.push({
-      x: Math.cos(ang) * rad, z: Math.sin(ang) * rad,
-      y: spec.y[<span class="n">0</span>] + rng() * (spec.y[<span class="n">1</span>] - spec.y[<span class="n">0</span>]),
-      i, wasCalling: <span class="l">false</span>,
-    });
-  }
-  <span class="k">const</span> m4 = <span class="k">new</span> THREE.Matrix4();
-  <span class="k">const</span> col = <span class="k">new</span> THREE.Color();
-  <span class="k">const</span> base = <span class="k">new</span> THREE.Color(<span class="s">'#8fd49b'</span>);
-
-  <span class="k">return</span> {
-    name,
-    group: mesh,
-    update(dt, env) {
-      <span class="k">const</span> presence = env.fauna?.presence?.[name] ?? <span class="n">0</span>;
-      <span class="k">const</span> life = env.fauna?.life ?? { rate: <span class="n">1</span>, still: <span class="n">0</span> };
-      mesh.visible = presence &gt; <span class="n">0.01</span>;
-      <span class="k">if</span> (!mesh.visible) <span class="k">return</span>;
-      <span class="k">const</span> drawn = populationFor(spec, env.quality ?? <span class="n">1</span>);
-      <span class="k">if</span> (mesh.count !== drawn) mesh.count = drawn;
-      mat.opacity = presence * <span class="n">0.9</span>;
-      <span class="k">const</span> density = <span class="n">0.3</span> + <span class="n">0.7</span> * clamp01(env.T ?? <span class="n">0</span>) * (<span class="n">1</span> - life.still);
-
-      <span class="k">for</span> (<span class="k">let</span> k = <span class="n">0</span>; k &lt; drawn; k++) {
-        <span class="k">const</span> f = frogs[k];
-        <span class="k">const</span> call = throatPulse(env.t, f.i, <span class="n">7</span>) * density;
-        <span class="k">const</span> s = <span class="n">1</span> + call * <span class="n">0.5</span>;
-        m4.makeScale(s, s * <span class="n">0.8</span>, s);
-        m4.setPosition(f.x, f.y + call * <span class="n">0.12</span>, f.z);
-        mesh.setMatrixAt(k, m4);
-        col.copy(base).multiplyScalar(presence * (<span class="n">0.6</span> + call * <span class="n">1.0</span>));
-        mesh.setColorAt(k, col);
-
-        <span class="c">// the call lands on the water: one ring, on the rising edge only</span>
-        <span class="k">const</span> calling = call &gt; <span class="n">0.55</span>;
-        <span class="k">if</span> (calling &amp;&amp; !f.wasCalling) pool?.ripple?.(f.x, f.z, <span class="n">0.55</span>);
-        f.wasCalling = calling;
-      }
-      mesh.instanceMatrix.needsUpdate = <span class="l">true</span>;
-      <span class="k">if</span> (mesh.instanceColor) mesh.instanceColor.needsUpdate = <span class="l">true</span>;
-    },
-  };
-}</code></pre></div></details>
-  </article>
-    
-      <div class="secthead"><h4>U4/U5: the birds</h4></div>
-      
-  <article class="item" id="src-visuals-creatures-js--birdGeometry" data-name="birdgeometry" data-text="two triangles in a shallow v.">
-    <header class="item-head">
-      <span class="kind function">function</span>
-      <h4><a href="#src-visuals-creatures-js--birdGeometry">birdGeometry</a></h4>
-      <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:394</a>
-    </header>
-    <pre class="sig"><code>birdGeometry()</code></pre>
-    <div class="doc"><p>Two triangles in a shallow V. Forward is +Z; the wings scale to flap.</p></div>
-    
-    <details class="source"><summary>source <span class="muted">10 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">394
+390
+391
+392
+393
+394
 395
 396
 397
@@ -21557,31 +21447,30 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 400
 401
 402
-403</pre><pre class="src"><code><span class="k">function</span> birdGeometry() {
-  <span class="k">const</span> g = <span class="k">new</span> THREE.BufferGeometry();
-  <span class="k">const</span> v = <span class="k">new</span> Float32Array([
-    <span class="n">0</span>, <span class="n">0</span>, <span class="n">0.7</span>, -<span class="n">1</span>, <span class="n">0.30</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, -<span class="n">0.5</span>,   <span class="c">// left wing</span>
-    <span class="n">0</span>, <span class="n">0</span>, <span class="n">0.7</span>, <span class="n">0</span>, <span class="n">0</span>, -<span class="n">0.5</span>, <span class="n">1</span>, <span class="n">0.30</span>, <span class="n">0</span>,    <span class="c">// right wing</span>
-  ]);
-  g.setAttribute(<span class="s">'position'</span>, <span class="k">new</span> THREE.BufferAttribute(v, <span class="n">3</span>));
-  g.computeVertexNormals();
-  <span class="k">return</span> g;
-}</code></pre></div></details>
-  </article>
-  <article class="item" id="src-visuals-creatures-js--makeBirds" data-name="makebirds" data-text="the canopy flock (u4), and the toucan startle (u5).">
-    <header class="item-head">
-      <span class="kind function">function</span>
-      <h4><a href="#src-visuals-creatures-js--makeBirds">makeBirds</a></h4>
-      
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:426</a>
-    </header>
-    <pre class="sig"><code>makeBirds(rng, spec, name)</code></pre>
-    <div class="doc"><p>The canopy flock (U4), and the toucan startle (U5).</p>
-<p>Deliberately NOT a copy of the fireflies. <span class="ref sec" title="a section of the theory docs in docs/">§3.2</span>'s comment already names the difference — <em>a flock banks; a field merely flows</em> — so the rules here carry higher alignment, lower separation, much higher speed, and a roll into the turn taken from lateral acceleration. That roll is nearly free once velocity is integrated and is the whole difference between particles with wings and birds.</p>
-<p>56 individuals, not 220: a flock reads as a flock at small counts, and a cloud of 220 birds reads as insects. At this size the neighbour scan is a naive O(n²) on a 3-frame stride — about a thousand distance tests a frame, which is cheaper than the spatial hash K2 needed at four times the population and is why that machinery is not repeated here.</p>
-<p>W1 — the flocking weights come from <code>coherenceAt(warmth)</code>, so the flock is where the second harmonic axis is most visible: the canopy (warmth 0.85) flies as one body, and the zenith (warmth 0.10) comes apart while the light keeps growing. That is the <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a> crossing, rendered.</p></div>
-    
-    <details class="source"><summary>source <span class="muted">146 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">426
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
 427
 428
 429
@@ -21684,7 +21573,171 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 526
 527
 528
-529
+529</pre><pre class="src"><code><span class="k">function</span> makeFrogs(rng, spec, name, perch, opts = {}) {
+  <span class="k">const</span> {
+    radius = <span class="n">0.26</span>, seed = <span class="n">1</span>, skins = DART_SKIN, level = <span class="n">1</span>, hop = <span class="l">true</span>, onCall = <span class="l">null</span>,
+  } = opts;
+  <span class="k">const</span> n = spec.count;
+  <span class="c">// White, and the colour lives in the instance attribute — see (1) above. This</span>
+  <span class="c">// is the whole of that fix and it is one character of material state.</span>
+  <span class="k">const</span> mat = makeCreatureMat({ color: <span class="s">'#ffffff'</span> });
+  <span class="k">const</span> mesh = <span class="k">new</span> THREE.InstancedMesh(<span class="k">new</span> THREE.SphereGeometry(radius, <span class="n">10</span>, <span class="n">7</span>), mat, n);
+  mesh.frustumCulled = <span class="l">false</span>;
+  <span class="c">// Allocate the instance colours up front rather than letting the first</span>
+  <span class="c">// `setColorAt` size them. The governor sets `mesh.count` BEFORE the write</span>
+  <span class="c">// loop, so on a machine that boots at quality 0.8 the buffer would be sized</span>
+  <span class="c">// for 80% of the population and every frog above it would read past the end</span>
+  <span class="c">// when the quality came back up.</span>
+  mesh.instanceColor = <span class="k">new</span> THREE.InstancedBufferAttribute(<span class="k">new</span> Float32Array(n * <span class="n">3</span>), <span class="n">3</span>);
+
+  <span class="k">const</span> frogs = [];
+  <span class="k">for</span> (<span class="k">let</span> i = <span class="n">0</span>; i &lt; n; i++) {
+    <span class="k">const</span> f = {
+      i, x: <span class="n">0</span>, y: <span class="n">0</span>, z: <span class="n">0</span>,
+      jx: <span class="n">0</span>, jz: <span class="n">0</span>,          <span class="c">// the hop's target perch</span>
+      dx: <span class="n">0</span>, dz: <span class="n">0</span>,          <span class="c">// …and how far along it we are, this frame only</span>
+      landed: <span class="l">true</span>, wasCalling: <span class="l">false</span>,
+      skin: <span class="k">new</span> THREE.Color(skins[i % skins.length]),
+    };
+    <span class="c">// seed the population against the camera's home position; `update` moves</span>
+    <span class="c">// them the moment it knows where the lens really is</span>
+    perch(f, { x: CAM_XZ.x, y: (spec.y[<span class="n">0</span>] + spec.y[<span class="n">1</span>]) / <span class="n">2</span>, z: CAM_XZ.z });
+    frogs.push(f);
+  }
+
+  <span class="k">const</span> m4 = <span class="k">new</span> THREE.Matrix4();
+  <span class="k">const</span> col = <span class="k">new</span> THREE.Color();
+  <span class="k">let</span> lastDrawn = <span class="n">0</span>;
+
+  <span class="k">return</span> {
+    name,
+    group: mesh,
+    update(dt, env) {
+      <span class="k">const</span> presence = env.fauna?.presence?.[name] ?? <span class="n">0</span>;
+      <span class="k">const</span> life = env.fauna?.life ?? { rate: <span class="n">1</span>, still: <span class="n">0</span> };
+      mesh.visible = presence &gt; <span class="n">0.01</span>;
+      <span class="k">if</span> (!mesh.visible) <span class="k">return</span>;
+      <span class="k">const</span> drawn = populationFor(spec, env.quality ?? <span class="n">1</span>);
+      <span class="k">if</span> (mesh.count !== drawn) mesh.count = drawn;
+      lastDrawn = drawn;
+      mat.opacity = presence * level;
+      <span class="k">const</span> cam = env.cam ?? { x: CAM_XZ.x, y: <span class="n">0</span>, z: CAM_XZ.z };
+      <span class="k">const</span> alt = env.alt ?? <span class="n">0</span>;
+
+      <span class="c">// chorus density rides tension — MORE frogs calling, never faster ones</span>
+      <span class="k">const</span> density = <span class="n">0.25</span> + <span class="n">0.75</span> * clamp01(env.T ?? <span class="n">0</span>) * (<span class="n">1</span> - life.still);
+
+      <span class="k">for</span> (<span class="k">let</span> k = <span class="n">0</span>; k &lt; drawn; k++) {
+        <span class="k">const</span> f = frogs[k];
+        <span class="c">// the camera has climbed away from this one: give it back</span>
+        <span class="k">if</span> (offFrame(f, cam, alt)) perch(f, cam);
+
+        <span class="c">// EPISODIC: a hop between two perches. The one hard-edged motion in</span>
+        <span class="c">// this tier, licensed as weather exactly the way a strike is. It</span>
+        <span class="c">// COMMITS on landing — the old version interpolated toward a jump</span>
+        <span class="c">// target and then snapped home the first time the slot schedule rolled</span>
+        <span class="c">// a miss, which is a teleport with extra steps.</span>
+        <span class="k">let</span> arc = <span class="n">0</span>;
+        <span class="k">if</span> (hop) {
+          <span class="k">const</span> jump = slotEvent(env.t, (f.i + <span class="n">3</span>) * <span class="n">5501</span>,
+            <span class="n">19</span> / Math.max(<span class="n">0.3</span>, life.rate), <span class="n">0.45</span> * (<span class="n">1</span> - life.still));
+          <span class="k">const</span> hopping = jump != <span class="l">null</span> &amp;&amp; jump.since &lt; <span class="n">0.55</span>;
+          <span class="k">if</span> (hopping) {
+            <span class="k">const</span> j = clamp01(jump.since / <span class="n">0.55</span>);
+            f.landed = <span class="l">false</span>;
+            arc = Math.sin(j * Math.PI) * <span class="n">1.4</span>;
+            <span class="c">// read the interpolation off the perch, never write it back</span>
+            f.dx = (f.jx - f.x) * j;
+            f.dz = (f.jz - f.z) * j;
+          } <span class="k">else</span> {
+            <span class="k">if</span> (!f.landed) { f.x = f.jx; f.z = f.jz; f.landed = <span class="l">true</span>; }
+            f.dx = <span class="n">0</span>; f.dz = <span class="n">0</span>;
+          }
+        }
+        <span class="k">const</span> x = f.x + f.dx;
+        <span class="k">const</span> z = f.z + f.dz;
+        <span class="k">const</span> wind = windAtOr(env, x, f.y, z);
+
+        <span class="c">// CONTINUOUS: the throat. Desynchronised by construction (`throatPulse`</span>
+        <span class="c">// goes through `phaseFor`), because a synchronised chorus is rhythm on</span>
+        <span class="c">// the ground stream and §2.1 does not allow the ground to keep time.</span>
+        <span class="k">const</span> call = throatPulse(env.t, f.i, seed) * density;
+        <span class="k">const</span> s = <span class="n">1</span> + call * <span class="n">0.45</span>;   <span class="c">// the throat swells; the frog does not inflate</span>
+        m4.makeScale(s, s * <span class="n">0.85</span>, s);
+        m4.setPosition(x + wind.x * <span class="n">0.12</span>, f.y + arc + wind.y * <span class="n">0.1</span>, z + wind.z * <span class="n">0.12</span>);
+        mesh.setMatrixAt(k, m4);
+        <span class="c">// The fade belongs to `opacity` alone. Multiplying `presence` in here</span>
+        <span class="c">// as well faded the animal toward black at the same time it faded it</span>
+        <span class="c">// toward transparent, which is two fades for one crossing.</span>
+        <span class="c">//</span>
+        <span class="c">// The level is low for a colour this saturated, and again the bloom is</span>
+        <span class="c">// why: at threshold 0 a frog held near 1.0 stops being a lit surface</span>
+        <span class="c">// and becomes a light source. Held near the value the crowns and trunks</span>
+        <span class="c">// sit at, it blooms the way the rest of the world blooms — which is</span>
+        <span class="c">// what makes it an animal IN the picture rather than a sticker on it.</span>
+        <span class="c">// The call is the only thing that brightens it, and it is worth ~2×.</span>
+        col.copy(f.skin).multiplyScalar(<span class="n">0.42</span> + call * <span class="n">0.38</span>);
+        mesh.setColorAt(k, col);
+
+        <span class="k">if</span> (onCall) {
+          <span class="k">const</span> calling = call &gt; <span class="n">0.55</span>;
+          <span class="k">if</span> (calling &amp;&amp; !f.wasCalling) onCall(f);
+          f.wasCalling = calling;
+        }
+      }
+      mesh.instanceMatrix.needsUpdate = <span class="l">true</span>;
+      mesh.instanceColor.needsUpdate = <span class="l">true</span>;
+    },
+    <span class="c">/**
+     * For the harness: how far each frog is from the lens, and how far above
+     * or below it. A frog that is present, drawn, and 20 units over the top of
+     * the frame looks identical to a working frog in every other diagnostic.
+     */</span>
+    debug(cam = { x: CAM_XZ.x, y: <span class="n">0</span>, z: CAM_XZ.z }) {
+      <span class="c">// `lastDrawn`, not the full population: the governor sheds frogs on a</span>
+      <span class="c">// slow machine and the shed ones keep their stale positions forever, so</span>
+      <span class="c">// reporting all of them buries the live rows in noise that looks like a</span>
+      <span class="c">// stuck population — which is exactly what it looked like once already.</span>
+      <span class="k">const</span> rows = frogs.slice(<span class="n">0</span>, lastDrawn).map((f) =&gt; ({
+        d: +Math.hypot(f.x - cam.x, f.z - cam.z).toFixed(<span class="n">1</span>),
+        dy: +(f.y - cam.y).toFixed(<span class="n">1</span>),
+      }));
+      <span class="k">return</span> { drawn: lastDrawn, <span class="k">of</span>: spec.count, radius, rows };
+    },
+  };
+}
+
+<span class="c">/**
+ * The dart frogs, on the trunks (U3).
+ *
+ * The brief asked for frogs on the forest floor, and the litter is 20–30 units
+ * below this camera's lens and out of frame — so they live where the camera is
+ * looking, which for a jungle frog is a legitimate place to be: the bromeliads
+ * and the wet bark of a trunk, not the ground. What has changed is that a perch
+ * is now an actual trunk from `makeForest.trees` picked *near the lens*, the way
+ * a sloth's branch is, instead of a random point on a 6–19 unit shell.
+ *
+ * A frog with no trunk in reach sits on a leaf in the near field instead. That
+ * is not a fallback for tidiness — the layout puts 26 trunks in a 62-unit world
+ * and there is no guarantee any of them is within 13 units of the lens at a
+ * given moment, and a chorus that thinned out whenever the camera crossed a
+ * clearing would read as a bug rather than as a clearing.
+ */</span>
+</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--makeTreeFrogs" data-name="maketreefrogs" data-text="the dart frogs, on the trunks (u3).">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-visuals-creatures-js--makeTreeFrogs">makeTreeFrogs</a></h4>
+      
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:529</a>
+    </header>
+    <pre class="sig"><code>makeTreeFrogs(rng, spec, name, trees = [])</code></pre>
+    <div class="doc"><p>The dart frogs, on the trunks (U3).</p>
+<p>The brief asked for frogs on the forest floor, and the litter is 20–30 units below this camera's lens and out of frame — so they live where the camera is looking, which for a jungle frog is a legitimate place to be: the bromeliads and the wet bark of a trunk, not the ground. What has changed is that a perch is now an actual trunk from <code>makeForest.trees</code> picked <em>near the lens</em>, the way a sloth's branch is, instead of a random point on a 6–19 unit shell.</p>
+<p>A frog with no trunk in reach sits on a leaf in the near field instead. That is not a fallback for tidiness — the layout puts 26 trunks in a 62-unit world and there is no guarantee any of them is within 13 units of the lens at a given moment, and a chorus that thinned out whenever the camera crossed a clearing would read as a bug rather than as a clearing.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">58 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">529
 530
 531
 532
@@ -21726,7 +21779,326 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 568
 569
 570
-571</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeBirds(rng, spec, name) {
+571
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeTreeFrogs(rng, spec, name, trees = []) {
+  <span class="c">/**
+   * A trunk in the near field at roughly `want` units out, or null.
+   *
+   * Asking for a DISTANCE rather than for any trunk at all is the whole of this
+   * function, and the version that did not photographed as an empty forest: the
+   * layout puts 26 trunks in a 62-unit world, so at any moment there is usually
+   * exactly ONE inside the near field, every frog was handed it, and the entire
+   * chorus stacked onto a single trunk at a single distance. Seven frogs 12.5
+   * units away is seven 16-pixel specks in one place with the fog at 32% —
+   * present, drawn, correct in every diagnostic, and invisible.
+   */</span>
+  <span class="k">function</span> host(cam, y, want) {
+    <span class="k">let</span> best = <span class="l">null</span>, bestGap = <span class="l">Infinity</span>;
+    <span class="k">for</span> (<span class="k">const</span> tr <span class="k">of</span> trees) {
+      <span class="k">if</span> (tr.h &lt;= y + <span class="n">2</span>) <span class="k">continue</span>;
+      <span class="k">const</span> gap = Math.abs(Math.hypot(tr.x - cam.x, tr.z - cam.z) - want);
+      <span class="k">if</span> (gap &lt; bestGap) { bestGap = gap; best = tr; }
+    }
+    <span class="c">// …and if the nearest trunk to the distance we wanted is not near it, the</span>
+    <span class="c">// frog takes a leaf at that distance instead. A chorus that thinned out</span>
+    <span class="c">// whenever the camera crossed a clearing would read as a bug, not a clearing.</span>
+    <span class="k">return</span> bestGap &lt; <span class="n">2.5</span> ? best : <span class="l">null</span>;
+  }
+
+  <span class="k">function</span> perch(f, cam) {
+    <span class="c">// Eye level, biased a little ABOVE it: down here the gaze climbs</span>
+    <span class="c">// (`BAND_PITCH[0]` = 5.0 — &quot;the eye goes to what it does not have&quot;), so a</span>
+    <span class="c">// frog exactly level with the lens sits under the part of the frame the eye</span>
+    <span class="c">// is actually in.</span>
+    f.y = Math.max(spec.y[<span class="n">0</span>], Math.min(spec.y[<span class="n">1</span>], cam.y + <span class="n">1.5</span> + (rng() - <span class="n">0.5</span>) * <span class="n">7</span>));
+    <span class="c">// Distance first, and weighted toward the near end rather than uniform: a</span>
+    <span class="c">// frog at 7 units is ~37 px with the fog at 62%, and at 14 units it is</span>
+    <span class="c">// 18 px at 24%. Those are not two samples of one animal, they are a legible</span>
+    <span class="c">// one and a smudge, so the population should lean on the legible end.</span>
+    <span class="k">const</span> want = FROG_NEAR + (FROG_FAR - FROG_NEAR) * Math.pow(rng(), <span class="n">1.8</span>);
+    <span class="k">const</span> tr = host(cam, f.y, want);
+    <span class="k">if</span> (tr) {
+      <span class="c">// on the bark, on the side the camera is on, and on the taper: the trunk</span>
+      <span class="c">// geometry is a 0.55→1 cylinder scaled by `rad`, so it is genuinely</span>
+      <span class="c">// thinner up here and a frog pinned at the base radius would float</span>
+      <span class="k">const</span> toCam = Math.atan2(cam.z - tr.z, cam.x - tr.x) + (rng() - <span class="n">0.5</span>) * <span class="n">1.2</span>;
+      <span class="k">const</span> r = tr.rad * (<span class="n">1</span> - <span class="n">0.45</span> * clamp01(f.y / tr.h)) + <span class="n">0.22</span>;
+      f.x = tr.x + Math.cos(toCam) * r;
+      f.z = tr.z + Math.sin(toCam) * r;
+    } <span class="k">else</span> {
+      <span class="k">const</span> p = nearPoint(rng, cam.x, cam.z, want, want);
+      f.x = p.x; f.z = p.z;
+    }
+    <span class="c">// where a hop would take it: one real perch away, never a fresh random point</span>
+    <span class="k">const</span> away = rng() * Math.PI * <span class="n">2</span>;
+    f.jx = f.x + Math.cos(away) * (<span class="n">1.2</span> + rng() * <span class="n">1.6</span>);
+    f.jz = f.z + Math.sin(away) * (<span class="n">1.2</span> + rng() * <span class="n">1.6</span>);
+    f.landed = <span class="l">true</span>;
+  }
+
+  <span class="k">return</span> makeFrogs(rng, spec, name, perch, { radius: <span class="n">0.185</span>, seed: <span class="n">1</span> });
+}</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--makePoolFrogs" data-name="makepoolfrogs" data-text="the chorus at the water, in the undergrowth — where ambfrogs actually sounds (d16).">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-visuals-creatures-js--makePoolFrogs">makePoolFrogs</a></h4>
+      
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:607</a>
+    </header>
+    <pre class="sig"><code>makePoolFrogs(rng, spec, name, pool)</code></pre>
+    <div class="doc"><p>The chorus at the water, in the undergrowth — where <code>ambfrogs</code> actually sounds (<a class="ref adr" href="../design_decisions.md#d16-hat-breathing-barlow-accents-per-biome-ambience-beds-2026-07-26" title="Hat breathing + Barlow accents; per-biome ambience beds (2026-07-26)">D16</a>). Nearly free, because <code>makePool</code> already recycles ten rings on a free index: a call drops one in, so the frogs and the water are the same event rather than two things that happen to be near each other.</p>
+<p>These sit from the waterline up onto the root arches at the bank, and both numbers below are the output of a search rather than a taste: 6–16 units is the window where a frog is far enough out to clear the bottom of an upward- pitched frame and near enough in to survive the fog, and it beat every other radius pair at the camera heights this band actually covers. See <code>CAST. poolfrog</code> for why the band is as short as it is — the summary is that a ground-dwelling animal cannot follow a camera that climbs away from the ground, and pretending otherwise just draws it off-screen.</p>
+<p>Green, not aposematic: this is a pond chorus, and the dart frogs upstairs carry the colour. Two animals in one world wearing the same warning pattern would make the pattern mean nothing.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">21 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makePoolFrogs(rng, spec, name, pool) {
+  <span class="k">const</span> POND_NEAR = <span class="n">7.5</span>, POND_FAR = <span class="n">16</span>;
+
+  <span class="k">function</span> perch(f, cam) {
+    f.y = spec.y[<span class="n">0</span>] + rng() * (spec.y[<span class="n">1</span>] - spec.y[<span class="n">0</span>]);
+    <span class="k">const</span> p = nearPoint(rng, cam.x, cam.z, POND_NEAR, POND_FAR, <span class="n">0.8</span>, <span class="n">1.6</span>);
+    f.x = p.x; f.z = p.z;
+    f.jx = f.x; f.jz = f.z;
+    f.landed = <span class="l">true</span>;
+  }
+
+  <span class="k">return</span> makeFrogs(rng, spec, name, perch, {
+    radius: <span class="n">0.20</span>,
+    seed: <span class="n">7</span>,
+    level: <span class="n">0.9</span>,
+    <span class="c">// a frog at the water does not hop across the frame; it sits and calls</span>
+    hop: <span class="l">false</span>,
+    skins: [<span class="s">'#7fbf86'</span>, <span class="s">'#94cf8c'</span>, <span class="s">'#6fae7e'</span>, <span class="s">'#a8d79a'</span>],
+    onCall: (f) =&gt; pool?.ripple?.(f.x, f.z, <span class="n">0.55</span>),
+  });
+}</code></pre></div></details>
+  </article>
+    
+      <div class="secthead"><h4>U4/U5: the birds</h4></div>
+      
+  <article class="item" id="src-visuals-creatures-js--birdGeometry" data-name="birdgeometry" data-text="two triangles in a shallow v.">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-visuals-creatures-js--birdGeometry">birdGeometry</a></h4>
+      <span class="badge private" title="not exported — internal to this module">internal</span>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:631</a>
+    </header>
+    <pre class="sig"><code>birdGeometry()</code></pre>
+    <div class="doc"><p>Two triangles in a shallow V. Forward is +Z; the wings scale to flap.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">10 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">631
+632
+633
+634
+635
+636
+637
+638
+639
+640</pre><pre class="src"><code><span class="k">function</span> birdGeometry() {
+  <span class="k">const</span> g = <span class="k">new</span> THREE.BufferGeometry();
+  <span class="k">const</span> v = <span class="k">new</span> Float32Array([
+    <span class="n">0</span>, <span class="n">0</span>, <span class="n">0.7</span>, -<span class="n">1</span>, <span class="n">0.30</span>, <span class="n">0</span>, <span class="n">0</span>, <span class="n">0</span>, -<span class="n">0.5</span>,   <span class="c">// left wing</span>
+    <span class="n">0</span>, <span class="n">0</span>, <span class="n">0.7</span>, <span class="n">0</span>, <span class="n">0</span>, -<span class="n">0.5</span>, <span class="n">1</span>, <span class="n">0.30</span>, <span class="n">0</span>,    <span class="c">// right wing</span>
+  ]);
+  g.setAttribute(<span class="s">'position'</span>, <span class="k">new</span> THREE.BufferAttribute(v, <span class="n">3</span>));
+  g.computeVertexNormals();
+  <span class="k">return</span> g;
+}</code></pre></div></details>
+  </article>
+  <article class="item" id="src-visuals-creatures-js--makeBirds" data-name="makebirds" data-text="the canopy flock (u4), and the toucan startle (u5).">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-visuals-creatures-js--makeBirds">makeBirds</a></h4>
+      
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:663</a>
+    </header>
+    <pre class="sig"><code>makeBirds(rng, spec, name)</code></pre>
+    <div class="doc"><p>The canopy flock (U4), and the toucan startle (U5).</p>
+<p>Deliberately NOT a copy of the fireflies. <span class="ref sec" title="a section of the theory docs in docs/">§3.2</span>'s comment already names the difference — <em>a flock banks; a field merely flows</em> — so the rules here carry higher alignment, lower separation, much higher speed, and a roll into the turn taken from lateral acceleration. That roll is nearly free once velocity is integrated and is the whole difference between particles with wings and birds.</p>
+<p>56 individuals, not 220: a flock reads as a flock at small counts, and a cloud of 220 birds reads as insects. At this size the neighbour scan is a naive O(n²) on a 3-frame stride — about a thousand distance tests a frame, which is cheaper than the spatial hash K2 needed at four times the population and is why that machinery is not repeated here.</p>
+<p>W1 — the flocking weights come from <code>coherenceAt(warmth)</code>, so the flock is where the second harmonic axis is most visible: the canopy (warmth 0.85) flies as one body, and the zenith (warmth 0.10) comes apart while the light keeps growing. That is the <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a> crossing, rendered.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">146 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738
+739
+740
+741
+742
+743
+744
+745
+746
+747
+748
+749
+750
+751
+752
+753
+754
+755
+756
+757
+758
+759
+760
+761
+762
+763
+764
+765
+766
+767
+768
+769
+770
+771
+772
+773
+774
+775
+776
+777
+778
+779
+780
+781
+782
+783
+784
+785
+786
+787
+788
+789
+790
+791
+792
+793
+794
+795
+796
+797
+798
+799
+800
+801
+802
+803
+804
+805
+806
+807
+808</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeBirds(rng, spec, name) {
   <span class="k">const</span> N = spec.count;
   <span class="c">// NOT face-corrected, deliberately. `doubleSided` was tried here and the</span>
   <span class="c">// flock came back white — these were the only two materials in the world</span>
@@ -21878,15 +22250,15 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-creatures-js--hashish">hashish</a></h4>
       <span class="badge private" title="not exported — internal to this module">internal</span>
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:574</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:811</a>
     </header>
     <pre class="sig"><code>hashish(x)</code></pre>
     <div class="doc"><p>Cheap deterministic scatter for the waypoint's second axis.</p></div>
     
-    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">574
-575
-576
-577</pre><pre class="src"><code><span class="k">function</span> hashish(x) {
+    <details class="source"><summary>source <span class="muted">4 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">811
+812
+813
+814</pre><pre class="src"><code><span class="k">function</span> hashish(x) {
   <span class="k">const</span> s = Math.sin(x * <span class="n">127.1</span>) * <span class="n">43758.5453</span>;
   <span class="k">return</span> s - Math.floor(s);
 }</code></pre></div></details>
@@ -21896,46 +22268,46 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-creatures-js--makeSoarer">makeSoarer</a></h4>
       
-      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:587</a>
+      <a class="srcref" href="../../src/visuals/creatures.js" title="open the source file">creatures.js:824</a>
     </header>
     <pre class="sig"><code>makeSoarer(rng, spec, name)</code></pre>
     <div class="doc"><p>The zenith's one bird, circling on a thermal.</p>
 <p>The zenith's ambience has no animal in it and the band's whole argument is scale; a single distant shape is the cheapest way to say how big the air is. No flock, no wingbeat — a soaring bird holds its wings still, and the stillness is the point.</p></div>
     
-    <details class="source"><summary>source <span class="muted">34 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">587
-588
-589
-590
-591
-592
-593
-594
-595
-596
-597
-598
-599
-600
-601
-602
-603
-604
-605
-606
-607
-608
-609
-610
-611
-612
-613
-614
-615
-616
-617
-618
-619
-620</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeSoarer(rng, spec, name) {
+    <details class="source"><summary>source <span class="muted">34 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">824
+825
+826
+827
+828
+829
+830
+831
+832
+833
+834
+835
+836
+837
+838
+839
+840
+841
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855
+856
+857</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> makeSoarer(rng, spec, name) {
   <span class="k">const</span> mat = makeCreatureMat({ color: <span class="s">'#243542'</span>, side: THREE.DoubleSide });
   <span class="k">const</span> mesh = <span class="k">new</span> THREE.Mesh(birdGeometry(), mat);
   mesh.matrixAutoUpdate = <span class="l">false</span>;   <span class="c">// the matrix is composed by hand each frame</span>
@@ -21976,7 +22348,7 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
     <header class="mod-head">
       <h3>fauna.js</h3>
       <a class="srcref" href="../../src/visuals/fauna.js">src/visuals/fauna.js</a>
-      <span class="muted">321 lines · 16 exported</span>
+      <span class="muted">344 lines · 16 exported</span>
     </header>
     <div class="doc lead"><p>fauna.js — the animals, as pure functions (proposal IV, tier U).</p>
 <p>Same treatment as <a class="modref" href="#src-visuals-look-js"><code>look.js</code></a>, <a class="modref" href="#src-visuals-weather-js"><code>weather.js</code></a> and <a class="modref" href="#src-perform-js"><code>perform.js</code></a>: schedules, gaits, band windows and the coherence curve are functions of <code>(t, seed, env)</code> with no three.js, no DOM and no state. <a class="modref" href="#src-visuals-biomes-js"><code>biomes.js</code></a> builds meshes and moves values; everything a creature <em>claims</em> about itself is asserted in <code>test/fauna.mjs</code> instead of being a paragraph in a design doc.</p>
@@ -22392,7 +22764,7 @@ tracks' brightness walks land at alt 0.12→0.29, 0.29→0.51, 0.51→0.73 and
 0.73→0.90, so each band below is written to overlap the track it belongs to
 and to feather out before the next one starts.</pre></div>
     
-    <details class="source"><summary>source <span class="muted">28 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">255
+    <details class="source"><summary>source <span class="muted">51 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">255
 256
 257
 258
@@ -22419,7 +22791,30 @@ and to feather out before the next one starts.</pre></div>
 279
 280
 281
-282</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> CAST = {
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> CAST = {
   <span class="c">// U2 — the undergrowth's gaze CLIMBS (BAND_PITCH[0] = 5.0: &quot;the eye goes to</span>
   <span class="c">// what it does not have&quot;, and down there that is light). So the camera spends</span>
   <span class="c">// the first 97 seconds looking up into a band containing trunks and nothing</span>
@@ -22431,14 +22826,37 @@ and to feather out before the next one starts.</pre></div>
   <span class="c">// …and one more where a sloth actually lives, high in the crowns during the</span>
   <span class="c">// canopy track. Same system, one constant apart.</span>
   slothCrown: { count: <span class="n">2</span>, lo: <span class="n">0.48</span>, hi: <span class="n">0.80</span>, feather: <span class="n">0.10</span>, y: [<span class="n">34</span>, <span class="n">43</span>] },
-  <span class="c">// U3 — tree frogs, on leaves at EYE LEVEL for the forest-floor camera</span>
-  <span class="c">// (y 18–32). The brief asked for frogs on the forest floor; the ground there</span>
-  <span class="c">// is 20–30 units below the lens and out of frame, and a tree frog is the frog</span>
-  <span class="c">// that solves it without overruling the brief.</span>
-  treefrog: { count: <span class="n">7</span>, lo: <span class="n">0.24</span>, hi: <span class="n">0.56</span>, feather: <span class="n">0.09</span>, y: [<span class="n">19</span>, <span class="n">31</span>] },
-  <span class="c">// …and the chorus at the water, in the undergrowth, which is where `ambfrogs`</span>
-  <span class="c">// actually sounds (D16) and where the pool's ripple machinery already is.</span>
-  poolfrog: { count: <span class="n">9</span>, lo: <span class="n">0.00</span>, hi: <span class="n">0.30</span>, feather: <span class="n">0.10</span>, y: [<span class="n">0.5</span>, <span class="n">2.2</span>] },
+  <span class="c">// U3 — the dart frogs, on the trunks. The brief asked for frogs on the forest</span>
+  <span class="c">// floor; the ground there is 20–30 units below the lens and out of frame, so</span>
+  <span class="c">// they live on the bark at eye level, which is where a jungle frog is anyway.</span>
+  <span class="c">//</span>
+  <span class="c">// The band now spans TWO tracks rather than one, and the y range spans the</span>
+  <span class="c">// camera's whole climb through them, because these are the only frogs that</span>
+  <span class="c">// can be seen for any length of time: the pond chorus below is fenced in by</span>
+  <span class="c">// the undergrowth's upward pitch (see `poolfrog`), so if the frogs are to be</span>
+  <span class="c">// a presence in this world rather than a detail in one shot, it is this</span>
+  <span class="c">// system that has to carry it. `creatures.js` keeps them in the near field as</span>
+  <span class="c">// the camera climbs, so the y range is a clamp on the perch, not a scatter.</span>
+  treefrog: { count: <span class="n">12</span>, lo: <span class="n">0.10</span>, hi: <span class="n">0.58</span>, feather: <span class="n">0.09</span>, y: [<span class="n">6</span>, <span class="n">37</span>] },
+  <span class="c">// …and the chorus at the water, which is where `ambfrogs` actually sounds</span>
+  <span class="c">// (D16) and where the pool's ripple machinery already is.</span>
+  <span class="c">//</span>
+  <span class="c">// **This band is short, and it is short for a reason that is not tuning.**</span>
+  <span class="c">// The undergrowth's gaze CLIMBS (BAND_PITCH[0] = 5.0), so the bottom of the</span>
+  <span class="c">// frame sits ~13° below horizontal, and anything on the ground falls out of</span>
+  <span class="c">// it the moment the camera leaves the ground. Projected through the real</span>
+  <span class="c">// camera, a chorus on the water reads at 4 frogs of 10 at camera y 2, 0.2 at</span>
+  <span class="c">// y 4, and **zero from y 6 up** — and no distance rescues it, because the</span>
+  <span class="c">// range that would put a low frog back inside the frame (&gt;20 units) is past</span>
+  <span class="c">// the point where the fog has eaten it. Searching the whole placement space</span>
+  <span class="c">// (height × radius) against the camera's real travel tops out at 4%.</span>
+  <span class="c">//</span>
+  <span class="c">// Sitting them from the waterline onto the root arches (y to 5) is what buys</span>
+  <span class="c">// the band back: 3.8 frogs at camera y 2 and 2.3 at y 4. The old 0.30 was</span>
+  <span class="c">// therefore not a wider band, it was nine animals drawn into a frame that</span>
+  <span class="c">// could not contain them — and the ones the eye is meant to find higher up</span>
+  <span class="c">// are the dart frogs above, whose band starts exactly where this one stops.</span>
+  poolfrog: { count: <span class="n">10</span>, lo: <span class="n">0.00</span>, hi: <span class="n">0.08</span>, feather: <span class="n">0.06</span>, y: [<span class="n">0.8</span>, <span class="n">5</span>] },
   <span class="c">// U4 — the canopy flock. 56, not 220: a flock reads as a flock at small</span>
   <span class="c">// counts, and a cloud of 220 birds reads as insects.</span>
   bird: { count: <span class="n">56</span>, lo: <span class="n">0.44</span>, hi: <span class="n">0.82</span>, feather: <span class="n">0.10</span>, y: [<span class="n">33</span>, <span class="n">46</span>] },
@@ -22453,14 +22871,14 @@ and to feather out before the next one starts.</pre></div>
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-fauna-js--populationFor">populationFor</a></h4>
       
-      <a class="srcref" href="../../src/visuals/fauna.js" title="open the source file">fauna.js:285</a>
+      <a class="srcref" href="../../src/visuals/fauna.js" title="open the source file">fauna.js:308</a>
     </header>
     <pre class="sig"><code>populationFor(spec, quality = 1, floor = 1)</code></pre>
     <div class="doc"><p>Population of a cast entry under the quality governor (Y2).</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">285
-286
-287</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> populationFor(spec, quality = <span class="n">1</span>, floor = <span class="n">1</span>) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">308
+309
+310</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> populationFor(spec, quality = <span class="n">1</span>, floor = <span class="n">1</span>) {
   <span class="k">return</span> Math.max(Math.min(floor, spec.count), Math.round(spec.count * clamp01(quality)));
 }</code></pre></div></details>
   </article>
@@ -22469,37 +22887,37 @@ and to feather out before the next one starts.</pre></div>
       <span class="kind function">function</span>
       <h4><a href="#src-visuals-fauna-js--faunaAt">faunaAt</a></h4>
       
-      <a class="srcref" href="../../src/visuals/fauna.js" title="open the source file">fauna.js:297</a>
+      <a class="srcref" href="../../src/visuals/fauna.js" title="open the source file">fauna.js:320</a>
     </header>
     <pre class="sig"><code>faunaAt(env = {})</code></pre>
     <div class="doc"><p>Everything the fauna need from one call, so <a class="modref" href="#src-visuals-biomes-js"><code>biomes.js</code></a> samples the schedules once per frame rather than each system re-deriving them.</p>
 <p><code>flush</code> is the anchored channel (U5) and is passed IN rather than computed here, because it originates in a bus event: this module never subscribes to anything, which is what keeps it pure and testable.</p></div>
     
-    <details class="source"><summary>source <span class="muted">25 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">297
-298
-299
-300
-301
-302
-303
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320
-321</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> faunaAt(env = {}) {
+    <details class="source"><summary>source <span class="muted">25 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> faunaAt(env = {}) {
   <span class="k">const</span> { t = <span class="n">0</span>, seed = <span class="n">1</span>, alt = <span class="n">0</span>, warmth = <span class="n">0.4</span>, section = <span class="s">'groove'</span>, T = <span class="n">0</span> } = env;
   <span class="k">const</span> life = lifeAt(section);
   <span class="k">const</span> coh = coherenceAt(warmth);

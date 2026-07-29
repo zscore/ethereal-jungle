@@ -264,14 +264,37 @@ export const CAST = {
   // …and one more where a sloth actually lives, high in the crowns during the
   // canopy track. Same system, one constant apart.
   slothCrown: { count: 2, lo: 0.48, hi: 0.80, feather: 0.10, y: [34, 43] },
-  // U3 — tree frogs, on leaves at EYE LEVEL for the forest-floor camera
-  // (y 18–32). The brief asked for frogs on the forest floor; the ground there
-  // is 20–30 units below the lens and out of frame, and a tree frog is the frog
-  // that solves it without overruling the brief.
-  treefrog: { count: 7, lo: 0.24, hi: 0.56, feather: 0.09, y: [19, 31] },
-  // …and the chorus at the water, in the undergrowth, which is where `ambfrogs`
-  // actually sounds (D16) and where the pool's ripple machinery already is.
-  poolfrog: { count: 9, lo: 0.00, hi: 0.30, feather: 0.10, y: [0.5, 2.2] },
+  // U3 — the dart frogs, on the trunks. The brief asked for frogs on the forest
+  // floor; the ground there is 20–30 units below the lens and out of frame, so
+  // they live on the bark at eye level, which is where a jungle frog is anyway.
+  //
+  // The band now spans TWO tracks rather than one, and the y range spans the
+  // camera's whole climb through them, because these are the only frogs that
+  // can be seen for any length of time: the pond chorus below is fenced in by
+  // the undergrowth's upward pitch (see `poolfrog`), so if the frogs are to be
+  // a presence in this world rather than a detail in one shot, it is this
+  // system that has to carry it. `creatures.js` keeps them in the near field as
+  // the camera climbs, so the y range is a clamp on the perch, not a scatter.
+  treefrog: { count: 12, lo: 0.10, hi: 0.58, feather: 0.09, y: [6, 37] },
+  // …and the chorus at the water, which is where `ambfrogs` actually sounds
+  // (D16) and where the pool's ripple machinery already is.
+  //
+  // **This band is short, and it is short for a reason that is not tuning.**
+  // The undergrowth's gaze CLIMBS (BAND_PITCH[0] = 5.0), so the bottom of the
+  // frame sits ~13° below horizontal, and anything on the ground falls out of
+  // it the moment the camera leaves the ground. Projected through the real
+  // camera, a chorus on the water reads at 4 frogs of 10 at camera y 2, 0.2 at
+  // y 4, and **zero from y 6 up** — and no distance rescues it, because the
+  // range that would put a low frog back inside the frame (>20 units) is past
+  // the point where the fog has eaten it. Searching the whole placement space
+  // (height × radius) against the camera's real travel tops out at 4%.
+  //
+  // Sitting them from the waterline onto the root arches (y to 5) is what buys
+  // the band back: 3.8 frogs at camera y 2 and 2.3 at y 4. The old 0.30 was
+  // therefore not a wider band, it was nine animals drawn into a frame that
+  // could not contain them — and the ones the eye is meant to find higher up
+  // are the dart frogs above, whose band starts exactly where this one stops.
+  poolfrog: { count: 10, lo: 0.00, hi: 0.08, feather: 0.06, y: [0.8, 5] },
   // U4 — the canopy flock. 56, not 220: a flock reads as a flock at small
   // counts, and a cloud of 220 birds reads as insects.
   bird: { count: 56, lo: 0.44, hi: 0.82, feather: 0.10, y: [33, 46] },

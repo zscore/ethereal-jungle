@@ -1678,7 +1678,8 @@ export function buildWorld(scene, rng, opts = {}) {
     // …and the fauna, in the same bottom-up order (proposal IV, tier U)
     makePoolFrogs(rng, CAST.poolfrog, 'poolfrog', pool),
     makeSloths(rng, CAST.sloth, 'sloth', forest.trees),
-    makeTreeFrogs(rng, CAST.treefrog, 'treefrog'),
+    // …and the dart frogs perch on ITS trunks, for the reason the sloths do
+    makeTreeFrogs(rng, CAST.treefrog, 'treefrog', forest.trees),
     makeSloths(rng, CAST.slothCrown, 'slothCrown', forest.trees),
     flock,
     makeSoarer(rng, CAST.soarer, 'soarer'),
@@ -1702,6 +1703,19 @@ export function buildWorld(scene, rng, opts = {}) {
     /** V2 — the storm cell this frame, so a strike can come FROM it. */
     cell() { return sky.cell(); },
     debugSky() { return sky.debug(); },
+    /**
+     * U3 — where the frogs actually are, relative to the lens.
+     *
+     * `debugFauna` says a band is fully present; it cannot say the population
+     * is sitting twenty units above the top of the frame, which is exactly the
+     * bug that shipped. Distance-from-camera is the number that would have
+     * caught it, so it is the number this returns.
+     */
+    debugFrogs(cam) {
+      return Object.fromEntries(biomes
+        .filter((b) => b.name === 'treefrog' || b.name === 'poolfrog')
+        .map((b) => [b.name, b.debug?.(cam)]));
+    },
     /** U2 — where each sloth is along its branch, and which way it is going. */
     debugSloths() {
       return Object.fromEntries(biomes

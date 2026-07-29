@@ -446,6 +446,8 @@ export async function initScene(canvas) {
      * culled to nothing.
      */
     debugFauna() { return lastFauna; },
+    /** U3 — the frogs' positions relative to the lens (see `buildWorld`). */
+    debugFrogs() { return world.debugFrogs(camera.position); },
     /** Suppress every creature, for an A/B against the world without them. */
     setFauna(on) { faunaForce = on; },
     /**
