@@ -256,6 +256,52 @@ const SKEL_MASKS = [
 // `fig` is four top-level groups — one per bar under `.slow(4)` — so the figure
 // stays bar-exact into the new downbeat (D9). `x` is a hit; for the pitched
 // voice the integers are degrees of the mode, high to low.
+/**
+ * R1 — the turnaround: what happens in the last bar of a phrase.
+ *
+ * The gap this closes is embarrassing once counted. In 389 seconds the only
+ * non-loop gestures anywhere are the seam fill, the peak's gain slam, the
+ * build2 dropout bar, the hoover, the dub bloom and the D18 landing. Every
+ * other phrase simply stops and the next one starts: **240 phrase endings per
+ * pass with nothing on any of them.** Phrase-final fills are the most ordinary
+ * device in this music and the set had none.
+ *
+ * These are one-bar snare figures in the same notation `SEAM_FILLS` uses, so
+ * `hits()` dresses them and the same reading applies. They are drawn per phrase
+ * from a hashed rng (never the shared one — a draw there re-deals every layer
+ * downstream), and gated by a per-section appetite: the groove turns around
+ * rarely because it is the reference state everything else is legible against,
+ * build2 and release almost always, because one is pushing and the other is
+ * letting go and both are about arriving somewhere else.
+ */
+export const TURNAROUNDS = [
+  { name: 'the nudge',    fig: '~ ~ ~ [x x]',            gain: 0.5,  lpf: 3200 },
+  { name: 'the double',   fig: '~ ~ [x x] [x x]',        gain: 0.55, lpf: 3600 },
+  { name: 'the stumble',  fig: '~ [x ~ x] ~ [x x x]',    gain: 0.5,  lpf: 3000 },
+  { name: 'the pull',     fig: '~ ~ [~ x] [x [x x]]',    gain: 0.58, lpf: 4000 },
+  { name: 'the roll',     fig: '~ ~ ~ [x x x x]',        gain: 0.52, lpf: 2600 },
+  { name: 'the answer',   fig: '~ [~ ~ x] ~ [x ~ x ~]',  gain: 0.46, lpf: 3400 },
+  { name: 'the drag',     fig: '~ ~ [x ~ ~ x] [~ x ~ ~]', gain: 0.44, lpf: 2400 },
+];
+
+/** How often a section wants its phrases turned around, and how hard. */
+const TURN_LIFT = {
+  intro: 0, build: 0.45, groove: 0.3, breakdown: 0.15,
+  build2: 0.9, peak: 0.6, release: 0.85, seam: 0,
+};
+
+/**
+ * Draw a phrase's turnaround, or null. Deterministic in (seed, phraseIndex) and
+ * hashed away from the shared stream, the `squawkLayer` idiom.
+ */
+export function turnaroundFor(phraseIndex, seed, sec) {
+  const lift = TURN_LIFT[sec] ?? 0.3;
+  if (lift <= 0) return null;
+  const rng = makeRng(((seed ^ 0x7a17) + phraseIndex * 2311) >>> 0);
+  if (rng() > lift) return null;
+  return TURNAROUNDS[Math.floor(rng() * TURNAROUNDS.length)];
+}
+
 export const SEAM_FILLS = [
   {
     name: 'the outbreath', voice: 'snare',
@@ -1194,6 +1240,25 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         layers.push(gate(dub(snare(), pal.dub, tension).mask('[0 1 1 1]/4')));
       } else {
         layers.push(gate(dub(snare(), pal.dub, tension)));
+      }
+      // R1 — the turnaround: the phrase's last bar gets a figure instead of
+      // simply stopping. Masked to bar 3 of the phrase, on the snare, off the
+      // dub rail for the same reason the ghosts are (one answered transient per
+      // bar, not seven). Skipped in the dropout bar, which is already a
+      // gesture, and at the seam, which has a much bigger one of its own.
+      const turn = (!dropout && !seamLate && !seamEarly)
+        ? turnaroundFor(voice.phraseIndex ?? 0, voice.baseSeed ?? p.seed, sec)
+        : null;
+      if (turn) {
+        layers.push(gate(
+          s(hits(perBar(turn.fig.split(' ')), pal.snare?.s ?? 'sd'))
+            .gain(turn.gain * (pal.snare?.gain ? pal.snare.gain / 0.3 : 1) * (0.75 + 0.35 * tNorm))
+            .lpf(turn.lpf)
+            .room(0.18).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1))
+            .pan(0.5)
+            .mask('[0 0 0 1]/4')   // the last bar of the phrase, and only that
+            .orbit(1),
+        ));
       }
       // D23: ghosts stay OFF the dub rail. The 3/16 feedback is answering one
       // transient per bar (§9.3); answering six would be mud, and the rail's
