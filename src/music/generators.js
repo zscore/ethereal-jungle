@@ -321,8 +321,14 @@ export function dropVariantFor(trackIndex, seed) {
  * the continuity layer and survives every hole by design).
  */
 const HOLES = {
-  release: '[1 1 1 [1 1 0 0]]/4',  // the second half of the last bar: a breath
-  build2:  '[1 1 [1 1 1 0] 1]/4',  // one sixteenth swallowed, mid-phrase
+  // Both land in the LAST QUARTER of an inner bar, and that placement is not
+  // arbitrary. It has to miss two things: beat 3, because the backbeat is an
+  // anchor and a form whose anchors come and go is not legible (§1.2 — and
+  // test/groove.mjs enforces it); and bar 3, because that is where R1 puts the
+  // turnaround. So the phrase gets a gap and then a fill answering it, rather
+  // than a fill falling into its own hole.
+  release: '[1 1 [1 1 1 0] 1]/4',
+  build2:  '[1 [1 1 1 0] 1 1]/4',
 };
 
 /**
