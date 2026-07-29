@@ -147,7 +147,10 @@ export const TRACKS = [
     rooms: { 1: 2, 3: 7, 4: 6 },
     palette: {
       // the most degraded break of the four: no top end, bit-reduced, close
-      break: { lpf: 3200, crush: 8, coarse: 2, room: 0.1 },
+      break: { lpf: 3200, crush: 8, coarse: 2, room: 0.1,
+        // Q3 — the degradation is weather, not a setting: the bit depth wanders
+        // ±1.5 and the ceiling ±12% on the 1/f walk
+        crushDrift: 1.5, lpfDrift: 0.12 },
       hats: { s: 'hh', lpf: 5500, gain: 0.85 },
       // D23 — the skeleton's appetite. The undergrowth is the heaviest floor
       // of the four: the second kick is almost always there, the ghosts are

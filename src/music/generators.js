@@ -622,13 +622,17 @@ const fmt = (n) => n.toFixed(3); // fractional MIDI: cents are just decimals
  * floor, nothing at all for the canopy, and a high-passed reversed drowning for
  * the zenith, where the drums stop having bodies.
  */
-function costume(pat, bp = {}, rs) {
+function costume(pat, bp = {}, rs, weather = 0) {
   let x = pat;
   if (bp.speed) x = x.speed(bp.speed);
   if (bp.reverse) x = x.sometimesBy(bp.reverse, (y) => y.speed(-(bp.speed ?? 1)));
-  if (bp.lpf) x = x.lpf(bp.lpf);
+  if (bp.lpf) x = x.lpf(Math.round(bp.lpf * (1 + (bp.lpfDrift ?? 0) * weather)));
   if (bp.hpf) x = x.hpf(bp.hpf);
-  if (bp.crush) x = x.crush(bp.crush);
+  // Q3 — the grit wanders. A constant `crush` is a decision about the sample
+  // rate; a crush that drifts between 6.5 and 9.5 bits over half a minute is a
+  // room whose air is changing. Nothing here is rhythmic, which is the rule
+  // that makes weather legal on a near-stream layer.
+  if (bp.crush) x = x.crush(Math.max(4, bp.crush + (bp.crushDrift ?? 0) * weather));
   if (bp.coarse) x = x.coarse(bp.coarse);
   if (bp.shape) x = x.shape(bp.shape);
   if (bp.room) x = x.room(bp.room).roomsize(rs(1));
@@ -921,6 +925,10 @@ export function makeSetPattern(ctx, p, signals) {
       // D22: who is playing this phrase (data from bus.js TRACKS)
       const voice = {
         warmth,
+        // Q3 — the weather, sampled once per phrase. Roughly -1..1, 1/f-weighted,
+        // slowest layer ~32 s: it wanders across several phrases rather than
+        // flickering per bar, which is the difference between weather and noise.
+        drift: (signals.driftAt ?? (() => 0))(tSample),
         palette: ps.track.palette ?? {},
         tuning: ps.track.tuning,
         rooms: ps.track.rooms,          // D35 — one reverb size per orbit
@@ -981,6 +989,10 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // their own SEND (`room`); what they no longer do is each demand a different
   // room and make superdough rebuild the impulse response between them.
   const rs = roomsFor(voice);
+  // Q3 — the weather for this phrase: the 1/f walk, roughly -1..1, sampled once
+  // per phrase in makeSetPattern. Spent only on parameters where a slow
+  // unrepeating wander reads as *air*, never on anything rhythmic.
+  const weather = voice.drift ?? 0;
 
   // ---- section state (D11) ----
   const sec = section?.name ?? 'groove';
@@ -1068,7 +1080,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .degradeBy((thin ? 0.4 - 0.2 * secProgress : wEff * 0.15) + (bp.thin ?? 0) + (seamEarly ? 0.18 : 0))
         .gain(gainSpec)
         .orbit(1),
-      bp, rs,
+      bp, rs, weather,
     )));
   }
 
@@ -1298,7 +1310,10 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         // notch moving under a held note is the whole sound.
         if (bp.wobble) {
           const wb = bp.wobble;
-          x = x.lpsync(wb.sync ?? 0.25).lpdepth(wb.depth ?? 0.55);
+          // Q3 — the growl's depth breathes on the 1/f walk, so two passes of
+          // the same phrase are never the same amount of seething
+          const depth = (wb.depth ?? 0.55) * (1 + (wb.drift ?? 0.4) * weather);
+          x = x.lpsync(wb.sync ?? 0.25).lpdepth(Math.max(0.05, depth));
           if (wb.resonance) x = x.resonance(wb.resonance);
         }
         if (bp.release) x = x.attack(0.005).decay(bp.release).sustain(0.25).release(bp.release);
@@ -1409,7 +1424,9 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   const motion = PAD_MOTION[sec] ?? 0.4;
   if (!silent) {
     const [plo, pspan] = pp.lpf ?? [900, 2600];
-    const cutoff = plo + pspan * tension + (swell ? 600 : 0);
+    // Q3 — and the ether's own filter sits on the walk: a pad whose brightness
+    // is identical every phrase is the sound of a held parameter
+    const cutoff = (plo + pspan * tension + (swell ? 600 : 0)) * (1 + (pp.drift ?? 0.1) * weather);
     // The filter breathes across the phrase rather than sitting on one value.
     // Deliberately not symmetric — an even in-out is its own kind of static.
     const breath = (k) => Math.round(cutoff * (1 + motion * k));

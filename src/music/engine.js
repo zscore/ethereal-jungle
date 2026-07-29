@@ -113,7 +113,18 @@ export function rebuild() {
   const pattern = makeSetPattern(
     { ...controls, stack, Pattern },
     { ...bus.params },
-    { tensionAt: (t) => bus.tensionAt(t), brightnessAt: (t) => bus.brightnessAt(t) },
+    // Q3 — `drift` joins tension and brightness on the signal surface. It was
+    // the one authored signal the music could not see: bus.js has advertised
+    // `S = { T(t), brightness(t), drift(t), … }` since the first commit, the
+    // visuals read it five ways over, and the generators read it zero times.
+    // The division of labour it buys: **tension is the authored will, section
+    // progress is the form's clock, and drift is the weather** — the slow
+    // unrepeating 1/f wander that keeps a held parameter from being a number.
+    {
+      tensionAt: (t) => bus.tensionAt(t),
+      brightnessAt: (t) => bus.brightnessAt(t),
+      driftAt: (t) => bus.drift(t),
+    },
   );
   // Roll (D19) is the one perform knob that IS launch-quantized: a stutter
   // has to land on the grid, and it is pattern surgery, not a node. Applied
