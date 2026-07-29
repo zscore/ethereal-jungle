@@ -178,6 +178,11 @@ export const TRACKS = [
       // N3 — five phrases against seventeen and against N2's eight: the pad,
       // the floor and the form never line up the same way twice
       pad: { s: 'sawtooth', oct: 0, width: 6, lpf: [700, 2000], attack: 1.4, release: 4, gain: 0.32,
+        // T2 — this is the one pad in the set voiced at oct 0, so its
+        // fundamental (D3, 147 Hz) and the bass's second harmonic are the same
+        // note in the same octave. 240 Hz takes the pad's bottom two partials
+        // out of the floor's way and leaves everything from Bb3 up.
+        hpf: 240,
         plane: [0, 0, 1, 0, 2] },
       lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8 },
       // the migrating pluck at its near/dry extreme: wooden tuned percussion,
@@ -186,8 +191,13 @@ export const TRACKS = [
       // P2 — the stridulator: the one thing in this track allowed above 5 kHz,
       // because a cricket is not a shimmer. Rides a presence walk, so it
       // arrives and leaves in episodes rather than playing every phrase.
-      stridulate: { bandf: 3600, bandq: 22, rate: 14, depth: 0.85, k: 5,
-        decay: 0.18, room: 0.25, gain: 0.16, threshold: 0.42, pan: 0.28 },
+      stridulate: { bandf: 3600, bandq: 12, rate: 14, depth: 0.85, k: 5,
+        // Q 12 rather than 22, and half again the level. At Q 22 the band is
+        // about 160 Hz wide, which is a real chirp you can hear and almost no
+        // ENERGY — it never showed up in a 2–4 kHz band average at all. The
+        // wider band is also a more convincing insect: a real stridulation is
+        // a buzz with a formant, not a sine.
+        decay: 0.18, room: 0.25, gain: 0.3, threshold: 0.42, pan: 0.28 },
       // P5 — spent once, on this track's drop bar: the hoover's opposite sign
       // at the opposite end of the set. Two octaves DOWN instead of one up.
       trapdoor: { s: 'sawtooth', oct: 0, penv: -24, pattack: 0.5, lpf: 700,
