@@ -346,7 +346,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>21</b><span>modules</span></div>
       <div><b>197</b><span>exports</span></div>
-      <div><b>9,268</b><span>lines</span></div>
+      <div><b>9,280</b><span>lines</span></div>
       <div><b>86%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
@@ -2120,7 +2120,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>generators.js</h3>
       <a class="srcref" href="../../src/music/generators.js">src/music/generators.js</a>
-      <span class="muted">1920 lines · 21 exported</span>
+      <span class="muted">1932 lines · 21 exported</span>
     </header>
     <div class="doc lead"><p>generators.js — the machine room (music doc <span class="ref sec" title="a section of the theory docs in docs/">§4</span>).</p>
 <p>Every generator is a pure function of (bus params, seeded rng) → Strudel pattern. ENGINE DISCIPLINE: generators emit <em>events with abstract params</em> (sample slot, note, orbit, dynamics). superdough is merely the current renderer of those events — keep renderer-specific hacks out of here so the whole layer can be re-pointed at SuperDirt/scsynth over OSC without touching composition logic.</p>
@@ -4796,7 +4796,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1555
 1556
 1557
-1558</pre><pre class="src"><code>
+1558
+1559
+1560
+1561
+1562
+1563
+1564
+1565
+1566
+1567
+1568
+1569
+1570</pre><pre class="src"><code>
   <span class="k">if</span> (bassIn) { <span class="c">// the floor leaves with the drums; the drop restores it whole</span>
     <span class="k">const</span> bp = pal.bass ?? {};
     <span class="c">// the zenith's floor is absent for whole phrases (altitude = nothing</span>
@@ -4815,7 +4827,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="c">// the drop and the landing restore the floor whole: the figure is rotated</span>
       <span class="c">// so it starts ON the downbeat rather than wherever the phrase seed fell</span>
       <span class="k">const</span> anchored = landingArrival || (sec === <span class="s">'peak'</span> &amp;&amp; firstPhraseOf);
-      <span class="k">let</span> talea = euclid(k, <span class="n">16</span>, Math.floor(rng() * <span class="n">16</span>));
+      <span class="c">// AD8 — the talea develops instead of re-dealing. Seventeen unrelated</span>
+      <span class="c">// figures per track was variety without memory; the rotation is now drawn</span>
+      <span class="c">// once per SECTION (hashed away from the shared stream, the squawkLayer</span>
+      <span class="c">// idiom) and advances one step per phrase inside it: the same figure,</span>
+      <span class="c">// turning against the bar. A genuinely new deal happens only at section</span>
+      <span class="c">// boundaries, where new deals belong. The shared draw is kept and burned</span>
+      <span class="c">// so every layer downstream keeps its deal — the D43 constraint: adding</span>
+      <span class="c">// or removing a draw here re-deals the whole phrase after this point.</span>
+      <span class="k">void</span> Math.floor(rng() * <span class="n">16</span>);
+      <span class="k">const</span> taleaRng = makeRng(strHash(
+        <span class="s">`talea:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}:${sec}`</span>));
+      <span class="k">const</span> taleaRot = (Math.floor(taleaRng() * <span class="n">16</span>) + (section?.phraseInSection ?? <span class="n">0</span>)) % <span class="n">16</span>;
+      <span class="k">let</span> talea = euclid(k, <span class="n">16</span>, taleaRot);
       <span class="k">if</span> (anchored &amp;&amp; !talea[<span class="n">0</span>]) {
         <span class="k">const</span> hit = talea.indexOf(<span class="n">1</span>);
         talea = talea.map((_, i) =&gt; talea[(i + hit) % <span class="n">16</span>]);
@@ -4919,27 +4943,27 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">landing arrival (D18): the boundary hit and its afterglow</span><span class="muted">line 1558</span></div>
+          <div class="step-head"><span class="step-title">landing arrival (D18): the boundary hit and its afterglow</span><span class="muted">line 1570</span></div>
           <p>One impact tail exactly on the new track's downbeat (the sample rings past the bar on its own), and the floor as <em>promise</em>: a one-note root pedal in whole notes, fading with the heartbeat. Both exist only in intro phrase 0.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1561
-1562
-1563
-1564
-1565
-1566
-1567
-1568
-1569
-1570
-1571
-1572
-1573
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1573
 1574
 1575
 1576
 1577
 1578
-1579</pre><pre class="src"><code>
+1579
+1580
+1581
+1582
+1583
+1584
+1585
+1586
+1587
+1588
+1589
+1590
+1591</pre><pre class="src"><code>
   <span class="k">if</span> (landingArrival) {
     layers.push(
       <span class="c">// D36 — halved: the impact marks the boundary, it no longer announces it</span>
@@ -4960,21 +4984,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">pads: the ether (ground) — slow, wide, drowned, half-time and slower</span><span class="muted">line 1579</span></div>
+          <div class="step-head"><span class="step-title">pads: the ether (ground) — slow, wide, drowned, half-time and slower</span><span class="muted">line 1591</span></div>
           <p>Survives the seam AND the dropout untouched: the continuity layer, the common tone (<span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>). In the breakdown it swells — the ether becomes figure. <a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>: warmth chooses the voicing (glad 6th / neutral 7th / third-less quartal) and the track's tuning decides whether it locks or shimmers — this is where &quot;bright but not happy&quot; is actually implemented.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1584
-1585
-1586
-1587
-1588
-1589
-1590
-1591
-1592
-1593
-1594
-1595
-1596
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1596
 1597
 1598
 1599
@@ -5054,7 +5066,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1673
 1674
 1675
-1676</pre><pre class="src"><code>
+1676
+1677
+1678
+1679
+1680
+1681
+1682
+1683
+1684
+1685
+1686
+1687
+1688</pre><pre class="src"><code>
   <span class="k">const</span> pp = pal.pad ?? {};
   <span class="k">const</span> swell = sec === <span class="s">'breakdown'</span>;
   <span class="c">// N3 — the plane cycle. `palette.pad.plane` lists diatonic step offsets and</span>
@@ -5149,21 +5173,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
     </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1676</span></div>
+          <div class="step-head"><span class="step-title">motion between notes</span><span class="muted">line 1688</span></div>
           <p>The block chord is the continuity layer and must stay a block — it is the common tone across the seam (<span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>), so it cannot start arpeggiating. The movement therefore goes to a SEPARATE quiet voice an octave up, walking the same chord tones one at a time. Same harmony, but something is audibly moving. Loudest exactly where the complaint was — the early sections, where the arrangement is otherwise a held pad and a heartbeat.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1682
-1683
-1684
-1685
-1686
-1687
-1688
-1689
-1690
-1691
-1692
-1693
-1694
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1694
 1695
 1696
 1697
@@ -5176,7 +5188,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1704
 1705
 1706
-1707</pre><pre class="src"><code>
+1707
+1708
+1709
+1710
+1711
+1712
+1713
+1714
+1715
+1716
+1717
+1718
+1719</pre><pre class="src"><code>
     <span class="k">if</span> (motion &gt; <span class="n">0.5</span>) {
       <span class="k">const</span> tones = padVoicing(mode, warmth, { oct: (pp.oct ?? <span class="n">1</span>) + <span class="n">1</span>, tuning, width: <span class="n">0</span> });
       layers.push(
@@ -5204,21 +5228,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1707</span></div>
+          <div class="step-head"><span class="step-title">ambience: the biome's noise floor, layered (D16; recordings D26)</span><span class="muted">line 1719</span></div>
           <p>ambience.current = [bed, ...accents]: 32-bar field recordings played one phrase-long slice at a time — chunk <code>c</code> advances with the phrase index, so consecutive phrases play consecutive audio and the loop only repeats every AMB_BARS. Retriggers stay phrase-aligned (slow(4) at absolute cycles), which is what keeps biome changes and the seam crossfade landing on their bars. The bed is always on — loud where the ether is figure (intro/breakdown/seam), tucked under the full arrangement elsewhere. Accent layers ride slow presence walks: below threshold they rest, above it their gain follows the walk (the walk is continuous through the threshold, so entries fade rather than pop). During the seam the INCOMING biome's bed crossfades in early — <span class="ref sec" title="a section of the theory docs in docs/">§6.1</span>'s infiltrating ether. Envelopes are deliberately near-instant: superdough keeps the source playing for <code>release</code> past the event end, and since the next chunk starts on that same audio, any real release would sum the recording with itself.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1721
-1722
-1723
-1724
-1725
-1726
-1727
-1728
-1729
-1730
-1731
-1732
-1733
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1733
 1734
 1735
 1736
@@ -5249,7 +5261,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1761
 1762
 1763
-1764</pre><pre class="src"><code>
+1764
+1765
+1766
+1767
+1768
+1769
+1770
+1771
+1772
+1773
+1774
+1775
+1776</pre><pre class="src"><code>
   <span class="k">if</span> (ambience?.current?.length) {
     <span class="k">const</span> chunk = ((ambience.phraseIndex ?? <span class="n">0</span>) % AMB_CHUNKS + AMB_CHUNKS) % AMB_CHUNKS;
     <span class="c">// D30 — how loud, and how often, the biome is: part of the cast like</span>
@@ -5295,21 +5319,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1764</span></div>
+          <div class="step-head"><span class="step-title">lead: the set's one melodic cell, transformed (80/20)</span><span class="muted">line 1776</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1764
-1765
-1766
-1767
-1768
-1769
-1770
-1771
-1772
-1773
-1774
-1775
-1776
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1776
 1777
 1778
 1779
@@ -5341,7 +5353,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1805
 1806
 1807
-1808</pre><pre class="src"><code>
+1808
+1809
+1810
+1811
+1812
+1813
+1814
+1815
+1816
+1817
+1818
+1819
+1820</pre><pre class="src"><code>
   <span class="k">if</span> (leadPresent) {
     <span class="k">const</span> lp = pal.lead ?? {};
     <span class="k">const</span> featured = sec === <span class="s">'breakdown'</span>;
@@ -5388,21 +5412,9 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
   </code></pre></div></details>
         </div>
         <div class="step">
-          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1808</span></div>
+          <div class="step-head"><span class="step-title">D22: the characteristic layers</span><span class="muted">line 1820</span></div>
           <p>The migrating pluck plays everywhere except the ambient sections (where the ether is the figure) — and its costume is what changes across the set.</p>
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1810
-1811
-1812
-1813
-1814
-1815
-1816
-1817
-1818
-1819
-1820
-1821
-1822
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">1822
 1823
 1824
 1825
@@ -5500,7 +5512,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1917
 1918
 1919
-1920</pre><pre class="src"><code>
+1920
+1921
+1922
+1923
+1924
+1925
+1926
+1927
+1928
+1929
+1930
+1931
+1932</pre><pre class="src"><code>
   <span class="k">if</span> (pal.pluck &amp;&amp; castIn &amp;&amp; !ambient) {
     <span class="k">const</span> pluck = pluckLayer(ctx, pal.pluck, mode, tuning, rng, rs);
     <span class="k">if</span> (pluck) layers.push(gate(pluck));
@@ -5613,7 +5637,7 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 </code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">792 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1129
+    <details class="source"><summary>source <span class="muted">804 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">1129
 1130
 1131
 1132
@@ -6404,7 +6428,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
 1917
 1918
 1919
-1920</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
+1920
+1921
+1922
+1923
+1924
+1925
+1926
+1927
+1928
+1929
+1930
+1931
+1932</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> buildArrangement(ctx, p, tension, brightness, seam, section, ambience, voice = {}) {
   <span class="k">const</span> { s, note, stack } = ctx;
   <span class="k">const</span> rng = makeRng(p.seed);
   <span class="k">const</span> mode = modeAt(brightness);
@@ -6732,7 +6768,19 @@ roomfade the tail's own attack: how long the reflections take to arrive</pre>
       <span class="c">// the drop and the landing restore the floor whole: the figure is rotated</span>
       <span class="c">// so it starts ON the downbeat rather than wherever the phrase seed fell</span>
       <span class="k">const</span> anchored = landingArrival || (sec === <span class="s">'peak'</span> &amp;&amp; firstPhraseOf);
-      <span class="k">let</span> talea = euclid(k, <span class="n">16</span>, Math.floor(rng() * <span class="n">16</span>));
+      <span class="c">// AD8 — the talea develops instead of re-dealing. Seventeen unrelated</span>
+      <span class="c">// figures per track was variety without memory; the rotation is now drawn</span>
+      <span class="c">// once per SECTION (hashed away from the shared stream, the squawkLayer</span>
+      <span class="c">// idiom) and advances one step per phrase inside it: the same figure,</span>
+      <span class="c">// turning against the bar. A genuinely new deal happens only at section</span>
+      <span class="c">// boundaries, where new deals belong. The shared draw is kept and burned</span>
+      <span class="c">// so every layer downstream keeps its deal — the D43 constraint: adding</span>
+      <span class="c">// or removing a draw here re-deals the whole phrase after this point.</span>
+      <span class="k">void</span> Math.floor(rng() * <span class="n">16</span>);
+      <span class="k">const</span> taleaRng = makeRng(strHash(
+        <span class="s">`talea:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}:${sec}`</span>));
+      <span class="k">const</span> taleaRot = (Math.floor(taleaRng() * <span class="n">16</span>) + (section?.phraseInSection ?? <span class="n">0</span>)) % <span class="n">16</span>;
+      <span class="k">let</span> talea = euclid(k, <span class="n">16</span>, taleaRot);
       <span class="k">if</span> (anchored &amp;&amp; !talea[<span class="n">0</span>]) {
         <span class="k">const</span> hit = talea.indexOf(<span class="n">1</span>);
         talea = talea.map((_, i) =&gt; talea[(i + hit) % <span class="n">16</span>]);

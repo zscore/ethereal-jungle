@@ -1454,7 +1454,19 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       // the drop and the landing restore the floor whole: the figure is rotated
       // so it starts ON the downbeat rather than wherever the phrase seed fell
       const anchored = landingArrival || (sec === 'peak' && firstPhraseOf);
-      let talea = euclid(k, 16, Math.floor(rng() * 16));
+      // AD8 — the talea develops instead of re-dealing. Seventeen unrelated
+      // figures per track was variety without memory; the rotation is now drawn
+      // once per SECTION (hashed away from the shared stream, the squawkLayer
+      // idiom) and advances one step per phrase inside it: the same figure,
+      // turning against the bar. A genuinely new deal happens only at section
+      // boundaries, where new deals belong. The shared draw is kept and burned
+      // so every layer downstream keeps its deal — the D43 constraint: adding
+      // or removing a draw here re-deals the whole phrase after this point.
+      void Math.floor(rng() * 16);
+      const taleaRng = makeRng(strHash(
+        `talea:${voice.baseSeed ?? p.seed}:${voice.trackIndex ?? 0}:${sec}`));
+      const taleaRot = (Math.floor(taleaRng() * 16) + (section?.phraseInSection ?? 0)) % 16;
+      let talea = euclid(k, 16, taleaRot);
       if (anchored && !talea[0]) {
         const hit = talea.indexOf(1);
         talea = talea.map((_, i) => talea[(i + hit) % 16]);
