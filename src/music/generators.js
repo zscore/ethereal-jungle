@@ -1526,6 +1526,22 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         ci = Math.max(0, Math.min(top, ci + (up ? mag : -mag)));
         return colors[ci];
       });
+      // AD10 — the octave lift: at most once per phrase, the strongest
+      // non-anchor onset jumps +12 — the classic jungle sub-jump. The whole
+      // split-band stack follows (every body copy and the sub read this seq),
+      // which is what makes it a jump rather than a harmony. Probability rises
+      // with the track's own arc; hashed rng, so the shared stream never
+      // notices it happened.
+      const liftRng = makeRng(strHash(
+        `lift:${voice.phraseIndex ?? 0}:${voice.baseSeed ?? p.seed}`));
+      if (liftRng() < 0.2 + 0.55 * tNorm) {
+        let liftAt = -1;
+        for (let i = 0; i < 16; i++) {
+          if (seq[i] == null || ANCHORS.has(i)) continue;
+          if (liftAt < 0 || INDISPENSABILITY[i] > INDISPENSABILITY[liftAt]) liftAt = i;
+        }
+        if (liftAt >= 0) seq[liftAt] += 12;
+      }
       // AD7 — build2 is the one section that changes what the floor DOES. The
       // walk is replaced by the pulse: driving eighths on the phrase's centre
       // (16 slots under the half-time slow(2)), filter opening across the
@@ -1592,6 +1608,27 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
             .slow(4)                 // one tone per phrase: the harmony, not a riff
             .orbit(2),
         ));
+      }
+      // AD9 — spent once per track: the floor states the cell. MOTIF had never
+      // sounded below octave 0 — the set's one melody and its floor were never
+      // the same voice. On the drop bar the bass plays the cell as driving
+      // eighths in its own register (the degree offsets 0–4 map straight onto
+      // the pentatonic set), so the drop gains a MELODIC signature on top of
+      // R3's textural variants — and respects them: a variant that withholds
+      // the floor from the drop bar withholds this too (`held`).
+      if (sec === 'peak' && firstPhraseOf) {
+        const cell = MOTIF.map((d) => colors[Math.max(0, Math.min(top, d))]);
+        const cellSeq = Array.from({ length: 16 },
+          (_, i) => (i % 2 ? '~' : fmt(cell[i / 2]))).join(' ');
+        layers.push(gate(held(
+          note(cellSeq)
+            .s(bp.s ?? 'sawtooth')
+            .attack(0.004).decay(0.22).sustain(0.3).release(0.15)
+            .lpf(lo + span)          // the drop opens the floor's filter fully
+            .gain(g * 0.9)
+            .mask('[1 0 0 0]/4')     // the drop bar, and nowhere else in the track
+            .orbit(2),
+          'bass')));
       }
     }
   }
