@@ -587,6 +587,15 @@ export const bus = {
     if (seam.active) {
       const s = seam.progress * seam.progress * (3 - 2 * seam.progress);
       b = lerp(b, seam.to.brightness[0], s);
+      // N4 — the mode dip. The authored brightness ranges are contiguous
+      // (0.30→0.30, 0.55→0.55, 0.80→0.80), so at three of the four boundaries
+      // that lerp interpolates a value into itself and the seam contains no
+      // harmonic event whatsoever. A half-sine trough one mode step deep gives
+      // each boundary one: a single semitone in a single voice, falling and
+      // recovering inside D36's tension trough, which is the right harmony for
+      // a wind-down. It is exactly zero at both ends of the window, so the walk
+      // stays continuous and nothing teleports at the downbeat.
+      b = Math.max(0, b - (1 / 6) * Math.sin(Math.PI * seam.progress));
     }
     const p = this.params;
     return b * (1 - p.brightnessMix) + p.brightnessManual * p.brightnessMix;

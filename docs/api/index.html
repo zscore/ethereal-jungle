@@ -324,7 +324,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <div class="stats">
       <div><b>18</b><span>modules</span></div>
       <div><b>153</b><span>exports</span></div>
-      <div><b>6,736</b><span>lines</span></div>
+      <div><b>6,745</b><span>lines</span></div>
       <div><b>84%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
@@ -584,7 +584,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
     <header class="mod-head">
       <h3>bus.js</h3>
       <a class="srcref" href="../../src/bus.js">src/bus.js</a>
-      <span class="muted">618 lines · 26 exported</span>
+      <span class="muted">627 lines · 26 exported</span>
     </header>
     <div class="doc lead"><p>bus.js — the shared control bus. THE architectural core.</p>
 <pre class="diagram">Both media are functions of these signals, never of each other:
@@ -1651,20 +1651,20 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <h5>Walkthrough <span class="muted">— the annotated steps inside this function</span></h5>
       
         <div class="step">
-          <div class="step-head"><span class="step-title">event stream (published by the music scheduler, ahead of time)</span><span class="muted">line 613</span></div>
+          <div class="step-head"><span class="step-title">event stream (published by the music scheduler, ahead of time)</span><span class="muted">line 622</span></div>
           
-          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">613
-614
-615
-616
-617</pre><pre class="src"><code>
+          <details><summary>code</summary><div class="code"><pre class="gutter" aria-hidden="true">622
+623
+624
+625
+626</pre><pre class="src"><code>
   _subs: <span class="k">new</span> Set(),
   subscribe(fn) { <span class="k">this</span>._subs.add(fn); <span class="k">return</span> () =&gt; <span class="k">this</span>._subs.<span class="k">delete</span>(fn); },
   publish(evt) { <span class="k">for</span> (<span class="k">const</span> fn <span class="k">of</span> <span class="k">this</span>._subs) fn(evt); },
 }</code></pre></div></details>
         </div>
     </div>
-    <details class="source"><summary>source <span class="muted">115 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">503
+    <details class="source"><summary>source <span class="muted">124 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">503
 504
 505
 506
@@ -1778,7 +1778,16 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
 614
 615
 616
-617</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> bus = {
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> bus = {
   <span class="c">// knobs (UI / MIDI-writable). *Mix knobs blend authored curve vs manual knob.</span>
   params: {
     tensionMix: <span class="n">0</span>,       <span class="c">// 0 = authored timeline, 1 = manual knob</span>
@@ -1865,6 +1874,15 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <span class="k">if</span> (seam.active) {
       <span class="k">const</span> s = seam.progress * seam.progress * (<span class="n">3</span> - <span class="n">2</span> * seam.progress);
       b = lerp(b, seam.to.brightness[<span class="n">0</span>], s);
+      <span class="c">// N4 — the mode dip. The authored brightness ranges are contiguous</span>
+      <span class="c">// (0.30→0.30, 0.55→0.55, 0.80→0.80), so at three of the four boundaries</span>
+      <span class="c">// that lerp interpolates a value into itself and the seam contains no</span>
+      <span class="c">// harmonic event whatsoever. A half-sine trough one mode step deep gives</span>
+      <span class="c">// each boundary one: a single semitone in a single voice, falling and</span>
+      <span class="c">// recovering inside D36's tension trough, which is the right harmony for</span>
+      <span class="c">// a wind-down. It is exactly zero at both ends of the window, so the walk</span>
+      <span class="c">// stays continuous and nothing teleports at the downbeat.</span>
+      b = Math.max(<span class="n">0</span>, b - (<span class="n">1</span> / <span class="n">6</span>) * Math.sin(Math.PI * seam.progress));
     }
     <span class="k">const</span> p = <span class="k">this</span>.params;
     <span class="k">return</span> b * (<span class="n">1</span> - p.brightnessMix) + p.brightnessManual * p.brightnessMix;
