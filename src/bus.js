@@ -175,6 +175,11 @@ export const TRACKS = [
       // the migrating pluck at its near/dry extreme: wooden tuned percussion,
       // struck on the break's non-anchor positions and locked to the grid
       pluck: { fmh: 3.5, fmi: 2.4, oct: 0, k: 3, decay: 0.12, room: 0.05, offGrid: 0, gain: 0.3, orbit: 1 },
+      // P2 — the stridulator: the one thing in this track allowed above 5 kHz,
+      // because a cricket is not a shimmer. Rides a presence walk, so it
+      // arrives and leaves in episodes rather than playing every phrase.
+      stridulate: { bandf: 3600, bandq: 22, rate: 14, depth: 0.85, k: 5,
+        decay: 0.18, room: 0.25, gain: 0.16, threshold: 0.42, pan: 0.28 },
     },
   },
   {

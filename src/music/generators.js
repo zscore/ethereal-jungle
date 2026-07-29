@@ -679,6 +679,42 @@ function pluckLayer(ctx, pk, mode, tuning, rng, rs) {
 }
 
 /**
+ * P2 — the stridulator (undergrowth): a cricket with a rhythm.
+ *
+ * The undergrowth's problem was measurable rather than aesthetic: 2–8 kHz was
+ * half a percent of the mix, and muting the hats changed that number by zero.
+ * The track's brief forbids anything above octave 5, which rules out putting a
+ * shimmer up there — so the top end has to arrive as a *creature*, which the
+ * lid was never meant to exclude.
+ *
+ * Band-passed noise at ~3.6 kHz with a very high Q is one stridulating insect;
+ * chopping it with a tempo-synced tremolo gives it the pulse a real one has.
+ * The first use of superdough's band-pass filter and of `tremolo*` anywhere in
+ * this project. It rides `layerPresenceAt`, so it comes and goes in episodes
+ * rather than sitting on top of the arrangement — a chorus you notice stopping.
+ */
+function stridulateLayer(ctx, st, phraseIndex, seed, rs) {
+  const { s } = ctx;
+  // presence walk, same machinery the ambience accents ride (D16): this is a
+  // creature, and creatures are not session players
+  if (layerPresenceAt('stridulate', phraseIndex, seed) < (st.threshold ?? 0.42)) return null;
+  const mask = euclid(st.k ?? 5, 8, phraseIndex % 8);
+  // pink rather than white on purpose: through a Q-22 band-pass the two are
+  // indistinguishable, and it leaves "white on the drum orbit is the zenith's
+  // hiss and nothing else" true — an invariant test/palette.mjs checks
+  const fig = mask.map((v) => (v ? 'pink' : '~')).join(' ');
+  if (!mask.some(Boolean)) return null;
+  return s(fig)
+    .bandf(st.bandf ?? 3600).bandq(st.bandq ?? 22)
+    .tremolosync(st.rate ?? 14).tremolodepth(st.depth ?? 0.85)
+    .attack(0.01).decay(st.decay ?? 0.18).sustain(0).release(0.12)
+    .room(st.room ?? 0.25).roomsize(rs(1))
+    .gain(st.gain ?? 0.16)
+    .pan(`[${st.pan ?? 0.28} ${1 - (st.pan ?? 0.28)}]`)
+    .orbit(1);
+}
+
+/**
  * The breath voice (forest floor): bamboo/duduk-ish — a tone with living pitch
  * (vibrato) plus its own band of air on the same envelope. The first thing in
  * the set with a body. Returns [tone, air].
@@ -1519,6 +1555,13 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .mask('[1 0 0 0]/4') // the very first bar of the set, and nowhere else
         .orbit(1),
     );
+  }
+  // P2 — the undergrowth's own top end. Weather rather than percussion (D32's
+  // rule for the squawk), so it survives the ether-only sections: an insect
+  // does not stop because the drums dropped out.
+  if (pal.stridulate && castIn) {
+    const chirp = stridulateLayer(ctx, pal.stridulate, voice.phraseIndex ?? 0, voice.baseSeed ?? p.seed, rs);
+    if (chirp) layers.push(chirp);
   }
   if (pal.breath && castIn && sec !== 'intro') {
     for (const l of breathLayer(ctx, pal.breath, mode, tuning, rng, w, tension, rs)) layers.push(gate(l));
