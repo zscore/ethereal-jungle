@@ -49,14 +49,16 @@ sit across the boundary between the middle two — which is why two tracks play
 under the canopy, one inside it and one above it. Those two altitudes are read
 out of the timeline (`CANOPY_BASE`/`CANOPY_TOP` in `look.js`), not chosen.
 
-The figure stream (drum flashes, and the recurring form) is band-independent —
-it spawns at the camera's altitude, because the drums are *here* wherever here
-is. Two non-band elements share the whole stack: the **air** (altitude-graded
-background sphere) and the **mist** (additive card stack through the floor and
-lower canopy, the parallax the fog can't give). A third is nearly one: the
-**near field** (K5) hangs leaves on the lens itself, and since D41 it is also
-what the world's resting aperture is scaled by — under the crowns the frame is
-soft up close, and over them there is nothing near enough to be soft.
+The figure stream (drum flashes) is band-independent — it spawns at the camera's
+altitude, because the drums are *here* wherever here is. Two non-band elements
+share the whole stack: the **air** (altitude-graded background sphere) and the
+**mist** (additive card stack through the floor and lower canopy, the parallax
+the fog can't give). A third is nearly one: the **near field** (K5) is dust that
+wraps around the camera, and since D41 the same altitude curve is what the
+world's resting aperture is scaled by — under the crowns the frame is soft up
+close, and over them there is nothing near enough to be soft. (K5 also hung
+leaf silhouettes on the lens; **D42 removed them** for reading as dirt on the
+lens rather than as foreground.)
 
 The old palette anchors are worth keeping in view, because D39 moved every one
 of them and said why: the undergrowth's deep violet `#1b1030` was *phrygian's*
@@ -69,7 +71,9 @@ band be a blue distance under a golden light instead of one or the other.
 The last family landed as the **corpus shrine** (§3.5, D25): a flickering
 screen in the undergrowth playing back *this world's* own last bar, chopped by
 the break's own `permuteBreak` — the one figure-affording *place* in the world,
-and the only one that owns video. **Artifact operators** (§3.6) are a
+and the only one that owned video. **D42 removed it**: whatever the formalism
+said, what a viewer saw was a television propped up in the litter. The family is
+unclaimed again. **Artifact operators** (§3.6) are a
 post-processing layer over any band, wired to wildness `w`, and now share the
 chain with the perform-rail twins and a ground-only depth of field (D24).
 
@@ -139,24 +143,29 @@ Ordered; each step is independently shippable.
    ground only and the kick ducks its strength; the figure composites sharp.
 3. **Blooms on anchors** for the floor biome: growth's one legal relationship
    to rhythm — events on the *surface* (flowers on downbeats, at most).
-4. **The corpus shrine** in the undergrowth: ✅ *done (D25)* — a screen-object
-   chopping the world's own recent frames with the same σ-permutation
-   machinery as the break. Not "the formalism transfers verbatim": it is the
-   same function, on a ring of render targets instead of drum slices, so the
-   anchors show *now* and the chop's edit rate is `w` by construction.
+4. **The corpus shrine** in the undergrowth: **open again (D42)**. Built as a
+   screen-object chopping the world's own recent frames with the same
+   σ-permutation machinery as the break — not "the formalism transfers
+   verbatim" but the same function, on a ring of render targets instead of drum
+   slices, so the anchors showed *now* and the chop's edit rate was `w` by
+   construction (D25). Removed by eye: a rectangle in a forest reads as a
+   monitor, and the self-quotation is not legible at the size the frame gives
+   it. What is owed here is a corpus surface that is not a *screen* — the
+   formalism was never the problem.
 5. **Artifact operators** wired to `w`: ✅ *done (D14)* — feedback smear
    (afterimage, high-`w` only), chroma displacement (rgbShift), grain/scanline
    (film) over the final composited frame, amounts driven by wildness.
 6. **The recurring form** (§5, repetition legitimizes): one figure that appears
    at each track's climax, transformed — the visual sibling of the set's single
-   melodic cell (`MOTIF` in generators.js). ✅ *filled on the second attempt
-   (D40)*. Built first as a moth line-figure (B2) and **removed** by D28 for
-   looking like clip-art; D28's lasting contribution was to price a replacement
-   at three constraints rather than close the slot, and `src/visuals/motif.js`
-   is shaped by them: it is a **rule** (a growth from the cell itself, emitted
-   breadth-first so depth is a zoom level), it is figure by edge and takes no
-   event, and it grows from the music's own cell under the music's own
-   transforms. Still unverified the way the moth failed — **by eye, in motion**.
+   melodic cell (`MOTIF` in generators.js). **Open, and emptied twice.** First a
+   moth line-figure (B2), removed by D28 for looking like clip-art; then a
+   growth rule (D40) that met all three of D28's constraints by construction and
+   was removed anyway by D42. What the second failure named is the constraint
+   D28 missed: a figure that **hangs at a fixed offset from the lens** for the
+   length of a section reads as an overlay no matter how it is generated. Do not
+   refill this slot with a fourth way of drawing something in front of the
+   camera; the open problem is *placement* — a form that lives somewhere in the
+   world and is approached.
 7. **Stream fusion at the set climax**, spent once: at canopy-track climax
    (the set's golden-ratio point), let figure flashes ignite the ether —
    particles burst from flash positions; forbidden everywhere else, which is

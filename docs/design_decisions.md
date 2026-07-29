@@ -2074,6 +2074,97 @@ the fog's sightline and the look-at distance, not chosen by eye, and the frame
 it produces under the crowns is the one number here most likely to want a
 nudge.
 
+## D42 — Three things removed by eye: the shrine, the form (again), and the fronds (2026-07-29)
+
+**The brief.** *"Can you remove some of the visual elements? The rectangular TV
+screen at the beginning, the spiky black thing that just sits in the foreground,
+and that floating golden L-system hedge."* Three named objects, named by what
+they look like rather than by what they are — which is the only description that
+matters here, because all three were removed for looking like what they look
+like. Reversal of parts of D25, D40 and K5.
+
+**Decision. All three are deleted, not gated.** No flag, no `?shrine=0`-style
+opt-out, no dormant module: `src/visuals/shrine.js`, `src/visuals/motif.js` and
+`test/motif.mjs` are gone, the frond half of `makeNearField` is gone, and every
+call site, debug hook, harness shot and comment that referenced them went with
+them. A visual element kept behind a flag that defaults to off is a thing nobody
+will ever look at again and everybody will have to keep compiling.
+
+**The screen — the corpus shrine (D25, roadmap item 4).** A flickering plane in
+the undergrowth playing back the world's own last bar, chopped by the break's
+own σ-permutation. The argument for it was good and is still good: it was the
+one figure-affording *place* in the world, the only object that owned video, and
+it made the visual set quote itself the way the music does. What a viewer sees
+is a rectangle. It reads as a screen embedded in a forest — a monitor, a
+television, a thing from another medium propped up in the litter — and the
+quotation the chop is making is not legible at the size the frame gives it.
+That is a verdict about the frame, not about the formalism; the σ machinery is
+untouched in `bus.js` where the break uses it.
+
+**The hedge — the recurring form (D40, roadmap item 6, proposal B2).** This is
+the **second** removal of this slot and it is worth being precise about what
+that means. D28 removed the moth for being clip-art and priced a replacement at
+three constraints; D40 met all three — by construction, with a test for each —
+and the result still came off as an object placed in front of the camera rather
+than as part of the world. So the three constraints were **necessary and not
+sufficient**, and the missing one is now nameable: *a persistent figure that
+hangs at a fixed offset from the lens for the length of a section reads as an
+overlay, however it is generated.* Being a rule rather than a drawing fixed the
+scale problem and did nothing about the placement problem. The slot is now
+empty for the second time, and it should stay empty until someone has an answer
+to placement — a form that is somewhere in the world and gets *approached*,
+rather than one carried along in front of the camera.
+
+- The kick rings and snare shards are untouched. They are also figure and also
+  near, and they do not read as overlays, because they last under a second and
+  are gone. The problem is persistence, not the figure stream.
+- `MOTIF` in `generators.js` stays exported. D40 exported it so `test/motif.mjs`
+  could assert the visual cell had not drifted from the musical one; with the
+  test gone the export is read by nothing outside that file, and it is left
+  alone rather than tidied because the music is being worked on next door.
+
+**The spiky black thing — K5's fronds.** Three dark leaf silhouettes parented to
+the camera, framing three corners, swaying on the shared wind. They did their
+job — they were the near end of the parallax gradient and the only objects in
+the world darker than the sky — and they did it by occupying the same corners of
+the frame forever. The wind sway was real and was not enough: a shape that never
+leaves reads as dirt on the lens rather than as a leaf you are standing behind.
+**The motes stay.** They are the same idea done in world space, they wrap around
+the camera so they are inexhaustible, and they *move past you*, which is the
+part that actually says "you are inside something".
+
+- `nearFieldAt` (look.js) survives unchanged and so do its tests. The curve
+  describes the world's near *content* — trunks, undergrowth, dust — and the
+  fronds were one item of it, not its definition. The resting aperture (D41)
+  therefore still has something to be about at every altitude it is spent at.
+- `makeNearField` no longer needs the camera, so `buildWorld` no longer takes
+  it, `scene.add(camera)` is gone, and `isolate()` no longer needs its
+  `setVisible` escape hatch for objects living outside the scene graph. The
+  `groundCam.copy(camera, false)` guard **stays**, with its comment rewritten:
+  nothing hangs off the camera today, and the frame-loop-forever bug it prevents
+  is waiting for whatever hangs off it next.
+
+**What this costs, honestly.** Roadmap items 4 and 6 in `scene_plan.md` go from
+✅ back to open, and the visual set now has no self-quotation and no recurring
+form — the two things §5 says turn a sequence of tracks into an argument. The
+recurring *transformation* survives only in the music. That is a real loss and
+it is the right trade: an argument nobody can look at is worth less than a frame
+somebody wants to keep looking at, and both slots are better empty than filled
+with the thing that was in them.
+
+**Rejected.** *Keeping any of the three behind a quality tier or a URL flag.*
+The shrine already had `?shrine=0` and a governor tier, which is exactly how it
+survived long enough to be removed by hand — a thing that is sometimes there is
+harder to judge than a thing that is always there, and impossible to judge from
+a screenshot sweep. *Shrinking or re-placing them instead of deleting.* Offered
+and declined: the brief named what it did not want, and a smaller screen in the
+corner is still a screen.
+
+**Revisit when** there is an answer to placement for the form slot (a figure met
+in the world rather than carried in front of the lens), or when the near field
+wants a second layer — a foreground element that *enters and leaves* would clear
+the bar the fronds failed, and the wind field is already there to move it.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,

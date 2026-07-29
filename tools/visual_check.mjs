@@ -2,7 +2,7 @@
  * visual_check.mjs — screenshot harness (visuals proposal E3, extended by J2).
  *
  * Boots the app headless, wakes the audio engine, then captures every biome
- * band, the climax, the corpus shrine, a full perform-rail sweep
+ * band, the climax, the litter, a full perform-rail sweep
  * (each knob's visual twin, H1) and both seam flavors (I2), into
  * shots/<backend>-<name>.png. Exists because the WebGPU point-size bug
  * survived as long as it did by us only ever looking at one backend — run it
@@ -133,41 +133,13 @@ for (const [name, a] of stops) {
 }
 await page.evaluate(() => window.jungle.visuals.setStyles(null)); // back to the governor
 
-// The recurring form (B2, second attempt — the slot D28 emptied). Two shots,
-// and they are the two the whole argument rests on: the SAME rule at the two
-// scales D28 named. If it reads at 2.5× among the litter and at 9× over the
-// canopy, the constraint the moth failed is cleared; if one of them looks like
-// clip-art, this one goes the way of the moth and the slot opens again.
-//
-// The presence is pinned rather than waited for. The reveal is a ~4 s growth by
-// design, and on a software rasterizer at 2 fps that is minutes of wall clock —
-// the same trap the style pin exists for. And as with the styles, what is
-// photographed is also asserted: a draw range of zero is invisible in a PNG.
-await page.evaluate(() => window.jungle.visuals.setStyles(false));
-for (const [name, track, altitude] of [
-  ['form-small', 'undergrowth', 0.16],
-  ['form-vast', 'canopy', 0.66],
-]) {
-  await page.click(`button:has-text("${track}")`).catch(() => {});
-  await page.click('button:has-text("peak")').catch(() => {});
-  await page.evaluate((a) => {
-    window.jungle.visuals.setAltitude(a, true);
-    window.jungle.visuals.setLateral(0);  // pin the wander: the form stays framed
-    window.jungle.visuals.setForm(1);     // …and skip the growth, which is slow on purpose
-  }, altitude);
-  await shot(name, 3000);
-  console.log('  form state:', JSON.stringify(await page.evaluate(() => window.jungle.visuals.debugForm())));
-}
-// and one frame proving it is ABSENT where it is supposed to be — the half of
-// "spent, not sprinkled" that a picture of the thing can never show
-await page.evaluate(() => window.jungle.visuals.setForm(null));
-await page.click('button:has-text("groove")').catch(() => {});
-await page.waitForTimeout(1500);
-console.log('  form outside peak:', JSON.stringify(await page.evaluate(() => window.jungle.visuals.debugForm())));
-await page.evaluate(() => {
-  window.jungle.visuals.setLateral(null);
-  window.jungle.visuals.setStyles(null);
-});
+// There were two `form-*` shots here, of the recurring form at the two scales
+// D28 named, and a third assertion that it was absent outside the peak. D42
+// removed the form itself, so the shots went with it. The pattern they set is
+// worth keeping if the slot is ever refilled: pin the presence rather than wait
+// for it (the reveal was a ~4 s growth, which is minutes of wall clock on a
+// software rasterizer), and assert what is drawn as well as photographing it,
+// because a draw range of zero is invisible in a PNG.
 
 // high-tension shot: manual override pushes the whole system toward the climax
 await page.evaluate(() => {
@@ -177,22 +149,20 @@ await page.evaluate(() => {
 });
 await shot('climax', 7000); // a rebuild lands, density/bloom rise
 
-// the corpus shrine (F1): it lives in the undergrowth and nowhere else, so go
-// there — transport and camera agreeing — and turn the wildness up, since the
-// edit rate of the chop IS w
+// the floor of the world (F1's shot, minus its subject): the corpus shrine used
+// to be photographed here, at the bottom of the undergrowth with the wildness up
+// because the edit rate of its chop WAS w. D42 removed the shrine; the frame is
+// kept because the litter at altitude 0.02 is the one place the world is looked
+// at from below, and nothing else in the sweep stands there.
 await page.evaluate(() => { window.jungle.bus.params.tensionMix = 0; });
 await page.click('button:has-text("undergrowth")').catch(() => {});
 await setParams({ wildness: 0.85 });
 await page.evaluate(() => {
   window.jungle.visuals.setAltitude(0.02, true);
-  window.jungle.visuals.setLateral(-2); // pin the wander: the shrine stays framed
-  window.jungle.visuals.shrine(true);   // …and outvote the governor (swiftshader
-});                                     //   sheds this tier long before a GPU does)
-await shot('shrine', 5000);
-await page.evaluate(() => {
-  window.jungle.visuals.setLateral(null);
-  window.jungle.visuals.shrine(null);
+  window.jungle.visuals.setLateral(-2); // pin the wander so the frame repeats
 });
+await shot('litter', 5000);
+await page.evaluate(() => window.jungle.visuals.setLateral(null));
 
 // perform-rail twins (H1): each knob's picture, one at a time, then at rest
 for (const [name, params] of [

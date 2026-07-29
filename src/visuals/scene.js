@@ -8,9 +8,12 @@
  *   FIGURE — figure.js: kick shockwave rings and snare shard scatters.
  *            Sharp, near, discrete.
  *            Spent ONLY on anchor-priced positions (synch-point economy §2.2).
- *            Plus shrine.js: the corpus family (§3.5), figure confined to one
- *            place — the undergrowth — chopping this world's own past with the
- *            break's σ machinery.
+ *
+ * D42 emptied two slots next to that list, by eye and on request: the corpus
+ * shrine (the screen in the undergrowth) and the recurring form (the grown
+ * rule). Both were argued for and both were built; neither survived being
+ * looked at. See design_decisions.md — the arguments are kept there so that
+ * refilling either slot starts from what went wrong rather than from scratch.
  *
  * The sidechain rendered four ways (§2.1): kicks duck the ether, shove the
  * camera, press the mist down, and dip the bloom — one coupling constant,
@@ -53,8 +56,6 @@ import { radialBlur } from 'three/addons/tsl/display/radialBlur.js';
 import * as B from '../bus.js';
 import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
 import { initFigure } from './figure.js';
-import { formAt, FORM_RISE, FORM_FALL } from './motif.js';
-import { initShrine } from './shrine.js';
 import {
   look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt,
   pitchAt, canopyLight, FOV_BASE,
@@ -82,10 +83,10 @@ export async function initScene(canvas) {
   camera.layers.enable(FIGURE_LAYER); // the fallback direct render sees both streams
 
   // ---- GROUND: the one-world jungle (visual seed independent of the music's) ----
-  // The camera goes in because the near field (K5) hangs its fronds on it: the
-  // only part of the world that lives in camera space rather than world space.
-  const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7), camera);
-  scene.add(camera); // …so the fronds are in the graph even when nothing else moves it
+  // Everything in it lives in world space. K5's fronds were the one exception —
+  // silhouettes parented to the camera — and D42 removed them; what remains of
+  // the near field is its dust, which parallaxes in world space like the rest.
+  const world = buildWorld(scene, makeRng(bus.params.seed * 131 + 7));
 
   // There were a DirectionalLight and an AmbientLight here, and they had never
   // lit anything: every material in this world is `MeshBasicMaterial`, which
@@ -100,16 +101,8 @@ export async function initScene(canvas) {
   // real lighting means giving every material a lit path, which D39 correctly
   // priced as a renderer project.
 
-  // ---- FIGURE: rings, shards, and the shrine ----
+  // ---- FIGURE: rings and shards ----
   const figure = initFigure(scene, FIGURE_LAYER);
-  let shrine = null;
-  if (qp.get('shrine') !== '0') {
-    try {
-      shrine = initShrine(renderer, scene, FIGURE_LAYER, bus.params.seed);
-    } catch (err) {
-      console.warn('[visuals] shrine unavailable:', err.message);
-    }
-  }
 
   // ---- post chain: per-stream passes, the perform twins, artifact operators ----
   // Two cameras onto one scene, split by layer; synced to the main camera each
@@ -289,7 +282,6 @@ export async function initScene(canvas) {
   let wasSeam = false;
   let quality = 1;     // the governor's dial, read by the heavy biomes (J1)
   let inkAmt = 0;      // smoothed style target: a medium fades in, it never cuts (L3)
-  let formAmt = 0;     // smoothed presence of the recurring form (B2/D28)
   let camFov = FOV_BASE;               // smoothed dolly zoom on landings (M1)
   let lastSection = 'groove';          // exposed for the harness's style assertions
   const SUN = new THREE.Vector3();     // scratch: the god-ray origin, projected
@@ -308,16 +300,13 @@ export async function initScene(canvas) {
     }
   }
 
-  // ---- debug surface (E2 + J2): ?altitude= / ?biome= / ?shrine=0 / ?dof=0,
-  // plus setAltitude/setLateral/isolate/shrine on window.jungle.visuals ----
+  // ---- debug surface (E2 + J2): ?altitude= / ?biome= / ?dof=0,
+  // plus setAltitude/setLateral/isolate on window.jungle.visuals ----
   let altitudeOverride = null;
   let lateralOverride = null; // pins the wander so a shot is repeatable
-  let shrineForce = null;     // debug override of the governor's shrine tier
   let weatherOverride = null; // pins the weather (K/M2) so a rain shot repeats
   let flashOverride = null;   // holds a strike open long enough to photograph
   let styleForce = null;      // pins the style tier against the quality governor
-  let formForce = null;       // pins the recurring form's reveal (it takes ~4 s)
-  let lastForm = null;        // the form's state this frame, for the harness
   if (qp.has('altitude')) altitudeOverride = parseFloat(qp.get('altitude'));
   if (qp.get('biome')) world.isolate(qp.get('biome'));
   if (qp.has('weather')) {
@@ -351,8 +340,6 @@ export async function initScene(canvas) {
     /** Freeze the lateral wander (sway + band orbit) at x, or null to release. */
     setLateral(x) { lateralOverride = x; },
     isolate(name) { world.isolate(name); },
-    /** Force the shrine on/off; null hands it back to the governor (J1). */
-    shrine(on) { shrineForce = on; if (on != null) shrine?.setEnabled(on); },
     /**
      * What the style tier is actually doing this frame (L). A style bound to a
      * section is easy to *believe* is on while the uniform sits at zero, so
@@ -365,50 +352,6 @@ export async function initScene(canvas) {
         kaleido: +fx.kaleido.value.toFixed(3), streak: +fx.streak.value.toFixed(3),
         godrays: +fx.godrays.value.toFixed(3), shimmer: +fx.shimmer.value.toFixed(3),
       };
-    },
-    /**
-     * The recurring form (B2/D28). Same reasoning as `debugStyle`: "it is in
-     * the peak section" is easy to believe while the draw range sits at zero,
-     * and the previous occupant of this slot was removed for looking wrong in
-     * a screenshot — so what the harness photographs, it also asserts.
-     */
-    debugForm() {
-      return {
-        section: lastSection, amount: +formAmt.toFixed(3),
-        transform: lastForm?.transform, depth: lastForm?.depth,
-        scale: lastForm?.scale, cell: lastForm?.cell,
-        drawn: figure.formDrawn(),
-      };
-    },
-    /**
-     * Pin the form's presence (0..1), or null to hand it back to the section.
-     * The reveal takes ~4 s of wall clock by design, and on a software
-     * rasterizer that is a minute of real time — the same trap the style pin
-     * exists for.
-     */
-    setForm(a) { formForce = a; },
-    /**
-     * The near field's fronds (K5) — the only objects in the world that live
-     * in camera space, which makes them the only ones you cannot inspect by
-     * walking the scene graph from a biome group.
-     */
-    debugNearField() {
-      return camera.children.map((c) => ({
-        visible: c.visible,
-        pos: c.position.toArray().map((v) => +v.toFixed(2)),
-        scale: +c.scale.x.toFixed(2),
-        width: c.geometry?.parameters?.width,
-        color: c.material?.color?.getHexString?.(),
-        opacity: c.material?.opacity,
-        hasMap: !!c.material?.map,
-        mapColorSpace: c.material?.map?.colorSpace,
-      }));
-    },
-    debugShrine() {
-      if (!shrine) return null;
-      const g = shrine.group;
-      return { visible: g.visible, recording: shrine.recording, pos: g.position.toArray(),
-        screenOpacity: g.children[0].material.opacity, camY, camX: camera.position.x };
     },
   };
 
@@ -457,7 +400,6 @@ export async function initScene(canvas) {
       const next = fpsEma < 38 ? Math.max(0.75, pixelRatio - 0.25)
         : fpsEma > 55 ? Math.min(BASE_PR, pixelRatio + 0.25) : pixelRatio;
       if (next !== pixelRatio) { pixelRatio = next; renderer.setPixelRatio(pixelRatio); resize(); }
-      if (shrineForce == null) shrine?.setEnabled(qp.get('shrine') !== '0' && quality > 0.5);
     }
 
     const t = bus.now();
@@ -560,21 +502,6 @@ export async function initScene(canvas) {
     world.update(dt, env);
     figure.update(dt);
 
-    // ---- the recurring form (B2, D28's slot): peak sections only ----
-    // Smoothed for the same reason `inkAmt` is: the section boundary is a hard
-    // edge, and a form that appears on one frame has articulated that frame.
-    // Slower than the ink on the way in, because this one is a growth and the
-    // reveal walks the buffer trunk-first; faster on the way out, because it
-    // has to be gone by the release section and a growth stops faster than it
-    // grows. The two rates and the argument for them live in motif.js.
-    const formState = formAt({
-      section, trackIndex: trackInfo.index, t, drift, seed: bus.params.seed,
-    });
-    lastForm = formState;
-    const formRate = formState.target > formAmt ? FORM_RISE : FORM_FALL;
-    formAmt = formForce ?? formAmt + (formState.target - formAmt) * Math.min(1, dt * formRate);
-    figure.form(formState, formAmt, camera.position);
-
     // palette center of gravity + fog: the continuity layer (§4.2)
     const col = paletteAt(alt);
 
@@ -599,13 +526,12 @@ export async function initScene(canvas) {
     scene.fog.density = L.fogDensity;
 
     if (post) {
-      // Sync the per-stream cameras, then split them by layer. The `false` is
-      // load-bearing: Object3D.copy() clones CHILDREN by default, and since
-      // K5 the camera has children (the near-field fronds) — a recursive copy
-      // grafts three more frond meshes onto each pass camera every frame,
-      // forever. They pile up in the ground pass until the frame is nothing
-      // but leaves. The fronds still render because they hang off `camera`
-      // inside the scene graph, not off these two.
+      // Sync the per-stream cameras, then split them by layer. The `false` stays
+      // even though the camera has no children again: Object3D.copy() clones
+      // CHILDREN by default, and when K5 hung fronds on the camera a recursive
+      // copy grafted three more frond meshes onto each pass camera every frame,
+      // forever, until the ground pass was nothing but leaves. Anything parented
+      // to the camera in future walks into that the same way.
       groundCam.copy(camera, false); groundCam.layers.set(0);
       figureCam.copy(camera, false); figureCam.layers.set(FIGURE_LAYER);
       fx.bloom.strength.value = L.bloom;
@@ -666,12 +592,8 @@ export async function initScene(canvas) {
         scratchColor.copy(col).multiplyScalar(3.2);
         fx.duo.value.set(scratchColor.r, scratchColor.g, scratchColor.b);
       }
-      // the shrine records the world as it stands this frame, then cuts —
-      // before the composite, so what it shows is genuinely the past
-      shrine?.update(dt, env);
       post.render();
     } else {
-      shrine?.update(dt, env);
       renderer.render(scene, camera);
     }
     requestAnimationFrame(frame);
