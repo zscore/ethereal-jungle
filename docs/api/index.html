@@ -203,7 +203,7 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
         <div class="navmod" data-name="src/music/scales.js">
           <a class="navmod-link" href="#src-music-scales-js">scales.js</a>
           <div class="navitems">
-            <a class="navitem" href="#src-music-scales-js--MODES" data-name="modes">MODES</a><a class="navitem" href="#src-music-scales-js--ROOT" data-name="root">ROOT</a><a class="navitem" href="#src-music-scales-js--modeAt" data-name="modeat">modeAt</a><a class="navitem" href="#src-music-scales-js--degreeToMidi" data-name="degreetomidi">degreeToMidi</a><a class="navitem" href="#src-music-scales-js--tune" data-name="tune">tune</a><a class="navitem" href="#src-music-scales-js--PAD_DEGREES" data-name="pad_degrees">PAD_DEGREES</a><a class="navitem" href="#src-music-scales-js--padDegrees" data-name="paddegrees">padDegrees</a><a class="navitem" href="#src-music-scales-js--padVoicing" data-name="padvoicing">padVoicing</a><a class="navitem" href="#src-music-scales-js--bassNotes" data-name="bassnotes">bassNotes</a><a class="navitem" href="#src-music-scales-js--leadNotes" data-name="leadnotes">leadNotes</a><a class="navitem" href="#src-music-scales-js--hasMajorThird" data-name="hasmajorthird">hasMajorThird</a>
+            <a class="navitem" href="#src-music-scales-js--MODES" data-name="modes">MODES</a><a class="navitem" href="#src-music-scales-js--ROOT" data-name="root">ROOT</a><a class="navitem" href="#src-music-scales-js--modeAt" data-name="modeat">modeAt</a><a class="navitem" href="#src-music-scales-js--degreeToMidi" data-name="degreetomidi">degreeToMidi</a><a class="navitem" href="#src-music-scales-js--tune" data-name="tune">tune</a><a class="navitem" href="#src-music-scales-js--PAD_DEGREES" data-name="pad_degrees">PAD_DEGREES</a><a class="navitem" href="#src-music-scales-js--PAD_COLOUR" data-name="pad_colour">PAD_COLOUR</a><a class="navitem" href="#src-music-scales-js--padDegrees" data-name="paddegrees">padDegrees</a><a class="navitem" href="#src-music-scales-js--padColour" data-name="padcolour">padColour</a><a class="navitem" href="#src-music-scales-js--padVoicing" data-name="padvoicing">padVoicing</a><a class="navitem" href="#src-music-scales-js--bassNotes" data-name="bassnotes">bassNotes</a><a class="navitem" href="#src-music-scales-js--leadNotes" data-name="leadnotes">leadNotes</a><a class="navitem" href="#src-music-scales-js--hasMajorThird" data-name="hasmajorthird">hasMajorThird</a>
           </div>
         </div>
         <div class="navmod" data-name="src/music/engine.js">
@@ -323,9 +323,9 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);
       <a href="#coverage">Coverage</a> rather than papered over.</p>
     <div class="stats">
       <div><b>18</b><span>modules</span></div>
-      <div><b>150</b><span>exports</span></div>
-      <div><b>6,607</b><span>lines</span></div>
-      <div><b>83%</b><span>commented</span></div>
+      <div><b>152</b><span>exports</span></div>
+      <div><b>6,639</b><span>lines</span></div>
+      <div><b>84%</b><span>commented</span></div>
     </div>
     <h2>Signal flow</h2>
     <p>Lifted from <code>README.md</code> at generation time, so the two cannot disagree.</p>
@@ -5538,7 +5538,7 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
     <header class="mod-head">
       <h3>scales.js</h3>
       <a class="srcref" href="../../src/music/scales.js">src/music/scales.js</a>
-      <span class="muted">113 lines · 11 exported</span>
+      <span class="muted">145 lines · 13 exported</span>
     </header>
     <div class="doc lead"><p>scales.js — the brightness axis (music doc <span class="ref sec" title="a section of the theory docs in docs/">§2.2</span>) and the warmth axis (<a class="ref adr" href="../design_decisions.md#d22-warmth-is-a-second-harmonic-axis-four-tracks-four-casts-2026-07-27" title="Warmth is a second harmonic axis; four tracks, four casts (2026-07-27)">D22</a>).</p>
 <p>The seven diatonic modes, totally ordered by brightness. Each adjacent step changes exactly one degree by a semitone, so <code>modeBrightness</code> behaves as a continuous-feeling one-dimensional affect knob over a fixed root.</p>
@@ -5701,24 +5701,70 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
   hollow:  [<span class="n">1</span>, <span class="n">2</span>, <span class="n">4</span>, <span class="n">5</span>, <span class="n">8</span>], <span class="c">// warmth &lt; 0.3 — quartal/sus, no third anywhere</span>
 }</code></pre></div></details>
   </article>
+  <article class="item" id="src-music-scales-js--PAD_COLOUR" data-name="pad_colour" data-text="the degree each voicing is blind to — and it is the one the mode ladder moves.">
+    <header class="item-head">
+      <span class="kind table">table</span>
+      <h4><a href="#src-music-scales-js--PAD_COLOUR">PAD_COLOUR</a></h4>
+      
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:99</a>
+    </header>
+    <pre class="sig"><code>PAD_COLOUR = { glad: 14, neutral: 13, hollow: null }</code></pre>
+    <div class="doc"><p>The degree each voicing is BLIND to — and it is the one the mode ladder moves.</p>
+<pre class="diagram">Adjacent modes differ by exactly one degree, which is what makes brightness
+behave as a continuous knob (see MODES above). But a voicing that does not
+contain that degree cannot express the change, and three of the set's mode
+changes were landing on a degree their own stack omits: the forest floor's
+aeolian→dorian moves degree 6 and `neutral` has none, the canopy's
+mixolydian→ionian moves degree 7 and `glad` has none. Measured over a whole
+set, that left the forest floor voicing ONE chord — D F A C E — for all 68
+of its bars, with its single authored harmonic event inaudible.</pre>
+<pre class="diagram">So each stack gains the degree it is missing, an octave above itself, as a
+single **colour voice**: high enough to read as light rather than as a
+changed chord quality, and deliberately excluded from `width` so it is the
+one voice in the pad that does not beat. `hollow` needs none — it already
+contains degrees 2 and 4, which are exactly what phrygian→aeolian and
+ionian→lydian move.</pre></div>
+    
+    <details class="source"><summary>source <span class="muted">1 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">99</pre><pre class="src"><code><span class="k">export</span> <span class="k">const</span> PAD_COLOUR = { glad: <span class="n">14</span>, neutral: <span class="n">13</span>, hollow: <span class="l">null</span> }</code></pre></div></details>
+  </article>
   <article class="item" id="src-music-scales-js--padDegrees" data-name="paddegrees" data-text="">
     <header class="item-head">
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--padDegrees">padDegrees</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:80</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:101</a>
     </header>
     <pre class="sig"><code>padDegrees(warmth = 0.4)</code></pre>
     <div class="doc"><p class="undoc">No comment on this declaration.</p></div>
     
-    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">80
-81
-82
-83
-84</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padDegrees(warmth = <span class="n">0.4</span>) {
+    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">101
+102
+103
+104
+105</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padDegrees(warmth = <span class="n">0.4</span>) {
   <span class="k">if</span> (warmth &gt;= <span class="n">0.6</span>) <span class="k">return</span> PAD_DEGREES.glad;
   <span class="k">if</span> (warmth &lt; <span class="n">0.3</span>) <span class="k">return</span> PAD_DEGREES.hollow;
   <span class="k">return</span> PAD_DEGREES.neutral;
+}</code></pre></div></details>
+  </article>
+  <article class="item" id="src-music-scales-js--padColour" data-name="padcolour" data-text="the colour voice's degree for this warmth, or null where the stack sees the change already.">
+    <header class="item-head">
+      <span class="kind function">function</span>
+      <h4><a href="#src-music-scales-js--padColour">padColour</a></h4>
+      
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:108</a>
+    </header>
+    <pre class="sig"><code>padColour(warmth = 0.4)</code></pre>
+    <div class="doc"><p>The colour voice's degree for this warmth, or null where the stack sees the change already.</p></div>
+    
+    <details class="source"><summary>source <span class="muted">5 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">108
+109
+110
+111
+112</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padColour(warmth = <span class="n">0.4</span>) {
+  <span class="k">if</span> (warmth &gt;= <span class="n">0.6</span>) <span class="k">return</span> PAD_COLOUR.glad;
+  <span class="k">if</span> (warmth &lt; <span class="n">0.3</span>) <span class="k">return</span> PAD_COLOUR.hollow;
+  <span class="k">return</span> PAD_COLOUR.neutral;
 }</code></pre></div></details>
   </article>
   <article class="item" id="src-music-scales-js--padVoicing" data-name="padvoicing" data-text="the ethereal chord vocabulary: high lushness, zero tendency (§2.1 rule 3), now warmth-gated and per-track tuned.">
@@ -5726,22 +5772,30 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--padVoicing">padVoicing</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:93</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:121</a>
     </header>
     <pre class="sig"><code>padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0 } = {})</code></pre>
     <div class="doc"><p>The ethereal chord vocabulary: high lushness, zero tendency (<span class="ref sec" title="a section of the theory docs in docs/">§2.1</span> rule 3), now warmth-gated and per-track tuned. <code>width</code> (cents) splits every voice into a beating pair — the pad's own chorus, and the reason the plain <code>detune</code> control is not used (superdough maps it to the supersaw's freqspread, which a stock oscillator does not have).</p></div>
     
-    <details class="source"><summary>source <span class="muted">8 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">93
-94
-95
-96
-97
-98
-99
-100</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padVoicing(mode, warmth = <span class="n">0.4</span>, { oct = <span class="n">1</span>, tuning, width = <span class="n">0</span> } = {}) {
+    <details class="source"><summary>source <span class="muted">12 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> padVoicing(mode, warmth = <span class="n">0.4</span>, { oct = <span class="n">1</span>, tuning, width = <span class="n">0</span> } = {}) {
   <span class="k">const</span> voices = padDegrees(warmth).map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
-  <span class="k">if</span> (!width) <span class="k">return</span> voices;
-  <span class="k">return</span> voices.flatMap((n) =&gt; [n - width / <span class="n">200</span>, n + width / <span class="n">200</span>]);
+  <span class="k">const</span> colour = padColour(warmth);
+  <span class="c">// the colour voice is appended AFTER the width split, so it stays single and</span>
+  <span class="c">// beatless — one clean tone on top of a chorusing stack (see PAD_COLOUR)</span>
+  <span class="k">const</span> stack = width ? voices.flatMap((n) =&gt; [n - width / <span class="n">200</span>, n + width / <span class="n">200</span>]) : voices;
+  <span class="k">if</span> (colour == <span class="l">null</span>) <span class="k">return</span> stack;
+  <span class="k">return</span> [...stack, tune(degreeToMidi(colour, mode, oct), tuning)];
 }
 
 <span class="c">/** Pentatonic subset for the bass color loop (maximally even E(5,12) inside the mode). */</span>
@@ -5752,14 +5806,14 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--bassNotes">bassNotes</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:100</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:132</a>
     </header>
     <pre class="sig"><code>bassNotes(mode, oct = -1, tuning)</code></pre>
     <div class="doc"><p>Pentatonic subset for the bass color loop (maximally even E(5,12) inside the mode).</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">100
-101
-102</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> bassNotes(mode, oct = -<span class="n">1</span>, tuning) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">132
+133
+134</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> bassNotes(mode, oct = -<span class="n">1</span>, tuning) {
   <span class="k">return</span> [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">5</span>, <span class="n">6</span>].map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
 }</code></pre></div></details>
   </article>
@@ -5768,14 +5822,14 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--leadNotes">leadNotes</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:105</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:137</a>
     </header>
     <pre class="sig"><code>leadNotes(mode, oct = 2, tuning)</code></pre>
     <div class="doc"><p>Lead pitch set: one octave of the mode, registered high (<span class="ref sec" title="a section of the theory docs in docs/">§2.3</span>: ether ≥ octave 4).</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">105
-106
-107</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> leadNotes(mode, oct = <span class="n">2</span>, tuning) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">137
+138
+139</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> leadNotes(mode, oct = <span class="n">2</span>, tuning) {
   <span class="k">return</span> [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>, <span class="n">7</span>].map((deg) =&gt; tune(degreeToMidi(deg, mode, oct), tuning));
 }</code></pre></div></details>
   </article>
@@ -5784,14 +5838,14 @@ tuning      { stretch: cents/octave, just: 0..1 } — the arc is
       <span class="kind function">function</span>
       <h4><a href="#src-music-scales-js--hasMajorThird">hasMajorThird</a></h4>
       
-      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:110</a>
+      <a class="srcref" href="../../src/music/scales.js" title="open the source file">scales.js:142</a>
     </header>
     <pre class="sig"><code>hasMajorThird(voices)</code></pre>
     <div class="doc"><p>True if any voice sits a major third (mod octave) above the root — the joy test.</p></div>
     
-    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">110
-111
-112</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> hasMajorThird(voices) {
+    <details class="source"><summary>source <span class="muted">3 lines</span></summary><div class="code"><pre class="gutter" aria-hidden="true">142
+143
+144</pre><pre class="src"><code><span class="k">export</span> <span class="k">function</span> hasMajorThird(voices) {
   <span class="k">return</span> voices.some((n) =&gt; (((Math.round(n) - ROOT) % <span class="n">12</span>) + <span class="n">12</span>) % <span class="n">12</span> === <span class="n">4</span>);
 }</code></pre></div></details>
   </article>
@@ -17225,10 +17279,10 @@ $(<span class="s">'overlay'</span>).addEventListener(<span class="s">'click'</sp
 
   <section id="coverage">
     <h2>Coverage</h2>
-    <p>125 of 150 exports carry a comment. The rest are listed here,
+    <p>127 of 152 exports carry a comment. The rest are listed here,
       which is the honest version of a documentation tool: the page cannot invent an explanation, so
       it says where one is missing.</p>
-    <ul class="gaps"><li><a href="#src-bus-js--makeRng"><code>makeRng</code></a> <span class="muted">src/bus.js:18</span></li><li><a href="#src-bus-js--makeDrift"><code>makeDrift</code></a> <span class="muted">src/bus.js:45</span></li><li><a href="#src-bus-js--SEAM_LATE_BARS"><code>SEAM_LATE_BARS</code></a> <span class="muted">src/bus.js:297</span></li><li><a href="#src-bus-js--SEAM_SECONDS"><code>SEAM_SECONDS</code></a> <span class="muted">src/bus.js:298</span></li><li><a href="#src-bus-js--SET_BARS"><code>SET_BARS</code></a> <span class="muted">src/bus.js:300</span></li><li><a href="#src-bus-js--SET_SECONDS"><code>SET_SECONDS</code></a> <span class="muted">src/bus.js:301</span></li><li><a href="#src-bus-js--bus"><code>bus</code></a> <span class="muted">src/bus.js:478</span></li><li><a href="#src-midi-js--initMidi"><code>initMidi</code></a> <span class="muted">src/midi.js:53</span></li><li><a href="#src-music-engine-js--initEngine"><code>initEngine</code></a> <span class="muted">src/music/engine.js:25</span></li><li><a href="#src-music-engine-js--toggle"><code>toggle</code></a> <span class="muted">src/music/engine.js:152</span></li><li><a href="#src-music-engine-js--stopEngine"><code>stopEngine</code></a> <span class="muted">src/music/engine.js:163</span></li><li><a href="#src-music-generators-js--euclid"><code>euclid</code></a> <span class="muted">src/music/generators.js:22</span></li><li><a href="#src-music-generators-js--SNARE_BAGS"><code>SNARE_BAGS</code></a> <span class="muted">src/music/generators.js:167</span></li><li><a href="#src-music-generators-js--SNARE_GHOSTS"><code>SNARE_GHOSTS</code></a> <span class="muted">src/music/generators.js:177</span></li><li><a href="#src-music-scales-js--padDegrees"><code>padDegrees</code></a> <span class="muted">src/music/scales.js:80</span></li><li><a href="#src-osc-js--initOsc"><code>initOsc</code></a> <span class="muted">src/osc.js:51</span></li><li><a href="#src-perform-js--PERFORM_KEYS"><code>PERFORM_KEYS</code></a> <span class="muted">src/perform.js:40</span></li><li><a href="#src-perform-js--EQ_MID_HZ"><code>EQ_MID_HZ</code></a> <span class="muted">src/perform.js:96</span></li><li><a href="#src-ui-js--initUI"><code>initUI</code></a> <span class="muted">src/ui.js:10</span></li><li><a href="#src-visuals-biomes-js--WORLD_TOP"><code>WORLD_TOP</code></a> <span class="muted">src/visuals/biomes.js:68</span></li><li><a href="#src-visuals-figure-js--initFigure"><code>initFigure</code></a> <span class="muted">src/visuals/figure.js:18</span></li><li><a href="#src-visuals-look-js--TINT_THIN"><code>TINT_THIN</code></a> <span class="muted">src/visuals/look.js:59</span></li><li><a href="#src-visuals-look-js--pitchAt"><code>pitchAt</code></a> <span class="muted">src/visuals/look.js:138</span></li><li><a href="#src-visuals-look-js--FOV_DOLLY"><code>FOV_DOLLY</code></a> <span class="muted">src/visuals/look.js:401</span></li><li><a href="#src-visuals-weather-js--WORLD_TOP_DEFAULT"><code>WORLD_TOP_DEFAULT</code></a> <span class="muted">src/visuals/weather.js:75</span></li></ul>
+    <ul class="gaps"><li><a href="#src-bus-js--makeRng"><code>makeRng</code></a> <span class="muted">src/bus.js:18</span></li><li><a href="#src-bus-js--makeDrift"><code>makeDrift</code></a> <span class="muted">src/bus.js:45</span></li><li><a href="#src-bus-js--SEAM_LATE_BARS"><code>SEAM_LATE_BARS</code></a> <span class="muted">src/bus.js:297</span></li><li><a href="#src-bus-js--SEAM_SECONDS"><code>SEAM_SECONDS</code></a> <span class="muted">src/bus.js:298</span></li><li><a href="#src-bus-js--SET_BARS"><code>SET_BARS</code></a> <span class="muted">src/bus.js:300</span></li><li><a href="#src-bus-js--SET_SECONDS"><code>SET_SECONDS</code></a> <span class="muted">src/bus.js:301</span></li><li><a href="#src-bus-js--bus"><code>bus</code></a> <span class="muted">src/bus.js:478</span></li><li><a href="#src-midi-js--initMidi"><code>initMidi</code></a> <span class="muted">src/midi.js:53</span></li><li><a href="#src-music-engine-js--initEngine"><code>initEngine</code></a> <span class="muted">src/music/engine.js:25</span></li><li><a href="#src-music-engine-js--toggle"><code>toggle</code></a> <span class="muted">src/music/engine.js:152</span></li><li><a href="#src-music-engine-js--stopEngine"><code>stopEngine</code></a> <span class="muted">src/music/engine.js:163</span></li><li><a href="#src-music-generators-js--euclid"><code>euclid</code></a> <span class="muted">src/music/generators.js:22</span></li><li><a href="#src-music-generators-js--SNARE_BAGS"><code>SNARE_BAGS</code></a> <span class="muted">src/music/generators.js:167</span></li><li><a href="#src-music-generators-js--SNARE_GHOSTS"><code>SNARE_GHOSTS</code></a> <span class="muted">src/music/generators.js:177</span></li><li><a href="#src-music-scales-js--padDegrees"><code>padDegrees</code></a> <span class="muted">src/music/scales.js:101</span></li><li><a href="#src-osc-js--initOsc"><code>initOsc</code></a> <span class="muted">src/osc.js:51</span></li><li><a href="#src-perform-js--PERFORM_KEYS"><code>PERFORM_KEYS</code></a> <span class="muted">src/perform.js:40</span></li><li><a href="#src-perform-js--EQ_MID_HZ"><code>EQ_MID_HZ</code></a> <span class="muted">src/perform.js:96</span></li><li><a href="#src-ui-js--initUI"><code>initUI</code></a> <span class="muted">src/ui.js:10</span></li><li><a href="#src-visuals-biomes-js--WORLD_TOP"><code>WORLD_TOP</code></a> <span class="muted">src/visuals/biomes.js:68</span></li><li><a href="#src-visuals-figure-js--initFigure"><code>initFigure</code></a> <span class="muted">src/visuals/figure.js:18</span></li><li><a href="#src-visuals-look-js--TINT_THIN"><code>TINT_THIN</code></a> <span class="muted">src/visuals/look.js:59</span></li><li><a href="#src-visuals-look-js--pitchAt"><code>pitchAt</code></a> <span class="muted">src/visuals/look.js:138</span></li><li><a href="#src-visuals-look-js--FOV_DOLLY"><code>FOV_DOLLY</code></a> <span class="muted">src/visuals/look.js:401</span></li><li><a href="#src-visuals-weather-js--WORLD_TOP_DEFAULT"><code>WORLD_TOP_DEFAULT</code></a> <span class="muted">src/visuals/weather.js:75</span></li></ul>
   </section>
 
   <footer>

@@ -77,10 +77,38 @@ export const PAD_DEGREES = {
   hollow:  [1, 2, 4, 5, 8], // warmth < 0.3 — quartal/sus, no third anywhere
 };
 
+/**
+ * The degree each voicing is BLIND to — and it is the one the mode ladder moves.
+ *
+ * Adjacent modes differ by exactly one degree, which is what makes brightness
+ * behave as a continuous knob (see MODES above). But a voicing that does not
+ * contain that degree cannot express the change, and three of the set's mode
+ * changes were landing on a degree their own stack omits: the forest floor's
+ * aeolian→dorian moves degree 6 and `neutral` has none, the canopy's
+ * mixolydian→ionian moves degree 7 and `glad` has none. Measured over a whole
+ * set, that left the forest floor voicing ONE chord — D F A C E — for all 68
+ * of its bars, with its single authored harmonic event inaudible.
+ *
+ * So each stack gains the degree it is missing, an octave above itself, as a
+ * single **colour voice**: high enough to read as light rather than as a
+ * changed chord quality, and deliberately excluded from `width` so it is the
+ * one voice in the pad that does not beat. `hollow` needs none — it already
+ * contains degrees 2 and 4, which are exactly what phrygian→aeolian and
+ * ionian→lydian move.
+ */
+export const PAD_COLOUR = { glad: 14, neutral: 13, hollow: null };
+
 export function padDegrees(warmth = 0.4) {
   if (warmth >= 0.6) return PAD_DEGREES.glad;
   if (warmth < 0.3) return PAD_DEGREES.hollow;
   return PAD_DEGREES.neutral;
+}
+
+/** The colour voice's degree for this warmth, or null where the stack sees the change already. */
+export function padColour(warmth = 0.4) {
+  if (warmth >= 0.6) return PAD_COLOUR.glad;
+  if (warmth < 0.3) return PAD_COLOUR.hollow;
+  return PAD_COLOUR.neutral;
 }
 
 /**
@@ -92,8 +120,12 @@ export function padDegrees(warmth = 0.4) {
  */
 export function padVoicing(mode, warmth = 0.4, { oct = 1, tuning, width = 0 } = {}) {
   const voices = padDegrees(warmth).map((deg) => tune(degreeToMidi(deg, mode, oct), tuning));
-  if (!width) return voices;
-  return voices.flatMap((n) => [n - width / 200, n + width / 200]);
+  const colour = padColour(warmth);
+  // the colour voice is appended AFTER the width split, so it stays single and
+  // beatless — one clean tone on top of a chorusing stack (see PAD_COLOUR)
+  const stack = width ? voices.flatMap((n) => [n - width / 200, n + width / 200]) : voices;
+  if (colour == null) return stack;
+  return [...stack, tune(degreeToMidi(colour, mode, oct), tuning)];
 }
 
 /** Pentatonic subset for the bass color loop (maximally even E(5,12) inside the mode). */
