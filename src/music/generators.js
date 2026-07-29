@@ -325,6 +325,19 @@ const HOLES = {
   build2:  '[1 1 [1 1 1 0] 1]/4',  // one sixteenth swallowed, mid-phrase
 };
 
+/**
+ * T4 — near-stream level per section. Not a mastering move: it is the shape of
+ * the form stated in the one dimension a listener reads without being taught,
+ * and it is what makes the peak an arrival rather than a label.
+ */
+const SECTION_WEIGHT = {
+  intro: 1, build: 0.88, groove: 0.9, breakdown: 1,
+  build2: 0.95, peak: 1.1, release: 0.86,
+  // the seam matches the release it follows: D36 made this window a wind-down,
+  // and a break that steps UP on the way into it undoes that in one bar
+  seam: 0.86,
+};
+
 /** How often a section wants its phrases turned around, and how hard. */
 const TURN_LIFT = {
   intro: 0, build: 0.45, groove: 0.3, breakdown: 0.15,
@@ -1211,7 +1224,12 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     const bp = pal.break ?? {};
     const thin = sec === 'build'; // degraded entry: the break fades in over the build
     const sigma = permuteBreak(wEff, rng);
-    const bg = bp.gain ?? 1;      // the costume's own level (the zenith sits back)
+    // T4 — the drop has to be measurably a drop. Before this the peak summed to
+    // 24.3 gain/bar against the groove's 21.7, and the recordings put them 0.7 dB
+    // apart: the arrangement announced an arrival the mix did not deliver. The
+    // fix is relative, and it is mostly the OTHER sections coming down — a peak
+    // that is loud because everything around it is not is how records do this.
+    const bg = (bp.gain ?? 1) * (SECTION_WEIGHT[sec] ?? 1);
     // D36 — the exit fades bar by bar. The break is the loudest thing in the
     // arrangement, so a seam that winds down has to be visible here first;
     // `seam.progress + j/SEAM_BARS` is the window's own clock, which keeps the
@@ -1392,7 +1410,11 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         const close = Array.from({ length: 4 }, (_, j) => Math.round(9000 - 6500 * prog(j)));
         hats = hats.lpf(`[${close.join(' ')}]/4`);
       } else {
-        const base = ((sparse ? 0.15 : 0.22) + 0.16 * tension) * lvl;
+        // T1 — lifted. A --mute=hats A/B showed removing the hats changed the
+        // 2–4 kHz band by 0.0 percentage points: 198 events a track that could
+        // not be heard. Raised here, and high-passed below (`hats.hpf`) so what
+        // they contribute is air rather than more of the 120–250 Hz pileup.
+        const base = ((sparse ? 0.2 : 0.3) + 0.2 * tension) * lvl;
         const gains = hatMask.map((v, i) =>
           v ? (base * (0.55 + 0.5 * (1 - INDISPENSABILITY[i]))).toFixed(3) : '0');
         hats = hats.gain(`[${gains.join(' ')}]`); // 16 per-step velocities
@@ -1607,6 +1629,11 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         .attack(swell ? (pp.attack ?? 1.2) * 2 : (pp.attack ?? 1.2))
         .release((swell ? (pp.release ?? 4) * 1.5 : (pp.release ?? 4)) * relMul)
         .lpf(`[${breath(-0.2)} ${breath(0.12)} ${breath(-0.07)} ${breath(0.3)}]`)
+        // T2 — the ether gets out of the floor's way. Measured, 120–250 Hz was
+        // 38% of the undergrowth's groove and 53% of its breakdown, against
+        // 11% and 0.6% below 120: not heavy, boxy. Muting the break RAISED the
+        // figure, so the pileup is the pad and the bass in the same octave.
+        .hpf(pp.hpf ?? 150)
         .room(0.9).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))   // low DRR: distance, the heavens
         .gain((pp.gain ?? 0.32) * (swell ? 1.4 : 1) * gainMul)
         .pan(`[${(0.5 - drift).toFixed(3)} 0.5 ${(0.5 + drift).toFixed(3)} 0.5]`)

@@ -156,7 +156,7 @@ export const TRACKS = [
         // Q3 — the degradation is weather, not a setting: the bit depth wanders
         // ±1.5 and the ceiling ±12% on the 1/f walk
         crushDrift: 1.5, lpfDrift: 0.12 },
-      hats: { s: 'hh', lpf: 5500, gain: 0.85 },
+      hats: { s: 'hh', lpf: 5500, hpf: 900, gain: 1.0 }, // T1 — audible, and out of the mud
       // D23 — the skeleton's appetite. The undergrowth is the heaviest floor
       // of the four: the second kick is almost always there, the ghosts are
       // buried under it.
@@ -204,7 +204,7 @@ export const TRACKS = [
     roomChar: { 1: { lp: 5200, dim: 1100, fade: 0.09 }, 3: { lp: 7500, dim: 500, fade: 0.35 } },
     palette: {
       break: { speed: 1.02, shape: 0.15, room: 0.18 }, // tight, tuned up, dry
-      hats: { s: 'hh', lpf: 9000, gain: 1 },
+      hats: { s: 'hh', lpf: 9000, hpf: 800, gain: 1.05 },
       // the busiest skeleton in the set — this is the track that struts
       kick: { extras: 0.95, gain: 0.6 },
       snare: { ghosts: 0.9, gain: 0.34 },
@@ -257,7 +257,7 @@ export const TRACKS = [
     roomChar: { 1: { lp: 9000, dim: 380, fade: 0.14 }, 3: { lp: 14000, dim: 160, fade: 0.55 } },
     palette: {
       break: { room: 0.15 }, // full, open, top end intact
-      hats: { s: 'hh', lpf: 12000, gain: 1.12 },
+      hats: { s: 'hh', lpf: 12000, hpf: 700, gain: 1.15 },
       // open and affirmed: fewer extra kicks than the floor, but the ghosts
       // are audible — warmth leans into the backbeat, here and in `backbeat`
       // D29 — auditioned in lab.html: pushed kicks + busy ghosts. The glad,
