@@ -312,10 +312,15 @@ export function look(params = {}, env = {}) {
   // zenith stretches, in opposite directions, exactly as the tuning table says.
   const tuning = env.tuning ?? {};
   const detune = Math.min(1, Math.abs(tuning.stretch ?? 0) / 4) * (1 - clamp01(tuning.just ?? 0));
-  // 0.0022 was the first value and it was far too much: the figure stream is
-  // composited before the artifact operators, so the shift lands hardest on the
+  // 0.0022 was the first value and it was far too much: the figure stream was
+  // composited before the artifact operators, so the shift landed hardest on the
   // sharpest, brightest thing in the frame, and the undergrowth's snare shards
-  // came out rainbow-edged. At 0.0009 it is roughly twice the resting wildness
+  // came out rainbow-edged. D53 removed those shards and the whole stream with
+  // them, so the worst offender is gone and the constant is now sized against
+  // the brightest thing the GROUND has — a caustic, a firefly, a strike-lit
+  // trunk edge. It was not retuned: those are softer, so 0.0009 can only be
+  // conservative here, and re-opening it is an eye's job, not arithmetic's.
+  // At 0.0009 it is roughly twice the resting wildness
   // term — perceptible on a bright edge if you look for it, which is what "the
   // picture is very slightly out of register" is supposed to mean.
   const shift = w * w * 0.004 + echo * 0.006 + detune * 0.0009;

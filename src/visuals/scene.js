@@ -1,42 +1,50 @@
 /**
- * scene.js — the visualizer. Two streams, bimodally clustered (visual doc §2.1):
+ * scene.js — the visualizer. ONE stream (visual doc §2.1's GROUND):
  *
  *   GROUND — the one-world jungle (biomes.js): family-biomes stacked in
  *            altitude, soft, slow, continuous. The camera's height IS the mode
  *            brightness — the set's harmonic story rendered as a journey
  *            upward or downward through the jungle (§4.4).
- *   FIGURE — figure.js: kick shockwave rings and snare shard scatters.
- *            Sharp, near, discrete.
- *            Spent ONLY on anchor-priced positions (synch-point economy §2.2).
  *
- * D42 emptied two slots next to that list, by eye and on request: the corpus
- * shrine (the screen in the undergrowth) and the recurring form (the grown
- * rule). Both were argued for and both were built; neither survived being
- * looked at. See design_decisions.md — the arguments are kept there so that
- * refilling either slot starts from what went wrong rather than from scratch.
+ * The FIGURE stream stood here — figure.js: a white shockwave ring on the kick,
+ * a white shard scatter on the snare — and D53 removed it by eye, on request,
+ * which emptied the stream entirely and took its render layer, its second pass
+ * camera and `figure.js` with it. That is the third slot next to this list to be
+ * emptied the same way: D42 removed the corpus shrine and the recurring form
+ * (the grown rule, itself a refill of the slot D28's moth left). Every one of
+ * them was argued for, built, and then looked at. See design_decisions.md — the
+ * arguments are kept there so that refilling any of these slots starts from what
+ * went wrong rather than from scratch.
  *
- * The sidechain rendered four ways (§2.1): kicks duck the ether, shove the
- * camera, press the mist down, and dip the bloom — one coupling constant,
- * everywhere.
+ * What the drums still do is not nothing, and it is the part §2.1 actually
+ * cared about: the sidechain, rendered four ways — kicks duck the ether, shove
+ * the camera, press the mist down, and dip the bloom — one coupling constant,
+ * everywhere, plus the downbeat the blooms open on. The kick was never only its
+ * ring; the ring was the one part of it drawn on top of the world instead of
+ * happening to the world.
  * Clairvoyance: events arrive on the bus BEFORE they sound; we queue and fire
  * them on the shared audio clock. T(t) is sampled 2 s ahead and brightness
  * 4 s ahead, so the light rises — and the camera begins its travel — before
  * anything is audible. Track transitions are camera traversals, free.
  *
- * Post chain (scene_plan roadmap 2 + 5, fancy proposal G1/H1): ground and
- * figure render as separate layer passes — depth of field and bloom belong to
- * the ground only (the eye's "no reverb on the drum bus"), the figure
- * composites over them clinically sharp — then the perform-rail twins (color,
- * posterize, vignette) and the artifact operators (feedback smear, chroma
- * displacement, grain) run over the final frame. Every uniform on that chain
+ * Post chain (scene_plan roadmap 2 + 5, fancy proposal G1/H1): the ground
+ * renders as one pass — it used to be two, split by layer, so that depth of
+ * field and bloom could belong to the ground only (the eye's "no reverb on the
+ * drum bus") while the figure composited over them clinically sharp; with the
+ * figure gone there is nothing to keep out of the wash, so the split went with
+ * it (D53) — then the perform-rail twins (color, posterize, vignette) and the
+ * artifact operators (feedback smear, chroma displacement, grain) run over the
+ * final frame. Every uniform on that chain
  * comes from look.js, which is pure and tested; this file only moves values.
  * The chain is built in tiers so the frame-time governor can drop optics
  * before it drops pixels, and drop pixels before it drops the groove; if
  * nothing builds (odd backend), we fall back to a direct render.
  *
- * Stream fusion (proposal B3), spent ONCE per set: in the canopy track's
- * golden-ratio window, kicks ignite the ether — the one effect forbidden
- * everywhere else, which is what makes it the climax (§5).
+ * Fusion (proposal B3), spent ONCE per set: in the canopy track's golden-ratio
+ * window, kicks ignite the ether — the one effect forbidden everywhere else,
+ * which is what makes it the climax (§5). B3 called this the two streams
+ * fusing; with one stream left it is simply the drum reaching the world, which
+ * is what it always looked like.
  */
 import * as THREE from 'three';
 import { WebGPURenderer, PostProcessing } from 'three/webgpu';
@@ -55,7 +63,6 @@ import { dotScreen } from 'three/addons/tsl/display/DotScreenNode.js';
 import { radialBlur } from 'three/addons/tsl/display/radialBlur.js';
 import * as B from '../bus.js';
 import { buildWorld, paletteAt, WORLD_TOP } from './biomes.js';
-import { initFigure } from './figure.js';
 import {
   look, orbitAt, seamPush, seamFlashes, seamExhale, seamFov, gradeAt, styleAt,
   pitchAt, canopyLight, FOV_BASE,
@@ -66,7 +73,8 @@ import { faunaAt } from './fauna.js';
 const { bus, makeRng } = B;
 const BAR = B.BAR_SECONDS ?? 240 / 168; // fallback if the bus is mid-refactor
 
-const FIGURE_LAYER = 1; // ground lives on 0; the streams never share a pass
+// Layer 1 used to be the figure's, so the two streams never shared a pass.
+// D53 emptied it; everything in this world is on layer 0 now.
 
 export async function initScene(canvas) {
   const renderer = new WebGPURenderer({ canvas, antialias: true });
@@ -81,7 +89,6 @@ export async function initScene(canvas) {
   scene.fog = new THREE.FogExp2(0x04060a, 0.055);
   const camera = new THREE.PerspectiveCamera(FOV_BASE, 1, 0.1, 300);
   camera.position.set(0, 2, 12);
-  camera.layers.enable(FIGURE_LAYER); // the fallback direct render sees both streams
 
   // ---- GROUND: the one-world jungle (visual seed independent of the music's) ----
   // Everything in it lives in world space. K5's fronds were the one exception —
@@ -104,17 +111,14 @@ export async function initScene(canvas) {
   // real lighting means giving every material a lit path, which D39 correctly
   // priced as a renderer project.
 
-  // ---- FIGURE: rings and shards ----
-  const figure = initFigure(scene, FIGURE_LAYER);
-
-  // ---- post chain: per-stream passes, the perform twins, artifact operators ----
-  // Two cameras onto one scene, split by layer; synced to the main camera each
-  // frame. Built as a function of one flag so the governor can rebuild it a
-  // tier down (J1) instead of dropping frames: `optics` adds the depth-of-field
-  // pass, which is the most expensive thing on the chain and the only one whose
-  // absence costs no compositional meaning.
+  // ---- post chain: the ground pass, the perform twins, artifact operators ----
+  // One camera onto the scene, synced to the main camera each frame (it was two,
+  // split by layer, until D53 emptied the figure). Built as a function of one
+  // flag so the governor can rebuild it a tier down (J1) instead of dropping
+  // frames: `optics` adds the depth-of-field pass, which is the most expensive
+  // thing on the chain and the only one whose absence costs no compositional
+  // meaning.
   const groundCam = camera.clone();
-  const figureCam = camera.clone();
   const fx = {
     bloom: null, shift: null,
     smear: uniform(0), grain: uniform(0.1),
@@ -146,7 +150,6 @@ export async function initScene(canvas) {
 
   function buildChain(optics, styles) {
     const groundPass = pass(scene, groundCam);
-    const figurePass = pass(scene, figureCam);
     const gtex = groundPass.getTextureNode();
     // G1: DRR rendered. Focus rides the camera's own look-at distance; the
     // focal length closes as the perform filter dives and the wash opens.
@@ -156,10 +159,10 @@ export async function initScene(canvas) {
 
     if (styles) {
       // L8 shimmer and L5 kaleido both resample the ground's own texture, so
-      // they run here — before the bloom, so what blooms is what you see. Note
-      // that both are GROUND-only: the figure composites over them untouched,
-      // for the same reason it escapes the depth of field. The drums are never
-      // refracted and never folded; that is what keeps them the drums.
+      // they run here — before the bloom, so what blooms is what you see. They
+      // used to be GROUND-only in a sense that mattered, the figure compositing
+      // over them untouched for the same reason it escaped the depth of field;
+      // with the figure gone (D53) they simply reach everything.
       const wob = vec2(
         sin(screenUV.y.mul(38).add(fx.t.mul(2.1))),
         cos(screenUV.x.mul(31).sub(fx.t.mul(1.7))),
@@ -183,8 +186,6 @@ export async function initScene(canvas) {
         center: fx.sunUV, exposure: float(0.5), decay: float(0.93), count: int(24),
       }).mul(fx.godrays));
     }
-
-    frame_ = frame_.add(figurePass);
 
     // L6: the grade — how the picture was SHOT, applied before the rail, which
     // is the hand on the mixer of an already-graded picture. Lift/gain/gamma,
@@ -285,13 +286,19 @@ export async function initScene(canvas) {
   // choir, the hoover, the breath, the ghost, the toucan — arrived here with
   // its pitch, its orbit and its duration attached and was dropped on the floor.
   //
-  // The toucan joins the two drums, and it is the ONLY addition. That is the
+  // The toucan joins the drums, and it is the ONLY addition. That is the
   // synch-point economy (§2.2) doing its job rather than an oversight: the
   // squawk fires once every two phrases (`every: 2`), which makes it about the
   // rarest recurring event in the set and therefore the one place an anchored
   // creature behaviour can be afforded. Widening this filter further is how
   // this world would turn into a drum machine — see fauna.js's U1 note.
-  const WATCHED = new Set(['bd', 'sd', 'toucan']);
+  //
+  // D53 dropped `sd` from the set. The snare's only consumer was the shard
+  // scatter, and with that gone the subscription was queueing forty events a
+  // phrase to hand them to a branch that did nothing. The snare is not silent
+  // in the picture — it is simply not drawn AT; it moves the same mix the rest
+  // of the arrangement does.
+  const WATCHED = new Set(['bd', 'toucan']);
   const pending = [];
   bus.subscribe((evt) => {
     if (evt.type === 'hap' && WATCHED.has(evt.sound)) pending.push(evt);
@@ -316,61 +323,47 @@ export async function initScene(canvas) {
   const SUN_DIR = new THREE.Vector3(0, 1, 0);
   const scratchColor = new THREE.Color();
 
-  /**
-   * W3 — orbit as distance. D35 gave every track a reverb size per orbit
-   * (`rooms: { 1: 2, 3: 11, 4: 7 }` and so on), the bus has published each
-   * event's `orbit` since then, and the eye — whose entire doctrine is that fog
-   * IS distance — had never once looked at it. So the figure now spawns where
-   * its room says it is: the undergrowth's 2-second near orbit puts a ring in
-   * your face, the canopy's 11-second ether puts one far back, and the zenith's
-   * drowned drums (rooms {1: 9}) finally LOOK dematerialised instead of merely
-   * being described that way in a comment.
-   *
-   * Rooms run about 2–12, and the mapping is deliberately gentle: this is a
-   * depth cue, not a teleport, and a kick that lands 30 units away stops being
-   * the figure stream.
-   */
-  function spawnDistance(evt, track) {
-    const room = track?.rooms?.[evt.orbit ?? 1] ?? 4;
-    return 6 + Math.min(1, Math.max(0, (room - 2) / 10)) * 17;
-  }
+  // W3 — orbit as distance — stood here: `spawnDistance` read the track's own
+  // reverb size for the event's orbit (D35's `rooms`) and pushed the ring back
+  // that far, so the undergrowth's 2-second near orbit put one in your face and
+  // the zenith's drowned drums (rooms {1: 9}) LOOKED dematerialised. It was the
+  // only place the eye ever read `rooms`, and D53 removed the thing it placed.
+  // Nothing else in the picture is spawned at a drum's position, so the mapping
+  // went with it rather than sitting here unused. It was four lines, and the
+  // parent of D53's commit still has them if a future world-space event wants
+  // the same depth cue.
 
   // Deterministic jitter, keyed to the event's own scheduled time. This used to
   // be two `Math.random()` calls, which were the only nondeterminism left in
-  // the figure stream and the reason a figure shot could not be reproduced
-  // exactly. Same spread, same look, and now a seek back to the same bar draws
-  // the same frame.
+  // the event path and the reason such a shot could not be reproduced exactly.
+  // Same spread, same look, and now a seek back to the same bar draws the same
+  // frame. The toucan's flush is the last consumer.
   function jitter(evt, salt) {
     return hash01(Math.floor((evt.when ?? 0) * 1000) * 2654435761 + salt) - 0.5;
   }
 
-  function fire(evt, track) {
-    // U5 — the toucan is not a figure event. It startles birds and nothing
-    // else: no ring, no shard, no duck. The call is already the loudest thing
-    // in the canopy; giving it a shape too would spend a synch point twice.
+  function fire(evt) {
+    // U5 — the toucan is not a drum. It startles birds and nothing else: no
+    // duck, no downbeat. The call is already the loudest thing in the canopy;
+    // giving it a shape too would spend a synch point twice.
     if (evt.sound === 'toucan') {
       world.flush(camera.position.x + jitter(evt, 11) * 26, camY + jitter(evt, 12) * 6,
         camera.position.z - 10 + jitter(evt, 13) * 20, bus.now());
       return;
     }
-    const d = spawnDistance(evt, track);
-    const x = camera.position.x + jitter(evt, 1) * 8;
-    const z = camera.position.z - d + jitter(evt, 2) * 5;
-    if (evt.sound === 'bd') {
-      figure.kick(x, camY, z, evt.gain ?? 1, fusionNow);
-      // X5 — the coupling constant, honestly. This was a flat `duck = 1`, while
-      // the audio duck has always been `p.coupling * (0.4 + 0.6 * tension)`
-      // (generators.js). So the knob documented as "how much the two worlds
-      // touch" governed one world: at coupling 0 the sidechain left the mix
-      // while the camera kept flinching, the bloom kept dipping and the mist
-      // kept pressing down. Same expression as the audio now, which is what
-      // this file's header has claimed since it was written.
-      duck = (bus.params.coupling ?? 0.6) * (0.4 + 0.6 * bus.tensionAt(bus.now()));
-      world.onDownbeat();              // blooms: growth's one rhythm contact
-      if (fusionNow) world.ignite();   // the climax: figure ignites ground
-    } else {
-      figure.snare(x, camY + (jitter(evt, 3) + 0.5) * 2, z, evt.gain ?? 1);
-    }
+    // …which leaves the kick, and what the kick does is happen to the world
+    // rather than get drawn on it.
+    //
+    // X5 — the coupling constant, honestly. This was a flat `duck = 1`, while
+    // the audio duck has always been `p.coupling * (0.4 + 0.6 * tension)`
+    // (generators.js). So the knob documented as "how much the two worlds
+    // touch" governed one world: at coupling 0 the sidechain left the mix
+    // while the camera kept flinching, the bloom kept dipping and the mist
+    // kept pressing down. Same expression as the audio now, which is what
+    // this file's header has claimed since it was written.
+    duck = (bus.params.coupling ?? 0.6) * (0.4 + 0.6 * bus.tensionAt(bus.now()));
+    world.onDownbeat();              // blooms: growth's one rhythm contact
+    if (fusionNow) world.ignite();   // the climax: the drum reaches the world
   }
 
   // ---- debug surface (E2 + J2): ?altitude= / ?biome= / ?dof=0,
@@ -585,7 +578,7 @@ export async function initScene(canvas) {
     }
 
     // fire due events (arrived ahead of time, keyed to the audio clock)
-    while (pending.length && pending[0].when <= audioNow + dt) fire(pending.shift(), trackInfo.track);
+    while (pending.length && pending[0].when <= audioNow + dt) fire(pending.shift());
 
     duck = Math.max(0, duck - dt * 6);
 
@@ -653,7 +646,7 @@ export async function initScene(canvas) {
     if (faunaForce === false) for (const k of Object.keys(fauna.presence)) fauna.presence[k] = 0;
     lastFauna = fauna;
 
-    // ---- world + figure state: bus signals only ----
+    // ---- world state: bus signals only ----
     const env = {
       t, T, Tf, b, alt, drift, duck, w, quality,
       trackPhase: trackInfo.phase, trackIndex: trackInfo.index,
@@ -676,7 +669,6 @@ export async function initScene(canvas) {
       sky: skyForce ?? skyTier,   // Y2 — the governor's top rung, read by sky.js
     };
     world.update(dt, env);
-    figure.update(dt);
 
     // palette center of gravity + fog: the continuity layer (§4.2)
     const col = paletteAt(alt);
@@ -706,14 +698,13 @@ export async function initScene(canvas) {
     scene.fog.density = L.fogDensity;
 
     if (post) {
-      // Sync the per-stream cameras, then split them by layer. The `false` stays
-      // even though the camera has no children again: Object3D.copy() clones
-      // CHILDREN by default, and when K5 hung fronds on the camera a recursive
-      // copy grafted three more frond meshes onto each pass camera every frame,
-      // forever, until the ground pass was nothing but leaves. Anything parented
-      // to the camera in future walks into that the same way.
+      // Sync the pass camera. The `false` stays even though the camera has no
+      // children again: Object3D.copy() clones CHILDREN by default, and when K5
+      // hung fronds on the camera a recursive copy grafted three more frond
+      // meshes onto each pass camera every frame, forever, until the ground pass
+      // was nothing but leaves. Anything parented to the camera in future walks
+      // into that the same way.
       groundCam.copy(camera, false); groundCam.layers.set(0);
-      figureCam.copy(camera, false); figureCam.layers.set(FIGURE_LAYER);
       fx.bloom.strength.value = L.bloom;
       fx.smear.value = L.smear;
       fx.shift.amount.value = L.shift;

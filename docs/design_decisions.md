@@ -3057,6 +3057,67 @@ the 185 Hz fundamental survives) and let the slice ring past its window instead
 of being cut at 0.089 s. That is a different change, and it should be made only
 if someone wants a second drummer badly enough to audition one.
 
+## D53 — The FIGURE stream is removed by eye, and the whole stream goes with it (2026-07-31)
+
+**Decision.** `src/visuals/figure.js` is deleted. The two effects in it — the
+white shockwave ring on every `bd` and the white shard scatter on every `sd` —
+were removed on request, by eye, and since they were the entire membership of
+the FIGURE stream, the machinery that existed to serve them went too: the figure
+render layer (layer 1), the second pass camera, the extra `pass()` in the post
+chain, `sd` in the scene's `WATCHED` event filter, and `spawnDistance` (W3).
+
+**Why the machinery and not just the meshes.** An empty layer still costs a full
+render pass every frame, and — worse in this repo's terms — it leaves the file
+claiming a two-stream architecture that has one stream in it. Half the comments
+in `scene.js`, `look.js` and `biomes.js` were arguments about the *boundary*
+between ground and figure: what escapes the depth of field, what the shimmer and
+the kaleido may not touch, why the pool's rings must stay soft. Those arguments
+are only true while there is a figure. Leaving them would have made the next
+reader's mental model wrong in a way no test would catch.
+
+**What the kick still does, and why removing the ring is not "the drums are now
+invisible".** The ring was one of five things a kick did, and the only one drawn
+*on top of* the world rather than done *to* it. The other four remain, all from
+the same coupling constant (X5): the ether ducks, the camera is shoved down
+0.18 units, the mist presses down, the bloom dips — plus `world.onDownbeat()`,
+which is the blooms' one rhythm contact, and `world.ignite()` in the canopy's
+fusion window. The picture still moves on the beat. It simply no longer has
+something white and hard-edged pasted over it while doing so.
+
+**The snare is the real loss, and it is small.** `sd` had exactly one consumer,
+so with the shards gone the event was queued forty times a phrase to reach a
+branch that did nothing, and it is dropped from the filter. There is no
+backbeat-specific visual now. This is the accepted cost: §2.2's synch-point
+economy always priced the backbeat as the *cheapest* place to spend a synch
+point (it is the most predictable event in the set), and the two arrivals that
+actually carry the form — the seam landing (I2) and the fusion window (B3) —
+are untouched.
+
+**W3 went with it, and that is worth naming.** `spawnDistance` mapped the
+track's per-orbit reverb size (D35's `rooms`) to how far back the ring spawned,
+so the zenith's drowned drums looked as dematerialised as they sounded. It was
+the only place the eye ever read `rooms`, and it has no other consumer, so it is
+deleted rather than parked. If a future world-space event wants a depth cue from
+the mix, the mapping is four lines and it is in this commit's parent.
+
+**Rejected.** *Keeping the ring and softening it* — the same instinct that
+produced two rounds of the FORM slot (D28, D42), and both times the verdict was
+that the problem was the category, not the parameters. A soft white ring pasted
+on the frame on every kick is a soft version of the thing that was removed.
+*Keeping the shards, dropping the ring* (or the reverse) — the request named
+both, and half a stream is the worst of the three options: all the architecture,
+half the vocabulary. *Keeping the empty layer for a future refill* — the pattern
+in this file is that empty slots are documented, not scaffolded; D28's slot has
+been empty through two attempts to fill it and the emptiness cost nothing.
+
+**Revisit when** the set is watched end to end and the drums feel absent from
+the picture rather than merely undrawn. The honest fix then is NOT to restore
+`figure.js` — it is to find a fifth thing a kick can do *to the world*, in the
+grammar the other four are already in. The three removals recorded here (D28,
+D42, D53) are all the same verdict from three directions: **something drawn in
+front of this world reads as placed there, and this world's whole argument is
+that nothing in it was placed.**
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,
