@@ -631,9 +631,13 @@ made from idiom rather than from evidence:
 - **The interlude.** Twenty-three seconds with no drums and no floor, four
   minutes before the end. It is either the breath the set never had or it is
   dead air, and there is no third outcome. `TRACKS[3].bars` is the knob.
-- **The crack.** Two tracks have one and two do not, which is an authored
-  claim about which drummer each track has. If the canopy's reads as a second
-  snare rather than as the same kit, its `gain` is the dial.
+- **The crack.** ~~Two tracks have one and two do not.~~ **The forest floor's
+  was heard and removed — D52**, and the reason is a defect rather than a
+  taste call: the slice it was built from is snare *plus hat*, high-passed
+  above the snare's only tonal component, and truncated less than halfway
+  through its decay. **The canopy still has one, built the same way.** It is
+  milder on every axis but suspect for the same reason, and it is the first
+  thing to listen to.
 
 ## 12. `faceDirection` is not trusted on this backend (opened 2026-07-29, D47)
 

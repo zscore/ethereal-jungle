@@ -3004,6 +3004,59 @@ per biome, as opposed to what `isolate` asked for. That readout is the whole
 difference between finding this in seconds and finding it twice, a day at a
 time.
 
+## D52 — The forest floor's crack is removed by ear, and why it was never a snare (2026-07-31)
+
+**Reverses half of D50's AD14.** The verdict was that it "does not sound very
+good at all" — heard as *bells*, which turns out to be a precise description of
+what it actually was rather than a loose one. `TRACKS[1].palette.crack` is gone;
+the canopy keeps its quieter one for now.
+
+**What went wrong is a sample-level fact nobody checked.** AD14's whole economy
+was "slices 4 and 12 are the source's own backbeats, so a hard dry snare costs
+no new material". Slices 4 and 12 *are* where the snare is — but that is not all
+that is there, and the slice is not the whole hit:
+
+- `make_break` puts a **hat on all sixteen slots**, so every slice carries a hat
+  as well as whatever else is on it. Slice 4 is snare + hat, not snare.
+- `snare()` is a 185 Hz sine body at 30% under band-limited noise at 70%. The
+  crack high-passed at **240 Hz**, which removes the body *entirely* — the only
+  tonal, weighted part of the hit. What survived was the noise plus the hat.
+- The hat is `noise - prev`, i.e. differentiated white noise: the brightest
+  thing in the sample.
+- `slice(16, …)` is a **1/16 window, 0.089 s at 168 BPM**, and the snare decays
+  over 0.2 s. So the window truncates the hit less than halfway through its
+  decay, hard.
+
+A hard-truncated, body-stripped noise burst, then `shape(0.3)` on top of it. That
+is a bright, tonally-ambiguous, abruptly-ended transient, which is what a
+listener would reasonably call a bell — and it was being placed on 2 and 4 of
+the strut track, forty times a phrase.
+
+**The lesson is the one this repo keeps relearning in a new costume.** D31's
+toucan toms failed because `speed` is varispeed and dragging a croak down takes
+its formants with it; the fix was to stop treating a recording as raw material
+for a synthesizer. This is the same error one level down: the crack treated a
+*slice index* as if it named an instrument. It named a 0.089-second window of a
+mix. Deriving a part from an existing sample is only free when you have looked
+at what is actually inside the window, and nothing in AD14 did — the tests
+asserted that the crack landed on the backbeat, was spent by section and sat
+under the forest floor's, all of which were true of a sound that should not have
+been in the set.
+
+**What was NOT removed, and what it costs.** The canopy's crack is milder on
+every axis (hpf 200 not 240, shape 0.14 not 0.3, gain 0.26 not 0.36) but it is
+built by the same mechanism and is therefore suspect for the same reason — the
+verdict named one track and the scope here is one track. **It wants the same
+ear.** With it gone, AD14's second axis — *which drummer* — is down to one track
+having a second layer and three not, which is a weaker version of the argument
+than the one D50 recorded.
+
+If the axis is worth rescuing rather than dropping, the honest fix is not a
+gentler filter: it is to keep the snare's body (drop the high-pass to ~120 Hz so
+the 185 Hz fundamental survives) and let the slice ring past its window instead
+of being cut at 0.089 s. That is a different change, and it should be made only
+if someone wants a second drummer badly enough to audition one.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,
