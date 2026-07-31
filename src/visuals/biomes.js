@@ -1535,11 +1535,15 @@ function makeRain(rng) {
 }
 
 // A still black pool among the roots, lit by caustics — two interfering
-// caustic layers scrolling at coprime rates, plus ripple rings. The rings are
-// the only expanding rings in the world that are NOT figure: they are
-// stochastic, soft-edged, slow, and they never coincide with a kick, which is
-// what keeps the kick's shockwave legible as the one ring that means something
-// (§2.2 — do not counterfeit the currency).
+// caustic layers scrolling at coprime rates, plus ripple rings. These used to
+// be the only expanding rings in the world that were NOT figure — stochastic,
+// soft-edged, slow, never coinciding with a kick, which is what kept the kick's
+// shockwave legible as the one ring that meant something (§2.2 — do not
+// counterfeit the currency). D53 removed the kick's ring, so they are now the
+// only expanding rings in the world at all, and the constraint they were shaped
+// by is worth keeping anyway: it is why they read as water rather than as a hit.
+// A ring here that sharpened up or locked to a beat would be re-minting exactly
+// the currency D53 just spent.
 //
 // TWO REQUESTED CHANGES, and they are opposite sides of one problem: the pool
 // was hard to see and never still.
