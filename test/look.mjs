@@ -14,7 +14,7 @@ import {
 } from '../src/visuals/look.js';
 import { PERFORM_DEFAULTS } from '../src/perform.js';
 import { BAND_COLORS, WORLD_TOP, CROWN_Y0, CROWN_Y1 } from '../src/visuals/biomes.js';
-import { TRACKS } from '../src/bus.js';
+import { TRACKS, CAST_INDEX } from '../src/bus.js';
 
 let failures = 0;
 function check(cond, label) {
@@ -317,16 +317,28 @@ console.log('the crown layer is READ OUT of the timeline, not chosen (D39)');
   // TRACKS[i].brightness drives camera altitude, so the set's own seams already
   // say where the storeys are. The crowns are hung on two of them: below /
   // inside / above, with two tracks under the canopy, one in it, one over it.
-  const seams = TRACKS.map((tr) => altOf(tr.brightness[1]));
-  check(TRACKS.length === 4, 'four tracks, four storeys');
+  const [UG, FF, CP, ZN] = CAST_INDEX;
+  const seams = CAST_INDEX.map((i) => altOf(TRACKS[i].brightness[1]));
+  check(CAST_INDEX.length === 4, 'four casts, four storeys');
   check(Math.abs(CANOPY_BASE - seams[1]) < 0.01,
     `the crowns' underside is the understory→canopy seam (${seams[1].toFixed(3)})`);
   check(Math.abs(CANOPY_TOP - seams[2]) < 0.01,
     `and their last leaf is the canopy→zenith seam (${seams[2].toFixed(3)})`);
-  check(altOf(TRACKS[0].brightness[1]) < CANOPY_BASE && altOf(TRACKS[1].brightness[0]) < CANOPY_BASE,
+  check(altOf(TRACKS[UG].brightness[1]) < CANOPY_BASE && altOf(TRACKS[FF].brightness[0]) < CANOPY_BASE,
     'the first two tracks play entirely under the canopy');
-  check(altOf(TRACKS[3].brightness[0]) >= CANOPY_TOP - 1e-9,
+  check(altOf(TRACKS[ZN].brightness[0]) >= CANOPY_TOP - 1e-9,
     'and the last one entirely above it — the climb through the crowns is exactly one track long');
+  // AD4 — and the fifth entry is not a fifth storey. The interlude is flat at
+  // the canopy→zenith brightness, so the camera does not climb at all while it
+  // plays: the ascent HOLDS at the last leaf for two phrases, which is what the
+  // arrangement is doing at the same moment (§AD4 — the continuity core alone).
+  // The eye gets this for free from `brightnessAt`; nothing in the visuals was
+  // told the interlude exists.
+  const inter = TRACKS.find((tr) => tr.interlude);
+  check(inter, 'the set has an interlude');
+  check(inter.brightness[0] === inter.brightness[1] &&
+        Math.abs(altOf(inter.brightness[0]) - CANOPY_TOP) < 0.01,
+    `the camera holds at the crowns’ last leaf for the whole of it — a landing, not a storey (alt ${altOf(inter.brightness[0]).toFixed(3)})`);
   check(Math.abs(CROWN_Y0 - CANOPY_BASE * WORLD_TOP) < 1e-9 && Math.abs(CROWN_Y1 - CANOPY_TOP * WORLD_TOP) < 1e-9,
     'the geometry and the light curve are the same two numbers, in two units');
 }

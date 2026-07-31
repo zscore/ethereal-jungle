@@ -134,6 +134,14 @@ export const TRACK_WEATHER = [
   { mist: 0.55, rain: 0.90, wind: 0.45, storm: 0.95, stormFar: 0.15 },
   // canopy — the windy band, the storm moving off
   { mist: 0.35, rain: 0.15, wind: 1.00, storm: 0.35, stormFar: 0.55 },
+  // AD4 — the interlude. One row per entry of `TRACKS`, and this is the entry
+  // that is not a biome: it holds at the canopy's last leaf for two phrases
+  // while the arrangement strips to its continuity core. So its weather is the
+  // held breath between two bands rather than a fifth kind of weather — it is
+  // the wind dropping and the storm already gone, which is what makes the
+  // zenith's own distant lightning arrive as a NEW fact rather than as more of
+  // the canopy's.
+  { mist: 0.25, rain: 0.05, wind: 0.45, storm: 0.10, stormFar: 0.90 },
   // zenith — clear and high, and storming somewhere else. Dry and electric at
   // once, which is the combination the old derivation could not express: rain
   // stays 0 (the brief for this band is "clear"), and the cells go to the

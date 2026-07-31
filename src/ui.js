@@ -3,7 +3,7 @@
  * (The WebMIDI layer in midi.js does exactly the same thing: write params,
  * nothing else. The bus is the single writable surface.)
  */
-import { bus, TRACKS, BAR_SECONDS, sectionSpans, sectionAt, trackStartBar } from './bus.js';
+import { bus, TRACKS, BAR_SECONDS, SECTION_NAMES, sectionSpans, sectionAt, trackStartBar } from './bus.js';
 import { lpfCutoff, hpfCutoff } from './perform.js';
 import { makeKnob } from './knob.js';
 
@@ -74,6 +74,13 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
   const seek = (bar) => {
     if (onSeek?.(bar)) $('toggle').textContent = 'stop';
   };
+  // TODO §9 — `initUI` appended without clearing, so a second evaluation of this
+  // module against the same DOM (the docs plugin writes into the watched tree at
+  // dev-server start, vite hot-updates the client) left every track and section
+  // button in the transport twice. Clearing first makes the symptom impossible
+  // whatever triggers the re-init, which is the cheaper of the two fixes.
+  $('tracks').replaceChildren();
+  $('sections').replaceChildren();
   TRACKS.forEach((tr, i) => {
     const btn = document.createElement('button');
     btn.textContent = tr.name;
@@ -81,17 +88,23 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
     btn.addEventListener('click', () => seek(trackStartBar(i)));
     $('tracks').appendChild(btn);
   });
-  for (const { name } of sectionSpans(TRACKS[0].bars)) {
+  // AD1 — the section rail is the UNION of every form, not track 0's. Track 0
+  // no longer has a build2 and the zenith has no build at all, so building the
+  // rail from one track's spans would hide sections that exist elsewhere in the
+  // set. A button whose section the current track does not have disables itself
+  // rather than silently doing nothing.
+  const sectionButtons = SECTION_NAMES.map((name) => {
     const btn = document.createElement('button');
     btn.textContent = name;
     btn.title = `skip to the ${name} of the current track`;
     btn.addEventListener('click', () => {
       const { track, index } = bus.trackAt(bus.now());
-      const sp = sectionSpans(track.bars).find((s) => s.name === name);
+      const sp = sectionSpans(track).find((s) => s.name === name);
       if (sp) seek(trackStartBar(index) + sp.startBar);
     });
     $('sections').appendChild(btn);
-  }
+    return [name, btn];
+  });
 
   // MIDI learn: once WebMIDI is up (it arrives async), grow a `cc` button per
   // slider — click, twist a hardware knob, done. Buttons show the live binding.
@@ -129,7 +142,10 @@ export function initUI({ onChange, onToggle, onReroll, onSeek }) {
     const t = bus.now();
     const { track, phase, tLocal } = bus.trackAt(t);
     const seam = bus.seamAt(t);
-    const sec = sectionAt(Math.floor(tLocal / BAR_SECONDS), track.bars);
+    const sec = sectionAt(Math.floor(tLocal / BAR_SECONDS), track);
+    // AD1 — grey out the sections this track's form does not contain
+    const here = new Set(sectionSpans(track).map((s) => s.name));
+    for (const [name, btn] of sectionButtons) btn.disabled = !here.has(name);
     readout.textContent =
       `track    ${track.name} ${(phase * 100).toFixed(0)}%` +
       (seam.active ? `  → ${seam.to.name}` : '') + `\n` +

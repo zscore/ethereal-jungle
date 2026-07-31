@@ -8,6 +8,12 @@ import {
   windAt, windDir, gustAt, windCeiling, weatherAt, episode,
   lightningAt, flashEnv, hash01, WIND, TRACK_WEATHER, STRIKE_SLOT,
 } from '../src/visuals/weather.js';
+import { TRACKS, CAST_INDEX } from '../src/bus.js';
+
+// AD4 — the set has five entries and four biomes; the weather rows are per
+// ENTRY (they are indexed by track index at runtime), so the biome claims below
+// index through the casts.
+const [UG, FF, CP, ZN] = CAST_INDEX;
 
 let failures = 0;
 function check(cond, label) {
@@ -98,7 +104,7 @@ console.log('the weather axis crossfades across seams (M2)');
   check(maxJump < 0.01, 'no boundary produces a weather cut');
   check(at(0).rain > at(1).rain, 'and the rain really does hand over (floor → canopy is a drying)');
 
-  const dry = weatherAt({ t: 10, index: 3, T: 0.5 });
+  const dry = weatherAt({ t: 10, index: ZN, T: 0.5 });
   check(dry.rain === 0, 'the zenith is clear, and clear means zero rain');
   const floor = weatherAt({ t: 10, index: 1, T: 1 });
   check(floor.rain > 0.2 && floor.storm > 0.2, 'the forest floor rains — the twin of its ambrain bed');
@@ -121,19 +127,19 @@ console.log('storm is not rain (V3): the sky and the strikes can finally meet');
 {
   // over a whole track, at its own peak tension, does the zenith ever storm?
   let zenithPeak = 0;
-  for (let i = 0; i < 4000; i++) zenithPeak = Math.max(zenithPeak, weatherAt({ t: i * 0.5, index: 3, T: 0.6 }).storm);
+  for (let i = 0; i < 4000; i++) zenithPeak = Math.max(zenithPeak, weatherAt({ t: i * 0.5, index: ZN, T: 0.6 }).storm);
   check(zenithPeak > 0.2, `the zenith storms while staying dry (peak ${zenithPeak.toFixed(2)}, rain 0)`);
-  check(weatherAt({ t: 10, index: 3, T: 0.6 }).rain === 0, '…and it is still not raining up there');
+  check(weatherAt({ t: 10, index: ZN, T: 0.6 }).rain === 0, '…and it is still not raining up there');
 
   let struck = 0;
   for (let i = 0; i < 40000; i++) {
-    if (lightningAt(i * 0.01, 1, weatherAt({ t: i * 0.01, index: 3, T: 0.6 }).storm).flash > 0.5) { struck++; break; }
+    if (lightningAt(i * 0.01, 1, weatherAt({ t: i * 0.01, index: ZN, T: 0.6 }).storm).flash > 0.5) { struck++; break; }
   }
   check(struck > 0, 'and lightning actually fires there — the thing that was impossible before');
 
-  check(TRACK_WEATHER[1].stormFar < TRACK_WEATHER[3].stormFar,
+  check(TRACK_WEATHER[FF].stormFar < TRACK_WEATHER[ZN].stormFar,
     'the floor is under its storm; the zenith is watching one on the horizon');
-  check(TRACK_WEATHER[1].storm === Math.max(...TRACK_WEATHER.map((w) => w.storm)),
+  check(TRACK_WEATHER[FF].storm === Math.max(...TRACK_WEATHER.map((w) => w.storm)),
     'the forest floor is still the stormiest — it is the track whose bed is ambthunder');
 
   // storm and rain must be independently reachable, or the decoupling is a lie
@@ -144,7 +150,7 @@ console.log('storm is not rain (V3): the sky and the strikes can finally meet');
 
   function dryStormExists() {
     for (let i = 0; i < 4000; i++) {
-      const w = weatherAt({ t: i * 0.5, index: 3, T: 0.6 });
+      const w = weatherAt({ t: i * 0.5, index: ZN, T: 0.6 });
       if (w.storm > 0.1 && w.rain === 0) return true;
     }
     return false;
@@ -193,12 +199,13 @@ console.log('lightning is seeded, addressable, and rare (K7)');
 
 console.log('the weather rows are the ambience beds, one sense-organ over (D16)');
 {
-  check(TRACK_WEATHER.length === 4, 'one row per track');
-  check(TRACK_WEATHER[1].rain === Math.max(...TRACK_WEATHER.map((w) => w.rain)),
+  check(TRACK_WEATHER.length === TRACKS.length,
+    `one row per entry of the set, AD4's interlude included (${TRACK_WEATHER.length})`);
+  check(TRACK_WEATHER[FF].rain === Math.max(...TRACK_WEATHER.map((w) => w.rain)),
     'the forest floor is the rainiest — it is the track whose bed is ambrain');
-  check(TRACK_WEATHER[2].wind === Math.max(...TRACK_WEATHER.map((w) => w.wind)),
+  check(TRACK_WEATHER[CP].wind === Math.max(...TRACK_WEATHER.map((w) => w.wind)),
     'the canopy is the windiest — it is the track whose bed is ambbirds over gusts');
-  check(TRACK_WEATHER[0].mist === Math.max(...TRACK_WEATHER.map((w) => w.mist)),
+  check(TRACK_WEATHER[UG].mist === Math.max(...TRACK_WEATHER.map((w) => w.mist)),
     'the undergrowth is the dampest — closest air, shortest sightline');
   check(hash01(0) !== hash01(1) && hash01(99) === hash01(99), 'the hash is a hash');
 }

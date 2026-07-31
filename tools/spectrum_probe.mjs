@@ -60,8 +60,8 @@ function startBar() {
     // a couple of phrases BEFORE the seam window, so the approach is in frame
     return trackStartBar(i) + TRACKS[i].bars - SEAM_BARS - PHRASE_BARS;
   }
-  const sp = sectionSpans(TRACKS[track].bars).find((s) => s.name === section);
-  if (!sp) throw new Error(`no section "${section}" — try ${sectionSpans(TRACKS[track].bars).map((s) => s.name).join(', ')}`);
+  const sp = sectionSpans(TRACKS[track]).find((s) => s.name === section);
+  if (!sp) throw new Error(`no section "${section}" — try ${sectionSpans(TRACKS[track]).map((s) => s.name).join(', ')}`);
   return trackStartBar(track) + sp.startBar;
 }
 

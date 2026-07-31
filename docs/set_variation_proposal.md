@@ -1,8 +1,12 @@
 # Set Variation — the fourth telling
 
-Status: **proposal**. Item letters continue the ladder (visuals A–M, audio N–T,
-fauna U–Y, materials Z–AC) at **AD**. No D number is claimed here — that happens
-at merge, per `design_decisions.md`.
+Status: **built — D50.** All sixteen items landed, in two sittings: the eight
+S-items (AD2, AD5, AD7, AD8, AD9, AD10, AD15, AD16) in `a2d832d`, and the eight
+M-items (AD1, AD3, AD4, AD6, AD11, AD12, AD13, AD14) after them. One thing in
+AD12 is deferred rather than done — P6's croak needs a field-recording ingest —
+and **nothing here has been heard**; D50's closing section says what that leaves
+open. Item letters continue the ladder (visuals A–M, audio N–T, fauna U–Y,
+materials Z–AC) at **AD**.
 
 The brief, verbatim in spirit: *each track stands alone well, but by the fourth
 hearing the bassline, the song structure, and the instrumentation are

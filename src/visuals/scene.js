@@ -421,6 +421,8 @@ export async function initScene(canvas) {
     /** Freeze the lateral wander (sway + band orbit) at x, or null to release. */
     setLateral(x) { lateralOverride = x; },
     isolate(name) { world.isolate(name); },
+    /** What the scene graph says is visible, per biome — see world.debugVisible. */
+    debugVisible() { return world.debugVisible(); },
     /**
      * U5 — fire the toucan startle on demand. Waiting two phrases per attempt
      * makes a flush untestable by hand, which is the same trap `strike()`
@@ -540,7 +542,7 @@ export async function initScene(canvas) {
 
     // section name (bus D11) — guarded: the bus may be mid-refactor next door
     let section = 'groove';
-    try { section = B.sectionAt(Math.floor(trackInfo.tLocal / BAR), trackInfo.track.bars).name; } catch { /* keep default */ }
+    try { section = B.sectionAt(Math.floor(trackInfo.tLocal / BAR), trackInfo.track).name; } catch { /* keep default */ }
     lastSection = section;
 
     // stream fusion window: canopy's golden-ratio bar, ±4 bars (B3). The

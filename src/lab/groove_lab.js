@@ -105,7 +105,7 @@ function applyDensity() {
 }
 
 function sectionsFor(trackIndex) {
-  return sectionSpans(TRACKS[trackIndex].bars).filter((s) => s.name !== 'seam');
+  return sectionSpans(TRACKS[trackIndex]).filter((s) => s.name !== 'seam');
 }
 
 function renderGrid(host, bag) {

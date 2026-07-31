@@ -9,7 +9,7 @@ import { controls, stack, Pattern, Fraction } from '@strudel/core';
 import { miniAllStrings } from '@strudel/mini';
 import {
   bus, TRACKS, SET_BARS, PHRASE_BARS, SEAM_BARS, SEAM_LATE_BARS, BAR_SECONDS,
-  AMB_CHUNKS, sectionSpans, seamVariant, trackStartBar,
+  AMB_CHUNKS, sectionSpans, seamVariant, trackStartBar, CAST_INDEX,
 } from '../src/bus.js';
 import {
   makeSetPattern, SEAM_FILLS, FILL_VOICES, seamFillFor, seamFillSound,
@@ -40,8 +40,18 @@ const orbitsIn = (b, e) => new Set(onsets(b, e).map((h) => h.value?.orbit ?? 0))
 const exitingTrack = (intoIndex) => TRACKS[(intoIndex - 1 + TRACKS.length) % TRACKS.length];
 const fillSoundInto = (intoIndex) =>
   seamFillSound(seamFillFor(intoIndex, bus.params.seed), exitingTrack(intoIndex));
-/** Onsets belonging to the seam fill in [b, e). */
-const fillIn = (b, e, snd) => onsets(b, e).filter((h) => h.value?.s === snd);
+/**
+ * Onsets belonging to the seam fill in [b, e).
+ *
+ * Scoped to the NEAR ORBIT as well as to the sound, which matters as soon as a
+ * fill can be pitched: `seamFillLayer` always lands on orbit 1, but the pitched
+ * voice's sound is whatever the exiting track's bass is made of, and a sawtooth
+ * bass shares a name with every pad in the set. Matching on the name alone
+ * quietly counted pad events as fill hits and made a falling figure look like it
+ * had risen in its third bar — found when AD4's interlude, whose pad is a
+ * sawtooth and whose bass does not exist, ended up the exiting track.
+ */
+const fillIn = (b, e, snd) => onsets(b, e).filter((h) => h.value?.s === snd && (h.value?.orbit ?? 0) === 1);
 
 // Timeline geometry: track 0 is `bars` long; the seam window is its last
 // SEAM_BARS bars, the late phase its last SEAM_LATE_BARS bars.
@@ -53,7 +63,7 @@ console.log('geometry');
 check(TRACKS.every((tr) => tr.bars % PHRASE_BARS === 0), 'every track length is whole phrases');
 check(SEAM_BARS % PHRASE_BARS === 0 && SEAM_LATE_BARS % PHRASE_BARS === 0, 'seam phases are whole phrases');
 check(TRACKS.every((tr) => {
-  const spans = sectionSpans(tr.bars);
+  const spans = sectionSpans(tr);
   let bar = 0;
   for (const sp of spans) { if (sp.startBar !== bar) return false; bar += sp.bars; }
   return bar === tr.bars;
@@ -150,25 +160,114 @@ console.log('bar-exactness at the phase edges');
   check(soundsIn(T0 + 8, T0 + 12).has('jbreak'), 'break enters with the build section');
 }
 
-console.log('in-track sections (D11) — track 0 form');
+console.log('in-track sections (D11) — read from the form, not from bar numbers');
 {
-  // layout for a 68-bar track: intro 0-8, build 8-16, groove 16-24,
-  // breakdown 24-32, build2 32-40 (dropout bar 39), peak 40-52, release 52-60
+  // AD1 — this block used to hardcode the layout of a 68-bar track (intro 0-8,
+  // …, dropout bar 39, drop on bar 40) because every track had exactly that
+  // one. Four forms later those numbers are true of the canopy alone, so the
+  // assertions now ASK each track's own spans where its sections are. What is
+  // being tested is unchanged and is the D11 claim itself: form decides which
+  // layers exist, tension only shades how they play.
+  const spanOf = (i, name) => {
+    const sp = sectionSpans(TRACKS[i]).find((s) => s.name === name);
+    return sp && { begin: trackStartBar(i) + sp.startBar, end: trackStartBar(i) + sp.startBar + sp.bars };
+  };
+  const first = (i, name) => {
+    const sp = spanOf(i, name);
+    return sp && [sp.begin, sp.begin + PHRASE_BARS];
+  };
+
   const intro = soundsIn(0, 4);
   check(intro.has('bd') && !intro.has('jbreak') && !intro.has('sd'), 'intro: kick heartbeat, no break/snare');
   // phrase 0 may carry the D18 landing pedal — phrase 1 is always the pure intro
   check(!orbitsIn(4, 8).has(2) && orbitsIn(0, 8).has(3), 'intro phrase 1: no bass, pads present');
-  const groove = soundsIn(16, 20);
-  check(groove.has('jbreak') && groove.has('sd') && orbitsIn(16, 20).has(2), 'groove: full arrangement');
-  const bd = soundsIn(24, 28);
-  check(!bd.has('bd') && !bd.has('jbreak') && !bd.has('hh') && !orbitsIn(24, 28).has(2), 'breakdown: drums and bass gone');
-  check(orbitsIn(24, 32).has(3) && orbitsIn(24, 32).has(4), 'breakdown: pads swell, lead featured');
-  const dropoutBar = soundsIn(39, 40);
-  check(!dropoutBar.has('bd') && !dropoutBar.has('jbreak') && !dropoutBar.has('hh'), 'pre-drop dropout bar is ether-only');
-  check(!orbitsIn(39, 40).has(2) && orbitsIn(39, 40 + 1).has(3), 'dropout: bass gone, pads survive');
-  const dropKick = onsets(40, 41).find((h) => h.value?.s === 'bd');
-  check(dropKick && dropKick.whole.begin.equals(Fraction(40)), 'the drop lands exactly on bar 40');
-  check(soundsIn(40, 44).has('jbreak') && orbitsIn(40, 44).has(2), 'drop: break and bass slam back');
+
+  // …and the section gating holds in EVERY form, which is the AD1 claim: a
+  // track that moves its breakdown moves the silence with it. Over the four
+  // CASTS: AD4's interlude has neither a groove nor a breakdown nor a drop,
+  // which is the entire point of it and is asserted in its own block below.
+  for (const i of CAST_INDEX) {
+    const g = first(i, 'groove');
+    check(soundsIn(...g).has('jbreak') && orbitsIn(...g).has(2),
+      `${TRACKS[i].name}: groove is the full arrangement (bar ${g[0]})`);
+    const bd = first(i, 'breakdown');
+    // the skeleton, the break AS DRUMS, and the floor. Scoped to the near orbit
+    // rather than to the sample name, because the zenith's granular ghost is the
+    // same `jbreak` on the ETHER orbit — and the breakdown is the one section
+    // with no drums in it, which is precisely why R4 put the ghost here: a
+    // drum-shaped texture can only be heard as weather where there are no drums.
+    const near = onsets(...bd).filter((h) => (h.value?.orbit ?? 0) === 1).map((h) => h.value.s);
+    check(!near.some((snd) => ['bd', 'sd', 'hh', 'jbreak'].includes(snd)) && !orbitsIn(...bd).has(2),
+      `${TRACKS[i].name}: breakdown drops the drums and the bass (bar ${bd[0]})`);
+    const bdSpan = spanOf(i, 'breakdown');
+    check(orbitsIn(bdSpan.begin, bdSpan.end).has(3) && orbitsIn(bdSpan.begin, bdSpan.end).has(4),
+      `${TRACKS[i].name}: breakdown swells the pads and features the lead`);
+    // the drop lands exactly on the peak's first bar, wherever the form put it
+    const pk = spanOf(i, 'peak');
+    const dropKick = onsets(pk.begin, pk.begin + 1).find((h) => h.value?.s === 'bd');
+    check(dropKick && dropKick.whole.begin.equals(Fraction(pk.begin)),
+      `${TRACKS[i].name}: the drop lands exactly on bar ${pk.begin - trackStartBar(i)} of the track`);
+    check(soundsIn(pk.begin, pk.begin + PHRASE_BARS).has('jbreak'),
+      `${TRACKS[i].name}: the break slams back on the drop`);
+  }
+
+  // AD1 — the drop no longer lives at the same bar of every track, which is the
+  // whole point of authoring four forms. (Two forms may still agree; four
+  // identical ones is what the complaint was about.)
+  const drops = CAST_INDEX.map((i) => sectionSpans(TRACKS[i]).find((s) => s.name === 'peak').startBar);
+  check(new Set(drops).size > 1, `the drops are at different bars of their tracks (${drops.join(' / ')})`);
+  check(new Set(TRACKS.map((tr) => tr.bars)).size > 1,
+    `AD3 — and the tracks are not all the same length either (${TRACKS.map((tr) => tr.bars).join(' / ')})`);
+  check(TRACKS.reduce((s, tr) => s + tr.bars, 0) === SET_BARS && SET_BARS % PHRASE_BARS === 0,
+    `the set is still ${SET_BARS} whole-phrase bars, so every absolute-time alignment survives`);
+
+  // the pre-drop dropout bar is a build2 device, and only two forms have a
+  // build2 now — so it is asserted where it exists rather than everywhere
+  const withBuild2 = CAST_INDEX.filter((i) => spanOf(i, 'build2'));
+  check(withBuild2.length > 0 && withBuild2.length < CAST_INDEX.length,
+    `build2 is now a choice, not a given (${withBuild2.map((i) => TRACKS[i].name).join(', ')})`);
+  for (const i of withBuild2) {
+    const b2 = spanOf(i, 'build2');
+    const bar = b2.end - 1;   // §5's pre-drop denial: the final bar of build2
+    const s = soundsIn(bar, bar + 1);
+    check(!s.has('bd') && !s.has('jbreak') && !s.has('hh'),
+      `${TRACKS[i].name}: the pre-drop dropout bar (${bar - trackStartBar(i)}) is ether-only`);
+    check(!orbitsIn(bar, bar + 1).has(2) && orbitsIn(bar, bar + 1).has(3),
+      `${TRACKS[i].name}: dropout drops the bass, the pads survive it`);
+  }
+}
+
+console.log('AD4 — the interlude is the control group, and it is made of what is missing');
+{
+  const i = TRACKS.findIndex((tr) => tr.interlude);
+  check(i > 0 && i < TRACKS.length - 1, `it sits between two tracks, not at either end (index ${i})`);
+  const b = trackStartBar(i);
+  const body = [b, b + TRACKS[i].bars - SEAM_BARS];   // its two phrases, before its own seam
+  const v = onsets(...body).map((h) => h.value ?? {});
+
+  // what it withholds: the whole near stream and the whole floor, in EVERY
+  // section it has — that is what makes it a control group rather than a short
+  // quiet track, and it is one flag (`palette.core`) rather than a section gate
+  check(!v.some((x) => ['jbreak', 'bd', 'sd', 'hh'].includes(x.s)),
+    'no break and no skeleton anywhere in it — not one drum');
+  check(!v.some((x) => (x.orbit ?? 0) === 2), 'and no floor: nothing underneath at all');
+
+  // what survives: the continuity core. The pad is the common tone across every
+  // seam in the set (§6.1) and here it is the only thing naming the harmony.
+  check(v.some((x) => (x.orbit ?? 0) === 3), 'the ether is still there — the common tone');
+  check(v.some((x) => x.fmh === 3.5), 'and the migrating pluck, which is in every track by definition');
+
+  // both biomes at once, which is the crossfade happening INSIDE a track rather
+  // than only across its edges
+  const beds = new Set(v.map((x) => x.s));
+  check(beds.has('ambleaves') && beds.has('ambwind'),
+    'it is made of both neighbours’ air: the canopy’s leaves under the zenith’s wind');
+
+  // and it costs the set nothing structural
+  check(TRACKS[i].bars % PHRASE_BARS === 0 && SET_BARS % PHRASE_BARS === 0,
+    `whole phrases, so D9 holds by construction (${TRACKS[i].bars} bars, set ${SET_BARS})`);
+  check(SET_BARS % 32 === 0,
+    `and the 32-bar ambience loops still divide the set exactly (${SET_BARS} / 32)`);
 }
 
 console.log('biome ambience beds + hat dynamics (D16)');
