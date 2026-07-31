@@ -501,12 +501,14 @@ console.log('AD14 — the break is a body and a crack, and not every track earns
       v.shape != null && v.hcutoff != null && (v.begin === 0.25 || v.begin === 0.75));
   };
   const counts = CAST_INDEX.map((i) => cracks(i).length);
-  check(counts[0] === 0 && counts[3] === 0,
-    'the undergrowth never earns the crack, and the zenith’s drums have no bodies to crack');
-  check(counts[1] > 0 && counts[2] > 0, `the forest floor and the canopy have one (${counts.join(' / ')})`);
+  // D52 — the forest floor's crack was removed by ear, so only ONE track has
+  // one now. The claim the table still makes is the one AD14 exists for: which
+  // drummer a track has is an authored decision, and most tracks are authored
+  // not to have a second one at all.
+  check(counts[0] === 0 && counts[1] === 0 && counts[3] === 0,
+    'only one track earns the crack — the undergrowth never did, the forest floor no longer does (D52), and the zenith’s drums have no bodies to crack');
+  check(counts[2] > 0, `the canopy has it (${counts.join(' / ')})`);
   const avg = (xs) => xs.reduce((s, v) => s + v.gain, 0) / xs.length;
-  check(avg(cracks(FF)) > avg(cracks(CP)),
-    `and the floor LEADS with it — harder than the canopy's (${avg(cracks(FF)).toFixed(3)} vs ${avg(cracks(CP)).toFixed(3)})`);
   // it is a backbeat, not a fill: every hit lands on 2 or 4, which is the whole
   // gesture being stolen (ANCHORS already named those two positions)
   const at = (i) => {
@@ -519,7 +521,7 @@ console.log('AD14 — the break is a body and a crack, and not every track earns
       })
       .map((h) => (h.whole.begin.valueOf() % 1));
   };
-  check(at(FF).length > 0 && at(FF).every((x) => x === 0.25 || x === 0.75),
+  check(at(CP).length > 0 && at(CP).every((x) => x === 0.25 || x === 0.75),
     'every crack lands on the backbeat — a drummer, not a figure');
   // the body steps back where there is a crack, which is the half of the split
   // that stops it being two drummers playing over each other
@@ -528,7 +530,8 @@ console.log('AD14 — the break is a body and a crack, and not every track earns
     return values(b, e).filter((v) => v.s === 'jbreak' && v.orbit === 1 &&
       !(v.shape != null && v.hcutoff != null));
   };
-  check(bodies(FF).length > 0 && bodies(CP).length > 0, 'the body break is still there under both of them');
+  check(bodies(FF).length > 0 && bodies(CP).length > 0,
+    'the body break plays in both tracks — under the canopy’s crack, and alone on the forest floor (D52)');
   // and it is spent by section, like every other form device: absent from the
   // build (the break is still fading in), hardest at the peak
   const inSec = (i, name) => {
@@ -539,7 +542,7 @@ console.log('AD14 — the break is a body and a crack, and not every track earns
       v.shape != null && v.hcutoff != null);
   };
   const gAt = (name) => {
-    const xs = inSec(FF, name);
+    const xs = inSec(CP, name);
     return xs.length ? avg(xs) : 0;
   };
   check(gAt('peak') > gAt('groove') && gAt('groove') > gAt('build'),

@@ -271,9 +271,8 @@ export const TRACKS = [
     roomChar: { 1: { lp: 5200, dim: 1100, fade: 0.09 }, 3: { lp: 7500, dim: 500, fade: 0.35 } },
     palette: {
       break: { speed: 1.02, shape: 0.15, room: 0.18 }, // tight, tuned up, dry
-      // AD14 — the forest floor LEADS with the crack: the hardest, driest
-      // backbeat in the set, on the track whose whole identity is the strut.
-      crack: { gain: 0.36, speed: 1.06, hpf: 240, shape: 0.3, room: 0.04 },
+      // AD14's crack was here and is GONE — removed by ear, see D52. The
+      // forest floor keeps its body break and nothing on top of it.
       hats: { s: 'hh', lpf: 9000, hpf: 800, gain: 1.05 },
       // the busiest skeleton in the set — this is the track that struts
       kick: { extras: 0.95, gain: 0.6 },
