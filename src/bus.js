@@ -126,7 +126,16 @@ const SHAPE = [ // the shared tension shape: slow rise, dip, golden-ratio climax
 // §licensing — the caveat D12 raised about its own palette).
 export const TRACKS = [
   {
-    name: 'undergrowth', bars: 68, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30],
+    name: 'undergrowth', bars: 64, floor: 0.10, peak: 0.70, brightness: [0.10, 0.30],
+    // AD1 — no build2. A single slow arch: the trapdoor (P5) arrives
+    // UNANNOUNCED, because the one track that opens the set should be the one
+    // you fall through rather than the one you are marched up to. The long
+    // intro is the set's own front door. Weights are phrase counts (§AD1) —
+    // they sum to this track's 14 non-seam phrases, so the allocator's
+    // proportional round is exact and the authored numbers are what plays.
+    layout: [
+      ['intro', 3], ['build', 2], ['groove', 3], ['breakdown', 2], ['peak', 2], ['release', 2],
+    ],
     // AD2 — late, shallow, procrastinated: the world subsides, and even its
     // climax arrives after the golden ratio has passed
     shape: [[0, 0.10], [0.3, 0.25], [0.5, 0.35], [0.7, 1.0], [0.85, 0.5], [1, 0.2]],
@@ -186,7 +195,13 @@ export const TRACKS = [
       // and reads as a chorus), and a filter that sweeps once per phrase with
       // resonance on it. This is where "stasis outside, seething inside"
       // actually lives; before, the cutoff was one held number.
-      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 2, detune: [-13, 5], sub: true, lpf: [130, 220], gain: 0.46,
+      // AD6 — `drone`: the root held in long overlapping notes, the talea
+      // demoted to articulation, and the walk permitted only above this
+      // track's own tNorm 0.7. It is the syntax the patch was always described
+      // as having and never had: stasis outside, seething inside. The floor
+      // learning to walk at the undergrowth's peak is the forest floor's whole
+      // identity arriving one track early.
+      bass: { s: 'sawtooth', style: 'drone', oct: -1, k: 5, kSpan: 2, detune: [-13, 5], sub: true, lpf: [130, 220], gain: 0.46,
         wobble: { sync: 0.25, depth: 0.55, resonance: 7 },
         roots: [1, 1, 6, 1, 1, 3, 1, 5] },
       // N3 — five phrases against seventeen and against N2's eight: the pad,
@@ -198,7 +213,12 @@ export const TRACKS = [
         // out of the floor's way and leaves everything from Bb3 up.
         hpf: 240,
         plane: [0, 0, 1, 0, 2] },
-      lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8 },
+      // AD11 — the undergrowth's release hands the melody to the pluck: the
+      // darkest track's LAST tune is played by wood, near and dry, while the
+      // triangle that carried it all track falls silent. Nothing new is
+      // introduced — the pluck has been in the room since bar 0.
+      lead: { s: 'triangle', lpf: [1000, 2000], room: 0.8,
+        sections: { release: ['pluck'] } },
       // AD15 — the melody policy: exposition. The cell may recall itself and
       // turn, nothing more — the set's first track barely dares vary its tune,
       // which is what makes the later tracks' permissions legible.
@@ -216,14 +236,30 @@ export const TRACKS = [
         // wider band is also a more convincing insect: a real stridulation is
         // a buzz with a formant, not a sine.
         decay: 0.18, room: 0.25, gain: 0.3, threshold: 0.42, pan: 0.28 },
+      // AD12 — the b-side pair. One of these two fills the undergrowth's drop
+      // bar, chosen per set from the seed; the other does not exist that night.
+      bSide: ['trapdoor', 'thud'],
       // P5 — spent once, on this track's drop bar: the hoover's opposite sign
       // at the opposite end of the set. Two octaves DOWN instead of one up.
       trapdoor: { s: 'sawtooth', oct: 0, penv: -24, pattack: 0.5, lpf: 700,
         resonance: 9, room: 0.35, gain: 0.34 },
+      // …and its opposite number: not the floor opening but something landing
+      // on it. `ambimpact` is the D18 boundary hit, dragged well below pitch
+      // and rolled off, so it reads as mass rather than as an arrival cue.
+      thud: { speed: 0.62, lpf: 900, room: 0.5, gain: 0.52 },
     },
   },
   {
-    name: 'forest floor', bars: 68, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55],
+    name: 'forest floor', bars: 76, floor: 0.15, peak: 0.85, brightness: [0.30, 0.55],
+    // AD1 — the strut: the most club-shaped form in the set, for the most
+    // rhythmically aggressive track. Groove dominates, the breakdown is a
+    // single gasp, the build2 is real work and the peak is the longest
+    // anywhere. AD3 gives this track the set's extra room (76 bars, 17
+    // non-seam phrases) because it is the one that walks.
+    layout: [
+      ['intro', 1], ['build', 2], ['groove', 5], ['breakdown', 1],
+      ['build2', 3], ['peak', 4], ['release', 1],
+    ],
     // AD2 — twin peaks: the violence arrives early, recedes, and returns at
     // the golden ratio — the track that struts should feint
     shape: [[0, 0.10], [0.25, 0.68], [0.4, 0.32], [0.618, 1.0], [0.8, 0.45], [1, 0.2]],
@@ -235,6 +271,9 @@ export const TRACKS = [
     roomChar: { 1: { lp: 5200, dim: 1100, fade: 0.09 }, 3: { lp: 7500, dim: 500, fade: 0.35 } },
     palette: {
       break: { speed: 1.02, shape: 0.15, room: 0.18 }, // tight, tuned up, dry
+      // AD14 — the forest floor LEADS with the crack: the hardest, driest
+      // backbeat in the set, on the track whose whole identity is the strut.
+      crack: { gain: 0.36, speed: 1.06, hpf: 240, shape: 0.3, room: 0.04 },
       hats: { s: 'hh', lpf: 9000, hpf: 800, gain: 1.05 },
       // the busiest skeleton in the set — this is the track that struts
       kick: { extras: 0.95, gain: 0.6 },
@@ -242,7 +281,10 @@ export const TRACKS = [
       // the floor walks — and now it walks somewhere: degree 3 is the relative
       // major, and the 2 at the end of the cycle is the one genuinely unsettled
       // phrase in the track
-      bass: { s: 'square', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42,
+      // AD6 — `walk`: the original engine, untouched. It is this track's
+      // identity, and it is the reference the other two grammars are heard
+      // against (the same role the canopy's form plays for AD1).
+      bass: { s: 'square', style: 'walk', oct: -1, k: 7, kSpan: 4, lpf: [180, 320], release: 0.22, gain: 0.42,
         // faster and shallower than the undergrowth's brood: this floor walks
         wobble: { sync: 0.5, depth: 0.3, resonance: 4 },
         roots: [1, 1, 3, 1, 6, 1, 3, 2] },
@@ -266,6 +308,13 @@ export const TRACKS = [
       // which is how the floor gets an accent without becoming lit.
       stab: { s: 'sawtooth', k: 2, voices: 4, decay: 0.16, lpf: 900, resonance: 11,
         lpenv: 2.6, lpdecay: 0.09, room: 0.22, gain: 0.2 },
+      // AD12 — the b-side pair: this set either storms or it throws. Both are
+      // this track's own material (the rail and the weather it already owns),
+      // and exactly one of them is dealt.
+      bSide: ['thunder', 'throw'],
+      // …the throw: one phrase-final snare a few times a track, thrown into the
+      // 3/16 rail with the feedback spiked short of unity. Tier S #2.
+      throw: { every: 0.34, boost: 0.25 },
       // P4 — the thunderclap. `ambthunder` already ships as an ambience accent
       // here; this promotes it from weather you half-notice to a gesture:
       // reversed into the build2 dropout bar, forward on the drop.
@@ -274,6 +323,10 @@ export const TRACKS = [
   },
   {
     name: 'canopy', bars: 68, floor: 0.20, peak: 1.00, brightness: [0.55, 0.80], // set climax (~0.62 of set)
+    // AD1 — the reference form, deliberately un-authored: the canopy names no
+    // layout and gets SECTION_LAYOUT. The climax track is the one that keeps
+    // the promise, and every other form is legible against it — the same
+    // argument the groove bags make about the canopy's cast.
     // D30 — the birds are Amazonian now: a Tambopata rainforest bed under the
     // screaming piha's calls (tools/amb_sources.json). The accent walk gets a
     // small lift because on this seed the piha only cleared the default
@@ -291,6 +344,10 @@ export const TRACKS = [
     roomChar: { 1: { lp: 9000, dim: 380, fade: 0.14 }, 3: { lp: 14000, dim: 160, fade: 0.55 } },
     palette: {
       break: { room: 0.15 }, // full, open, top end intact
+      // AD14 — the canopy has a crack too, but open and set further back: the
+      // glad track affirms its backbeat (warmth already leans on it) without
+      // the floor's aggression.
+      crack: { gain: 0.26, speed: 1.02, hpf: 200, lpf: 12000, shape: 0.14, room: 0.16 },
       hats: { s: 'hh', lpf: 12000, hpf: 700, gain: 1.15 },
       // open and affirmed: fewer extra kicks than the floor, but the ghosts
       // are audible — warmth leans into the backbeat, here and in `backbeat`
@@ -299,13 +356,24 @@ export const TRACKS = [
       kick: { extras: 0.82, gain: 0.6, bag: 'pushed' },
       snare: { ghosts: 0.85, gain: 0.36, bag: 'busy' },
       // the glad track gets the glad centres: the 5th and the 6th
-      bass: { s: 'sawtooth', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5,
+      // AD6 — `riff`: the only bass in the set you can hum. `offsets` are steps
+      // through the pentatonic set FROM the phrase's centre, so on a tonic
+      // phrase this is degrees 1-5-6-5-3 and on a moving one the hook goes with
+      // the harmony. The slots are deliberately uneven — 0, 3, 6, 10, 14 across
+      // the two-bar line — because an evenly spaced hook is a pulse.
+      bass: { s: 'sawtooth', style: 'riff', oct: -1, k: 5, kSpan: 3, shape: 0.2, lpf: [160, 340], gain: 0.5,
+        riff: { slots: [0, 3, 6, 10, 14], offsets: [0, 3, 4, 3, 2] },
         roots: [1, 1, 5, 1, 6, 1, 3, 1] },
       // the glad track already re-voices twice as often, so it planes lightly —
       // gladness is a place to arrive at, not a place to wander around in
       pad: { s: 'sawtooth', oct: 1, width: 12, lpf: [1100, 2800], attack: 1.1, release: 4, gain: 0.34, slow: 2,
         plane: [0, 0, 0, 1] },
-      lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7 },
+      // AD11 — the canopy's breakdown gives the melody to the bells ALONE: the
+      // triangle drops out and what was a doubling becomes the tune. The
+      // release then restores both, and because the ear has heard them apart,
+      // the doubling is finally audible as a reunion rather than as a timbre.
+      lead: { s: 'triangle', lpf: [1400, 2600], room: 0.7,
+        sections: { breakdown: ['bells'] } },
       pluck: { fmh: 3.5, fmi: 1.8, oct: 1, k: 3, decay: 0.35, room: 0.75, offGrid: 0.6, gain: 0.26, orbit: 4 },
       // characteristic 1: FM bells doubling the lead an octave up — inharmonic
       // partials over a glad chord read as light, not error (§7.2)
@@ -331,7 +399,68 @@ export const TRACKS = [
     },
   },
   {
-    name: 'zenith', bars: 68, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00],
+    // ---------- AD4: the interlude ----------
+    //
+    // The set was four verses with no chorus, no bridge and no breath between
+    // them — the one structural fact no per-track device can reach, because
+    // every per-track device is still a verse. This is the fifth entry, and it
+    // is deliberately NOT a fifth cast: no new faces, no break, no floor. Only
+    // the six continuity invariants (`track_identities.md` §2), alone, for
+    // twenty-three seconds.
+    //
+    // **The interlude is the control group.** Variety is only legible against
+    // invariance (§7.3), and the set had never once shown the listener what its
+    // invariants sound like by themselves — so the four casts were four
+    // arrangements rather than four castings of one thing. This is also the only
+    // device in the whole proposal that breaks the deepest regularity in the
+    // piece: the set stops being A·B·C·D and becomes A·B·C·x·D.
+    //
+    // Everything about it is chosen to cost nothing elsewhere. Brightness is
+    // FLAT at 0.80, which is exactly where the canopy ends and the zenith
+    // begins, so the altitude walk stays continuous and no other track needed
+    // re-authoring; the beds are one layer from each of its neighbours, so the
+    // crossfade the seam machinery already performs happens inside the track as
+    // well as across its edges; and it is 16 bars — two phrases and a seam —
+    // because a breath that outstays itself is a fifth track.
+    name: 'interlude', bars: 16, interlude: true,
+    floor: 0.06, peak: 0.30, brightness: [0.80, 0.80],
+    // it opens where the canopy's seam left it and subsides across two phrases
+    shape: [[0, 1.0], [1, 0.45]],
+    layout: [['intro', 1], ['release', 1]],
+    // both biomes at once: the canopy's leaf texture as the always-on bed, the
+    // zenith's wind as the accent that comes and goes over it. No new recording.
+    ambience: ['ambleaves', 'ambwind'],
+    warmth: 0.45,                    // the walk from the glad canopy to the cold top
+    tuning: { just: 0.5 },           // halfway out of the canopy's lock
+    rooms: { 1: 5, 3: 12, 4: 8 },    // already most of the way to the zenith's vastness
+    roomChar: { 1: { lp: 10000, dim: 280, fade: 0.3 }, 3: { lp: 15000, dim: 120, fade: 0.65 } },
+    palette: {
+      // the flag that makes this a landing rather than a track: no break, no
+      // skeleton, no floor, in any section. `core` is read once, in
+      // buildArrangement's layer gates.
+      core: true,
+      // the pad — the common tone across every seam in the set (§6.1), and here
+      // the only thing carrying the harmony at all
+      pad: { s: 'sawtooth', oct: 1, width: 14, lpf: [1200, 2600], attack: 1.8, release: 5, gain: 0.34, slow: 2,
+        plane: [0, 0, 1] },
+      // the migrating pluck, at its canopy costume and about to drown: this is
+      // the one voice whose whole job is to be the same instrument in every
+      // track, so it is exactly what belongs in the set's control group
+      pluck: { fmh: 3.5, fmi: 1.6, oct: 1, k: 3, decay: 0.5, room: 0.85, lpf: 3000, offGrid: 0.8, gain: 0.24, orbit: 3, slow: 2 },
+      lead: { s: 'triangle', lpf: [1600, 2200], room: 0.85 },
+      motif: { transforms: [0, 2] },   // literal and inversion: the cell, restated
+    },
+  },
+  {
+    name: 'zenith', bars: 64, floor: 0.05, peak: 0.60, brightness: [0.80, 1.00],
+    // AD1 — the afterward. No build at all, the longest breakdown and release
+    // in the set, and a drop that is one thinned phrase — the tension peak of
+    // 0.60 was already saying so and the form now agrees with it. A form that
+    // is mostly aftermath, which is also what makes its 5-phrase release the
+    // one section in the set long enough to have a genuine interior.
+    layout: [
+      ['intro', 2], ['groove', 2], ['breakdown', 4], ['peak', 1], ['release', 5],
+    ],
     // AD2 — early crest, long decay: altitude is reached in the first third
     // and the rest of the track is thinning air. The peak SECTION then plays
     // against a falling curve — the drop is thin on purpose, in the one track
@@ -365,12 +494,21 @@ export const TRACKS = [
       // the floor is removed: bare sine, an octave up, absent for whole phrases
       // almost nothing moves up here — two departures in eight phrases, which is
       // the harmonic version of "nothing underneath you"
-      bass: { s: 'sine', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45,
+      // AD6 — `walk` again, and the repetition is the argument: the zenith's
+      // floor is the forest floor's grammar with 45% of its phrases missing,
+      // which is a different thing to hear than a different grammar would be.
+      // Gone is not a fourth syntax; it is a walk you keep losing.
+      bass: { s: 'sine', style: 'walk', oct: 0, k: 5, kSpan: 1, lpf: [400, 400], gain: 0.3, absence: 0.45,
         roots: [1, 1, 1, 5, 1, 1, 1, 2] },
       // one departure in four phrases: up here the chord moving at all is an event
       pad: { s: 'sawtooth', oct: 1, width: 18, lpf: [1400, 2400], attack: 2.2, release: 6, gain: 0.3,
         plane: [0, 0, 0, 2] },
-      lead: { s: 'sine', lpf: [2000, 1500], room: 0.9 },
+      // AD11 — the glass bowl doubles the sine lead for the zenith's one thin
+      // phrase of a drop. The bowl is otherwise a strike every two phrases; for
+      // four bars it is a melodic instrument, and then it goes back to being
+      // weather.
+      lead: { s: 'sine', lpf: [2000, 1500], room: 0.9,
+        sections: { peak: ['lead', 'bowl'] } },
       // AD15 — dissolution: inversion and fragmentation only. The cell is
       // remembered upside down and in pieces, the way the granular ghost
       // remembers the break — nothing up here states anything whole.
@@ -398,10 +536,38 @@ export const TRACKS = [
       ghost: { grains: 5, speed: 0.5, reverse: 0.4, lpf: 2200, gain: 0.15 },
       // spent once: the silence — release phrase 0 keeps one sine and the bed
       silence: true,
+      // AD13 — the two memories. The zenith is the only host in the set,
+      // because it is the last track and a memory needs something to remember;
+      // by the same argument the undergrowth can never have one. Each names its
+      // source, so these are the earlier casts' own data rather than lookalikes
+      // authored twice — re-tune the forest floor's breath and its ghost up here
+      // is re-tuned with it.
+      echoes: [
+        // the breath, one phrase into the release — NOT phrase 0, which is the
+        // spent silence. Register and formant up, vibrato gone, mostly air: the
+        // first thing in the set with a body, returning without one.
+        { slot: 'breath', from: 1, section: 'release', phrase: 1, oct: 2, formant: 1.8, gain: 0.42 },
+        // the bells, once in the breakdown: half-speed, drowned, and the FM
+        // ratio walked off 3.0 toward this track's own 2.76. Bells becoming
+        // glass is the bridge the two casts already imply.
+        { slot: 'bells', from: 2, section: 'breakdown', phrase: 2, oct: 1, fmh: 2.9, lpf: 2400, gain: 0.5 },
+      ],
     },
   },
 ];
-for (const tr of TRACKS) tr.seconds = tr.bars * BAR_SECONDS; // ≈97 s per track
+for (const tr of TRACKS) tr.seconds = tr.bars * BAR_SECONDS; // ≈91–108 s per track
+
+/**
+ * AD4 — the indices of the four CASTS, as opposed to the entries of `TRACKS`.
+ *
+ * The interlude is a member of the set and not a member of the cast, and that
+ * distinction has to exist somewhere or every consumer invents it: the four
+ * biomes are what carry a palette, a warmth, a storey of the forest and a
+ * weather, while the interlude carries none of those on purpose. Anything
+ * asking "which of the four?" — the tests, the visuals' biome tables — reads
+ * this; anything asking "where are we in the set?" keeps reading `TRACKS`.
+ */
+export const CAST_INDEX = TRACKS.map((tr, i) => (tr.interlude ? -1 : i)).filter((i) => i >= 0);
 
 // Seam window at the end of every track (§6.3), in whole phrases: two phrases
 // of window, of which the LAST phrase is the late phase (drums die, countdown).
@@ -538,10 +704,31 @@ export function seamVariant(intoIndex, seed) {
 }
 
 // ---------- in-track sections (D11) ----------
-// One shared section form per track (like SHAPE, D1): proportional phrase
-// weights over the track's non-seam phrases. Edges snap to whole phrases, so
-// sections inherit D9's bar-exactness. The seam (last 2 phrases) is owned by
-// the seam machinery and never allocated here.
+// Proportional phrase weights over a track's non-seam phrases. Edges snap to
+// whole phrases, so sections inherit D9's bar-exactness. The seam (last 2
+// phrases) is owned by the seam machinery and never allocated here.
+//
+// AD1 — this is now the DEFAULT form, not the only one, exactly as AD2 did to
+// SHAPE: a track may author `TRACKS[i].layout`. It was always one table and
+// all four tracks were 68 bars, so section timing was identical IN BARS — the
+// breakdown opened at bar 24 of every track and the drop landed at bar 40 of
+// every track, on a fixed 97-second period. D43 varied what those events
+// contained and never varied when any of them happened; this is the device
+// that does, and pizzazz (R6) called it the only one that fixes the stated
+// complaint.
+//
+// Two consequences worth naming. The drops now land at bars 40 / 48 / 40 / 32,
+// against tracks of 64 / 76 / 68 / 64 bars, so no two tracks put their arrival
+// at the same fraction of themselves. And sections finally get MIDDLES: at two
+// phrases each, `firstPhraseOf` and `lastPhraseOf` were the same two phrases
+// and no device could live in a section's interior at all. The undergrowth's
+// 3-phrase groove and the zenith's 5-phrase release repair that for free.
+//
+// Everything downstream is keyed by section NAME with a default — SKEL_LIFT,
+// HARM_RHYTHM, PAD_MOTION, TURN_LIFT, SECTION_WEIGHT, the hats table and
+// HOLES — so a track that omits a section pays nothing for it, and the
+// build2-only devices (the dropout bar, the thunderclap's reversed entry)
+// simply never fire in the undergrowth or the zenith. That is the point.
 export const SECTION_LAYOUT = [
   ['intro', 2],      // ether only: pads establish the world
   ['build', 2],      // thin break, reduced anchor, floor enters
@@ -553,16 +740,22 @@ export const SECTION_LAYOUT = [
 ];
 
 /**
- * Section spans for a track of trackBars bars: [{ name, startBar, bars }] in
- * order, seam last, tiling the track exactly. This is the one place the
- * proportional allocation runs — sectionAt and the transport UI both read it.
+ * Section spans for a track: [{ name, startBar, bars }] in order, seam last,
+ * tiling the track exactly. This is the one place the proportional allocation
+ * runs — sectionAt and the transport UI both read it.
+ *
+ * AD1 — takes the TRACK rather than its bar count, because a form is now two
+ * fields (`bars` and `layout`) and passing one without the other would silently
+ * allocate the wrong shape. The track object is what every caller already has.
  */
-export function sectionSpans(trackBars) {
+export function sectionSpans(track) {
+  const trackBars = track.bars;
+  const layout = track.layout ?? SECTION_LAYOUT;
   const nAlloc = (trackBars - SEAM_BARS) / PHRASE_BARS; // whole by construction (D9)
-  const totalW = SECTION_LAYOUT.reduce((s, [, w]) => s + w, 0);
+  const totalW = layout.reduce((s, [, w]) => s + w, 0);
   const spans = [];
   let start = 0, accW = 0;
-  for (const [name, w] of SECTION_LAYOUT) {
+  for (const [name, w] of layout) {
     accW += w;
     const end = Math.round((accW / totalW) * nAlloc);
     if (end > start) spans.push({ name, startBar: start * PHRASE_BARS, bars: (end - start) * PHRASE_BARS });
@@ -572,13 +765,18 @@ export function sectionSpans(trackBars) {
   return spans;
 }
 
+/** Every section name any track in the set uses, in canonical order (AD1). */
+export const SECTION_NAMES = [
+  ...SECTION_LAYOUT.map(([name]) => name), 'seam',
+];
+
 /**
  * Section for the phrase containing barInTrack (integer bar arithmetic only).
  * Returns { name, phraseInSection, sectionPhrases }. Phrases inside the seam
  * window return name 'seam' — callers should keep using seam phase info.
  */
-export function sectionAt(barInTrack, trackBars) {
-  for (const sp of sectionSpans(trackBars)) {
+export function sectionAt(barInTrack, track) {
+  for (const sp of sectionSpans(track)) {
     if (barInTrack < sp.startBar + sp.bars) {
       return {
         name: sp.name,
@@ -617,7 +815,7 @@ export function phraseStateAt(phraseIndex) {
         track: tr,
         trackIndex: i,
         barInTrack,
-        section: sectionAt(barInTrack, tr.bars), // D11: in-track form
+        section: sectionAt(barInTrack, tr), // D11: in-track form, AD1: its own
         tStart: phraseIndex * PHRASE_BARS * BAR_SECONDS,
         seam: {
           active,

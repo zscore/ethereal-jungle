@@ -5,7 +5,7 @@ the list of things that are *wrong or stale right now*. Delete entries as they
 land; if something turns into a real decision, it graduates to
 `design_decisions.md` and leaves here.
 
-Status as of 2026-07-28, on `main` @ `d36f92f`.
+Status as of 2026-07-31, on `main` @ `a2d832d`.
 
 ---
 
@@ -564,7 +564,7 @@ has confirmed the governor actually sheds them in time on a real GPU, and
 Same note as before applies to WebGPU: the chain compiles and boots there, and
 that is all the harness certifies.
 
-## 9. The dev server re-inits the UI mid-sweep (opened 2026-07-29, minor)
+## 9. ~~The dev server re-inits the UI mid-sweep~~ ✅ fixed 2026-07-31 (D50)
 
 Observed while photographing D44–D46, not caused by it. The transport in the
 later frames of a `visual_check` run shows **each track and section button
@@ -572,15 +572,15 @@ twice** — `initUI` appends without clearing and is called once from `main.js`,
 so seeing doubles means the module was evaluated twice against the same DOM.
 
 The cause is the docs plugin: it regenerates `docs/api/index.html` at dev-server
-start, vite's watcher sees the write, and hot-updates the client. Harmless to
-the shots (`errors: none`, the bus keeps running, and the world renders
-correctly in every frame), and invisible in `npm run build`. Worth fixing at
-some point in one of two places — have the docs plugin write outside the watched
-tree or mark it `hmr: false`, or have `initUI` clear `#tracks`/`#sections`
-before it fills them. The second is one line and would make the symptom
-impossible regardless of what triggers a re-init.
+start, vite's watcher sees the write, and hot-updates the client.
 
-## 10. `isolate()` does not work on anything that writes its own visibility (opened 2026-07-29, minor)
+**Fixed with the second of the two options** — `initUI` now clears
+`#tracks`/`#sections` before it fills them. That makes the symptom impossible
+regardless of what triggers a re-init, which is worth more than stopping this
+particular trigger; the docs plugin still writes into the watched tree and is
+still harmless.
+
+## 10. ~~`isolate()` does not work on anything that writes its own visibility~~ ✅ fixed 2026-07-31 (D51)
 
 Found while A/B-ing the material change. `world.isolate(name)` sets
 `group.visible` on every biome, but the creature systems — and the fireflies
@@ -590,11 +590,52 @@ That cost real time during D47: an isolated-forest comparison was actually a
 forest-plus-sloths comparison, and the sloths were the thing that had gone
 wrong.
 
-Fix is small — have `isolate` set a latch the per-frame writes respect
-(`visible = wanted && presence > 0.01`), the way `setVisible` used to for the
-fronds. Worth doing before the next visual A/B rather than after it.
+**Fixed, and not the way this entry proposed.** A latch each writer respects
+would have meant editing fourteen of them and hoping the fifteenth remembered;
+`isolate` now records what is isolated and the world's update loop enforces it
+after every biome has run, since a hidden group hides its children whatever
+their own flags say. Verified in a real browser at the undergrowth's altitude,
+where the offenders overlap: before, `isolate('forest')` left mycelium, pool,
+fireflies, poolfrog, sloth and treefrog visible; after, only the forest.
+`world.debugVisible()` ships with it — what the scene graph says, rather than
+what `isolate` asked for.
 
-## 11. `faceDirection` is not trusted on this backend (opened 2026-07-29, D47)
+## 11. The fourth telling has not been heard (opened 2026-07-31, D50)
+
+All sixteen AD items are built, tested and — where a level was at stake —
+measured. **None of them has been listened to.** That is a bigger gap here than
+for most passes in this repo, because the proposal's own ladder asks for *one
+variable at a time with a listen between each* (the D13 discipline) and this
+landed eight at once. They interlock, which is the excuse and not a defence:
+AD1 has to exist before AD4, AD6 has to exist before AD7 means anything, and
+AD13 amends the contract AD12 relies on.
+
+The acceptance criteria are all ears, and each is a specific listening task:
+
+- **(b) the hum test** — can you hum the canopy's bassline after one pass, and
+  not the undergrowth's? That is the whole claim of AD6, and the one thing a
+  spectrum probe structurally cannot answer.
+- **(c) two seeds, A/B'd** — do you name an instrument-level difference? Seeds
+  1, 2, 5 and 11 between them exercise all four b-side faces (AD12).
+- **(d) minute 3 against minute 12, blind** — better than chance? (AD5, AD15.)
+- **(a) told "this is a drop", can you infer which bar of the set you are at?**
+  You should not be able to any more (AD1/AD2/AD3).
+
+Three things to listen *for* specifically, because each is a judgement call
+made from idiom rather than from evidence:
+
+- **The undergrowth's drone.** Its level is measured (the 120–250 Hz band sits
+  within 0.4 dB of where the walk left it) but "does a held root under this
+  arrangement read as brooding or as a mistake" is not a measurement.
+  `holdComp` in `generators.js` is the one number.
+- **The interlude.** Twenty-three seconds with no drums and no floor, four
+  minutes before the end. It is either the breath the set never had or it is
+  dead air, and there is no third outcome. `TRACKS[3].bars` is the knob.
+- **The crack.** Two tracks have one and two do not, which is an authored
+  claim about which drummer each track has. If the canopy's reads as a second
+  snare rather than as the same kit, its `gain` is the dial.
+
+## 12. `faceDirection` is not trusted on this backend (opened 2026-07-29, D47)
 
 The birds and the soarer were the only two materials in the world using TSL's
 `faceDirection` to flip a double-sided normal, and they were the only two that

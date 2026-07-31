@@ -1934,14 +1934,44 @@ export function buildWorld(scene, rng, opts = {}) {
     makeSoarer(rng, CAST.soarer, 'soarer'),
   ];
   for (const b of biomes) scene.add(b.group);
+  // E2 — which biome is isolated, or null. This is a LATCH rather than a
+  // one-shot write, and the difference has cost real time twice.
+  //
+  // `isolate` used to set `group.visible` once and return. But the fireflies,
+  // the pool, the near field, the creatures and (since D49) the ether all write
+  // their own `group.visible` from a band test on EVERY frame, so they came
+  // straight back the tick after being hidden and an "isolated" shot quietly
+  // contained them. Two confident conclusions were drawn from contaminated
+  // frames during D47 — an isolated-forest comparison that was really a
+  // forest-plus-sloths comparison, with the sloths being the thing that had gone
+  // wrong — and two more during D49.
+  //
+  // Enforced here, after every biome has run its own update, rather than by
+  // giving each writer a latch to respect: there are fourteen of them and the
+  // next one to be written would not know the rule. A hidden group hides its
+  // children whatever their own flags say, so one line covers every present and
+  // future biome.
+  let isolated = null;
   return {
-    update(dt, env) { for (const b of biomes) b.update(dt, env); },
+    update(dt, env) {
+      for (const b of biomes) b.update(dt, env);
+      if (isolated !== null) for (const b of biomes) b.group.visible = b.name === isolated;
+    },
     /** Debug isolation (proposal E2): show one biome by name, or null for all. */
     isolate(name) {
-      for (const b of biomes) {
-        const on = !name || b.name === name;
-        b.group.visible = on;
-      }
+      isolated = name || null;
+      // releasing puts everything back on; each biome's next update then takes
+      // its own visibility decision again, which is exactly what we want
+      for (const b of biomes) b.group.visible = !name || b.name === name;
+    },
+    /**
+     * What is actually visible right now, per biome — the readout that would
+     * have caught the isolation bug above in seconds instead of twice costing a
+     * day. `isolate` reports what it *asked* for; this reports what the scene
+     * graph *says*, which is the only question worth asking of a debug switch.
+     */
+    debugVisible() {
+      return Object.fromEntries(biomes.map((b) => [b.name, b.group.visible]));
     },
     /** Stream fusion (proposal B3): the figure ignites the ether. Canopy only. */
     ignite() { for (const b of biomes) b.ignite?.(); },

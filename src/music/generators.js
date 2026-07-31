@@ -15,7 +15,7 @@
  * from `TRACKS[i].palette` / `.warmth` / `.tuning` in bus.js. That split is the
  * point: variation by re-casting, not by re-coding (§7.3, docs/track_identities.md).
  */
-import { makeRng, phraseStateAt, seamVariant, warmthAt, PHRASE_BARS, SEAM_BARS, SET_BARS, AMB_CHUNKS } from '../bus.js';
+import { makeRng, phraseStateAt, seamVariant, warmthAt, TRACKS, PHRASE_BARS, SEAM_BARS, SET_BARS, AMB_CHUNKS } from '../bus.js';
 import { modeAt, padVoicing, bassNotes, BASS_DEGREES, leadNotes, degreeToMidi, tune } from './scales.js';
 
 // ---------- Euclidean helper: E(k, n) as a boolean array (Bjorklund) ----------
@@ -202,6 +202,16 @@ const bagFor = (library, override, name, pass = 0) => {
 // the peak fills in. Form decides, tension only shades — same rule as D11.
 const SKEL_LIFT = { intro: 0.2, build: 0.5, groove: 0.95, build2: 0.85, peak: 1, release: 0.7 };
 
+/**
+ * AD14 — how hard the crack hits, per section. Its own table rather than a
+ * reuse of SKEL_LIFT, because they answer different questions: SKEL_LIFT is how
+ * much FILLING-IN a section wants, and the crack is an anchor, not a fill. It is
+ * absent from the build on purpose — the break is still fading in there and a
+ * hard backbeat would arrive before the thing it is supposed to be inside — and
+ * it leads the peak, which is the one place in the form allowed to be blunt.
+ */
+const CRACK_LIFT = { build: 0.45, groove: 1, build2: 1, peak: 1.15, release: 0.8, seam: 0.6 };
+
 // WHICH bars of the phrase get the extras. Without this the placement drawn
 // for a phrase lands in all four of its bars and the fix reproduces the bug it
 // was meant to solve, one scale up: the same bar, four times. `[0 0 0 1]/4` is
@@ -320,6 +330,32 @@ export const DROP_VARIANTS = [
   { name: 'floor-first', break: '[0 1 1 1]/4', bass: null },
   { name: 'late',        break: '[0 1 1 1]/4', bass: '[0 1 1 1]/4' },
 ];
+
+/**
+ * AD12 — b-side casts: which of a track's two authored options for ONE palette
+ * slot this set gets.
+ *
+ * Pizzazz §1.7 measured the problem and it is embarrassing for a piece that
+ * calls itself generative: re-seeding changes which 16th a fill lands on and
+ * nothing a listener would ever name — same-instruments similarity 0.88–0.96
+ * across seeds, because *no palette decision read the seed at all*. The fix is
+ * at the level listeners actually operate: not a different placement, a
+ * different instrument.
+ *
+ * Deterministic per (track, seed), the `seamVariant` / `dropVariantFor` idiom
+ * and for the same reason — a cast that changes every pass is noise rather than
+ * form. Deliberately NOT keyed to the AD5 pass: the b-side is what makes this
+ * SET different from the last one you heard, and a set whose instruments change
+ * halfway through has no identity to differ from.
+ *
+ * `palette.bSide` names the pair; a slot listed there plays only when it is the
+ * one dealt, so the exactly-one-track invariants in `test/palette.mjs` still
+ * hold within any given set — which is the property that makes this safe.
+ */
+export function bSideFor(trackIndex, seed) {
+  const rng = makeRng(((seed ^ 0xb51d) + trackIndex * 4409) >>> 0);
+  return rng() < 0.5 ? 0 : 1;
+}
 
 export function dropVariantFor(trackIndex, seed, pass = 0) {
   // AD5 — the pass folds into the seed, so the second hearing of the set deals
@@ -1056,6 +1092,93 @@ function ghostLayer(ctx, gh, rng, breakSound, rs) {
  * The hoover (canopy, spent once): the rave-lineage lead-weapon on the drop
  * bar. Detuned saws with a downward pitch envelope — 1992, once, never again.
  */
+/**
+ * AD13 — echoes: "exactly once" becomes "once as a member, once as a memory".
+ *
+ * The four casts never referenced each other, so the set had first appearances
+ * and no *recalls* — and a recall is the cheapest variance there is, because the
+ * material has already been paid for. The amendment is narrow and the narrowness
+ * is the proposal: a characteristic instrument may reappear in **one later
+ * track, exactly once, transformed toward the host's stream position, at memory
+ * volume**. The undergrowth can have none, because nothing can be a memory in
+ * the first track you hear.
+ *
+ * The transform is not decoration. Each echo is moved to where the HOST lives in
+ * stream space (§3.1), which is why the breath arrives with its body gone and
+ * the bells arrive halfway to being the bowl: at the zenith nothing has a body,
+ * so a memory of the set's most embodied voice has to lose one to get in.
+ *
+ * `spec.from` names the source track and `spec.slot` its palette entry, so the
+ * echo is genuinely the earlier instrument's data rather than a lookalike
+ * authored twice — and if a cast is re-tuned, its memory is re-tuned with it.
+ */
+function echoLayer(ctx, spec, mode, tuning, rs, w, diet, seed) {
+  const { note, s } = ctx;
+  const src = TRACKS[spec.from]?.palette?.[spec.slot];
+  if (!src) return [];
+  const g = (src.gain ?? 0.25) * (spec.gain ?? 0.4);   // memory volume: −8 dB or more
+  // Its own line, drawn from the set's one cell on a hashed stream — never from
+  // the shared rng (a draw there re-deals every layer after it), and never from
+  // whatever the lead happens to be doing, so the memory exists whether or not
+  // the host's melody is present in the phrase it lands in.
+  const rng = makeRng(strHash(`echo:${spec.slot}:${seed}`));
+  const contour = leadContour(rng, w, diet);
+  const scale = leadNotes(mode, spec.oct ?? 1, tuning);
+  const mask = euclid(3, 8, Math.floor(rng() * 8));
+  let ci = 0;
+  const seq = mask.map((v) => {
+    if (!v) return '~';
+    const deg = contour[ci++ % contour.length];
+    return fmt(scale[Math.max(0, Math.min(scale.length - 1, deg))]);
+  });
+  const at = (n) => seq.map((x) => (x === '~' ? '~' : fmt(parseFloat(x) + 12 * n))).join(' ');
+  switch (spec.slot) {
+    case 'breath': {
+      // the cold choir `track_identities.md` §7 flirts with, implemented as a
+      // ghost of track 1 rather than as a ninth face: formant and register up,
+      // the vibrato gone (a living pitch is a body, and this has none), and
+      // mostly air. The first thing in the set with a breath, returning without
+      // one — which is the zenith's whole thesis in a single gesture.
+      const up = at(0);   // the register lift is already in `spec.oct`
+      const [lo] = src.lpf ?? [1600, 900];
+      const tone = note(up).s('sine')
+        .attack(1.2).release(3.4)
+        .lpf(lo * (spec.formant ?? 1.8))
+        .room(0.9).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
+        .gain(g * 0.35).pan(0.5)
+        .slow(4).orbit(4);
+      const air = s(up.split(' ').map((x) => (x === '~' ? '~' : 'white')).join(' '))
+        .attack(1.4).release(3.0)
+        .hpf(1400).lpf(lo * (spec.formant ?? 1.8)).resonance(3)
+        .room(0.9).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
+        // 0.6 of the echo's own budget rather than all of it: the memory has to
+        // be quieter than the original IN EVERY BAND, not merely in total. The
+        // source spends 0.32 of the breath on air and the rest on a body; if
+        // the memory spent its whole budget on air it would come back with more
+        // breath than the thing it remembers, in the quietest track of the set.
+        .gain(g * 0.6).pan(0.5)
+        .slow(4).orbit(4);
+      return [tone, air];   // still air-dominant — the body is what it lost
+    }
+    case 'bells': {
+      // half-speed and drowned. The FM ratio is walked off 3.0 toward the
+      // zenith's own 2.76 — bells becoming glass is the timbral bridge the two
+      // casts already imply, and it is also what keeps "the FM bells are the
+      // canopy's" literally true: this is not the canopy's bell, it is what is
+      // left of it four minutes later.
+      return [note(at(0)).s('sine')
+        .fmh(spec.fmh ?? 2.9).fmi((src.fmi ?? 2.2) * 0.6)
+        .attack(0.02).decay((src.decay ?? 0.6) * 2).sustain(0.1).release(3.2)
+        .lpf(spec.lpf ?? 2400)
+        .room(0.92).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
+        .gain(g).pan(0.6)
+        .slow(4).orbit(4)];
+    }
+    default:
+      return [];
+  }
+}
+
 function hooverLayer(ctx, hv, mode, tuning, rs) {
   const { note } = ctx;
   const root = tune(degreeToMidi(1, mode, 1), tuning);
@@ -1219,10 +1342,16 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // Which layers exist. intro = kick heartbeat + ether; breakdown = ether only
   // (skeleton off ⇒ the break must go too — the anchor rule, §1.2 inverted).
   const ambient = sec === 'intro' || sec === 'breakdown';
-  const breakIn = !seamLate && !ambient && !silent;
-  const kickIn = !seamLate && sec !== 'breakdown' && !silent;
-  const snareIn = !seamLate && !ambient && !silent;
-  const bassIn = !seamLate && !ambient && !silent;
+  // AD4 — the interlude declares itself the continuity core and nothing else:
+  // no break, no skeleton, no floor, in any of its sections. This is the one
+  // gate in the arrangement that is a property of the TRACK rather than of the
+  // section, because what the interlude withholds it withholds throughout —
+  // that is what makes it a control group rather than a short quiet track.
+  const coreOnly = !!pal.core;
+  const breakIn = !seamLate && !ambient && !silent && !coreOnly;
+  const kickIn = !seamLate && sec !== 'breakdown' && !silent && !coreOnly;
+  const snareIn = !seamLate && !ambient && !silent && !coreOnly;
+  const bassIn = !seamLate && !ambient && !silent && !coreOnly;
   // P0 — tension, normalised into THIS track's own authored range. The set's
   // tension curve is already rescaled per track into [floor, peak], so a gate
   // written against an absolute number silently means something different in
@@ -1247,6 +1376,12 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   const drop = (sec === 'peak' && firstPhraseOf && !silent)
     ? dropVariantFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed, voice.pass ?? 0)
     : null;
+  // AD12 — which of this track's two b-side options this set was dealt. A slot
+  // named in `palette.bSide` exists only when it is the one chosen; every slot
+  // not named there is unconditional, so a cast is still mostly authored and
+  // the seed decides exactly one face per track.
+  const bSide = pal.bSide?.[bSideFor(voice.trackIndex ?? 0, voice.baseSeed ?? p.seed)];
+  const dealt = (name) => !pal.bSide?.includes(name) || name === bSide;
   /** Apply a drop variant's mask for one layer family, if it has one. */
   const held = (pat, family) => (drop?.[family] ? pat.mask(drop[family]) : pat);
   /**
@@ -1291,15 +1426,49 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       : seamEarly
         ? `[${Array.from({ length: 4 }, (_, j) => (exitFade(j) * bg).toFixed(3)).join(' ')}]/4`
         : (thin ? 0.75 : 0.9) * bg;
+    // AD14 — the body/crack split (S1, R9). The break is the most-heard voice in
+    // the piece and there was exactly ONE of it, wearing four costumes: every
+    // record this descends from stacks a soft body break against a hard dry
+    // snare on 2 and 4, and this engine had only ever had the body. The crack is
+    // derived from the same sample — slices 4 and 12 are the source's own
+    // backbeats — so it costs no new material, which is the whole reason it can
+    // be spent freely. What it buys is a second axis for every form device above
+    // it: not how much drumming, but WHICH DRUMMER.
+    //
+    // R9 asked for a second break sample. This is the version of that which
+    // needs no download and no licence, and it answers the same complaint.
+    const cr = pal.crack;
+    const crackLift = cr ? (CRACK_LIFT[sec] ?? 0) * (seamEarly || seamLate ? 0.6 : 1) : 0;
+    const cracking = crackLift > 0;
     layers.push(gate(held(costume(
       s(bp.s ?? 'jbreak') // local synthesized break; try s('breaks165') with the remote pack
         .slice(16, sigma.join(' '))
         .sometimesBy(thin ? 0 : wEff * 0.4, (x) => x.ply(2)) // stochastic re-subdivision
         .degradeBy((thin ? 0.4 - 0.2 * secProgress : wEff * 0.15) + (bp.thin ?? 0) + (seamEarly ? 0.18 : 0))
-        .gain(gainSpec)
+        // …and when there IS a crack, the body steps back to make room for it.
+        // This is the half of the split people forget: stacking a hard snare on
+        // an unchanged break gives you two drummers playing over each other.
+        .gain(typeof gainSpec === 'number' && cracking ? gainSpec * 0.82 : gainSpec)
         .orbit(1),
       bp, rs, weather,
     ), 'break')));
+    if (cracking) {
+      // '~ 4 ~ 12' rather than the proposal's literal `slice(16, '4 12')`: two
+      // top-level events would put the slices on beats 1 and 3, and the gesture
+      // this is stealing is a snare on 2 and 4. ANCHORS already names those.
+      layers.push(gate(held(
+        s(bp.s ?? 'jbreak')
+          .slice(16, '~ 4 ~ 12')
+          .speed(cr.speed ?? 1.04)          // slightly sharp: it sits ON TOP of the body
+          .hpf(cr.hpf ?? 220)               // no low end — the body and the kick own that
+          .lpf(cr.lpf ?? 9000)
+          .shape(cr.shape ?? 0.22)          // hard
+          .room(cr.room ?? 0.06).roomsize(rs(1)).roomlp(rs.lp(1)).roomdim(rs.dim(1)).roomfade(rs.fade(1))
+          .gain((cr.gain ?? 0.3) * crackLift * (0.8 + 0.3 * tension))
+          .pan(cr.pan ?? 0.5)
+          .orbit(1),
+        'break')));
+    }
   }
 
   // ---- skeleton: the metric anchor (§1.2) — strength rises with tension ----
@@ -1365,11 +1534,25 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // spent once — feedback past unity for the drop bar, and it eats the snare
     if (snareIn) {
       const snare = () => s('~ ~ sd ~').gain(backbeat).orbit(1);
+      // AD12 — the dub throw, this track's b-side. One phrase-final snare is
+      // thrown into the rail with the feedback spiked, a few phrases a track:
+      // the ORDINARY version of the once-per-set self-oscillation below, which
+      // is what makes the spent one legible when it comes. Its boost stays
+      // clear of unity on purpose — the peak's bloom is the only thing in the
+      // set allowed to run away, and a b-side that stole that would be trading
+      // one spent gesture for another rather than adding a face.
+      const thrown = pal.dub && pal.throw && dealt('throw') && !dropout && !seamLate && !seamEarly &&
+        makeRng(strHash(`throw:${voice.baseSeed ?? p.seed}:${voice.phraseIndex ?? 0}`))() < (pal.throw.every ?? 0.3);
       // spent once (forest floor): at its peak the rail's feedback goes past
       // unity for the drop bar and eats the snare — the set's only self-oscillation
-      if (pal.dub && sec === 'peak' && firstPhraseOf) {
-        layers.push(gate(dub(snare(), pal.dub, tension, 0.5).mask('[1 0 0 0]/4')));
-        layers.push(gate(dub(snare(), pal.dub, tension).mask('[0 1 1 1]/4')));
+      const spike = (pal.dub && sec === 'peak' && firstPhraseOf)
+        ? { on: '[1 0 0 0]/4', off: '[0 1 1 1]/4', boost: 0.5 }
+        : thrown
+          ? { on: '[0 0 0 1]/4', off: '[1 1 1 0]/4', boost: pal.throw.boost ?? 0.25 }
+          : null;
+      if (spike) {
+        layers.push(gate(dub(snare(), pal.dub, tension, spike.boost).mask(spike.on)));
+        layers.push(gate(dub(snare(), pal.dub, tension).mask(spike.off)));
       } else {
         layers.push(gate(dub(snare(), pal.dub, tension)));
       }
@@ -1553,39 +1736,90 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
         ci = Math.max(0, Math.min(top, ci + (up ? mag : -mag)));
         return colors[ci];
       });
+      // AD6 — the bassline headline, and it is about SYNTAX rather than notes.
+      // N2 had already moved the harmony and P1 the filter, but every track's
+      // floor was still the same *kind of line*: a walk, four times, wearing
+      // four patches. `palette.bass.style` gives one engine three grammars, and
+      // the set's floor becomes lying down → walking → singing → gone.
+      //
+      // The walk above is computed in every style and discarded in two of them.
+      // That is deliberate and is the same D43 constraint AD8 cites: its draws
+      // are what keep the shared stream aligned for every layer built after the
+      // bass, so removing them here would re-deal the whole phrase downstream.
+      const style = bp.style ?? 'walk';
+      // the drone's one concession: at the top of its own track's arc the floor
+      // is allowed to walk. The undergrowth learns to move exactly once, at its
+      // own peak — which is the next track's entire identity, foreshadowed.
+      const droning = style === 'drone' && tNorm <= 0.7;
+      let line = seq;
+      if (droning) {
+        // the root held, and the talea demoted from melody to ARTICULATION: the
+        // figure now says when the floor is struck, never what it says. With
+        // the long envelope below the strikes overlap into one continuous tone,
+        // so P1's wobble is the only thing moving — which is what
+        // `track_identities.md` §4.1 promised this patch would be.
+        line = talea.map((v) => (v ? colors[centreIdx] : null));
+      } else if (style === 'riff' && bp.riff) {
+        // the hook. Authored slots and pentatonic offsets FROM THE PHRASE'S
+        // CENTRE, so N2's moving harmony carries it: on a tonic phrase the
+        // canopy's [0,3,4,3,2] is degrees 1-5-6-5-3, and on the phrases where
+        // the centre moves the hook transposes with it instead of turning into
+        // a wrong note. Memorability is a warmth device, so the one bass in the
+        // set you can hum belongs to the glad track alone, the way the thirds do.
+        const { slots, offsets } = bp.riff;
+        const subRng = makeRng(strHash(
+          `riff:${voice.baseSeed ?? p.seed}:${voice.phraseIndex ?? 0}`));
+        // exactly one substitution per phrase: a hook that never varies is a
+        // loop, and a hook that varies everywhere is not a hook
+        const swapAt = Math.floor(subRng() * offsets.length);
+        const dir = subRng() < 0.5 ? -1 : 1;
+        line = Array.from({ length: 16 }, () => null);
+        slots.forEach((slot, n) => {
+          const off = offsets[n] + (n === swapAt ? dir : 0);
+          line[slot % 16] = colors[Math.max(0, Math.min(top, centreIdx + off))];
+        });
+      }
+      // AD7 — build2 is the one section that changes what the floor DOES, and
+      // it overrides the style: driving eighths on the phrase's centre (16
+      // slots under the half-time slow(2)), filter opening across the section —
+      // the genre's pre-drop, and the first time build2's floor differs from
+      // groove's underfoot. With AD1 the undergrowth has no build2 at all, so
+      // its floor never learns urgency, which is correct: the one track whose
+      // drop arrives unannounced is the one that is never marched up to it.
+      const pulse = sec === 'build2';
+      if (pulse) line = Array.from({ length: 16 }, () => colors[centreIdx]);
       // AD10 — the octave lift: at most once per phrase, the strongest
       // non-anchor onset jumps +12 — the classic jungle sub-jump. The whole
-      // split-band stack follows (every body copy and the sub read this seq),
+      // split-band stack follows (every body copy and the sub read this line),
       // which is what makes it a jump rather than a harmony. Probability rises
       // with the track's own arc; hashed rng, so the shared stream never
-      // notices it happened.
+      // notices it happened. AD6 moved it from the walk to the FINISHED line,
+      // so a drone and a riff get the sub-jump too — on a held root it is the
+      // only pitch event in the phrase, which is exactly where it reads best.
       const liftRng = makeRng(strHash(
         `lift:${voice.phraseIndex ?? 0}:${voice.baseSeed ?? p.seed}`));
       if (liftRng() < 0.2 + 0.55 * tNorm) {
         let liftAt = -1;
         for (let i = 0; i < 16; i++) {
-          if (seq[i] == null || ANCHORS.has(i)) continue;
+          if (line[i] == null || ANCHORS.has(i)) continue;
           if (liftAt < 0 || INDISPENSABILITY[i] > INDISPENSABILITY[liftAt]) liftAt = i;
         }
-        if (liftAt >= 0) seq[liftAt] += 12;
+        if (liftAt >= 0) line = line.map((n, i) => (i === liftAt ? n + 12 : n));
       }
-      // AD7 — build2 is the one section that changes what the floor DOES. The
-      // walk is replaced by the pulse: driving eighths on the phrase's centre
-      // (16 slots under the half-time slow(2)), filter opening across the
-      // section — the genre's pre-drop, and the first time build2's floor
-      // differs from groove's underfoot. The walk above is still computed and
-      // discarded: its draws keep the shared stream aligned for every layer
-      // after the bass (the same D43 constraint AD8 cites).
-      const pulse = sec === 'build2';
-      const line = pulse ? Array.from({ length: 16 }, () => colors[centreIdx]) : seq;
       const str = (off) => line.map((n) => (n == null ? '~' : fmt(n + off))).join(' ');
       const [lo, span] = bp.lpf ?? [140, 260];
       const g = bp.gain ?? 0.5;
       const bassCut = pulse
         ? Math.round(lo + span * Math.min(1, 0.45 + 0.7 * secProgress))
         : lo + span * tension;
+      // AD6 — the drone's articulations overlap about threefold, and because
+      // every one of them is the SAME pitch they sum coherently rather than
+      // averaging: a held root is amplitude-linear in the number of voices
+      // ringing. Without this the syntax change would arrive as a level change,
+      // and the floor of the darkest track in the set would be its loudest.
+      const holdComp = droning ? 0.30 : 1;
       const body = (offset, gain) => {
-        let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(bassCut).gain(gain);
+        let x = note(str(offset)).s(bp.s ?? 'sawtooth').lpf(bassCut).gain(gain * holdComp);
         // P1 — the Reese finally moves. `track_identities.md` §4.1 describes
         // this patch as "stasis outside, seething inside", but its cutoff was
         // one number per phrase, held: a Reese without motion is a chorus. A
@@ -1600,7 +1834,13 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
           x = x.lpsync(wb.sync ?? 0.25).lpdepth(Math.max(0.05, depth));
           if (wb.resonance) x = x.resonance(wb.resonance);
         }
-        if (bp.release) x = x.attack(0.005).decay(bp.release).sustain(0.25).release(bp.release);
+        // AD6 — the drone is held rather than struck. Sixteen slots span two
+        // bars under the `slow(2)` below, so a slot is ~0.18 s; a 1.4 s release
+        // means consecutive articulations overlap into one continuous tone
+        // instead of reading as sixteen short notes on the same pitch. This is
+        // what turns the talea into articulation in the ear as well as on paper.
+        if (droning) x = x.attack(0.02).decay(2.2).sustain(0.8).release(1.4);
+        else if (bp.release) x = x.attack(0.005).decay(bp.release).sustain(0.25).release(bp.release);
         if (bp.shape) x = x.shape(bp.shape);
         return gate(held(x.slow(2).orbit(2), 'bass')); // half-time layer (§1.4): the felt pulse
       };
@@ -1619,7 +1859,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       detunes.forEach((cents, i) => {
         layers.push(body(cents / 100, g * (detunes.length > 1 ? spread[(i + 1) % spread.length] : 0.9)));
       });
-      if (bp.sub) layers.push(gate(held(note(str(-12)).s('sine').gain(g * 0.8).slow(2).orbit(2), 'bass')));
+      if (bp.sub) layers.push(gate(held(note(str(-12)).s('sine').gain(g * 0.8 * holdComp).slow(2).orbit(2), 'bass')));
       // N2 — the pedal, and it only sounds when there is news. On tonic phrases
       // the walk already says D and a drone under it would just be more of the
       // 120–250 Hz the mix has too much of; on the phrases where the centre has
@@ -1899,31 +2139,89 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
       const deg = contour[ci++ % contour.length];
       return fmt(scale[Math.max(0, Math.min(scale.length - 1, deg))]);
     });
-    const [llo, lspan] = lp.lpf ?? [1200, 2400];
-    let lead = note(seq.join(' '))
-      .s(lp.s ?? 'triangle')
-      .attack(0.05).release(1.5)
-      .room(lp.room ?? 0.8).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4)) // drowned: the pluck problem's legal resolution (§7.2)
-      .lpf(llo + lspan * tension)
-      // featured (breakdown, D11): the ether becomes figure, tension gate waived
-      // P0 — the ramp reads the track's own arc too, and floors at a level that
-      // is actually audible rather than tapering to nothing
-      .gain(featured ? 0.34 : 0.28 * (0.55 + 0.45 * Math.min(1, (tNorm - 0.28) / 0.32)))
-      .pan(0.5)
-      .slow(2)                     // half-time layer: lyrical, not rhythmic
-      .orbit(4);
-    if (lp.fmh) lead = lead.fmh(lp.fmh).fmi(lp.fmi ?? 1.5);
-    layers.push(dub(lead, pal.dub, tension));
-    // canopy: FM bells double the lead an octave up — inharmonic partials over
-    // a glad chord read as light, not error (§7.2)
-    if (pal.bells) {
-      const bl = pal.bells;
-      const up = seq.map((x) => (x === '~' ? '~' : fmt(parseFloat(x) + 12 * (bl.oct ?? 1)))).join(' ');
-      layers.push(note(up).s('sine').fmh(bl.fmh ?? 3).fmi(bl.fmi ?? 2.2)
-        .attack(0.005).decay(bl.decay ?? 0.6).sustain(0.08).release(1.2)
-        .room(bl.room ?? 0.55).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
-        .gain((bl.gain ?? 0.19) * (featured ? 1.15 : 1)).pan(0.55)
-        .slow(2).orbit(4));
+    const gain = featured ? 0.34 : 0.28 * (0.55 + 0.45 * Math.min(1, (tNorm - 0.28) / 0.32));
+    /** Transpose the contour by whole octaves — a doubling, not a re-draw. */
+    const octave = (n) => seq.map((x) => (x === '~' ? '~' : fmt(parseFloat(x) + 12 * n))).join(' ');
+
+    // AD11 — section-scale Klangfarbenmelodie. D22's whole operator is "hold the
+    // pattern, swap the player", and it had only ever been applied at TRACK
+    // scale: within a track the roster event was still "the lead arrives at bar
+    // 16" and nothing after it. This applies the same operator one level down —
+    // the contour is computed exactly once above and rendered through a cast
+    // that the FORM chooses, so the casting changes at section boundaries
+    // without a single new sound being introduced. It is the direct fix for the
+    // residue pizzazz §1.5 measured (bars 32–63: an identical roster), and it
+    // spends no novelty budget at all: new assignments, not new voices.
+    const carriers = {
+      // the default: the track's own lead patch, drowned (§7.2's legal
+      // resolution of the pluck problem)
+      lead: () => {
+        const [llo, lspan] = lp.lpf ?? [1200, 2400];
+        let lead = note(seq.join(' '))
+          .s(lp.s ?? 'triangle')
+          .attack(0.05).release(1.5)
+          .room(lp.room ?? 0.8).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
+          .lpf(llo + lspan * tension)
+          // featured (breakdown, D11): the ether becomes figure, tension gate
+          // waived. P0 — the ramp reads the track's own arc too, and floors at a
+          // level that is actually audible rather than tapering to nothing
+          .gain(gain)
+          .pan(0.5)
+          .slow(2)                 // half-time layer: lyrical, not rhythmic
+          .orbit(4);
+        if (lp.fmh) lead = lead.fmh(lp.fmh).fmi(lp.fmi ?? 1.5);
+        return dub(lead, pal.dub, tension);
+      },
+      // canopy: FM bells an octave up — inharmonic partials over a glad chord
+      // read as light, not error (§7.2). Alone in the breakdown, they stop
+      // being a doubling and become the melody.
+      bells: () => {
+        const bl = pal.bells;
+        if (!bl) return null;
+        return note(octave(bl.oct ?? 1)).s('sine').fmh(bl.fmh ?? 3).fmi(bl.fmi ?? 2.2)
+          .attack(0.005).decay(bl.decay ?? 0.6).sustain(0.08).release(1.2)
+          .room(bl.room ?? 0.55).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
+          .gain((bl.gain ?? 0.19) * (featured ? 1.15 : 1)).pan(0.55)
+          .slow(2).orbit(4);
+      },
+      // undergrowth: the contour played by WOOD. It keeps the pluck's own
+      // costume — near, dry, on the drum orbit — rather than the lead's, which
+      // is the point rather than a compromise: the darkest track's last melody
+      // arrives close instead of drowned, and D22's migrating pluck keeps its
+      // authored wetness curve across the set (test/palette.mjs measures it).
+      pluck: () => {
+        const pk = pal.pluck;
+        if (!pk) return null;
+        const orbit = pk.orbit ?? 1;
+        let pat = note(octave(pk.oct ?? 0)).s('sine').fmh(pk.fmh ?? 3.5).fmi(pk.fmi ?? 2.2)
+          .attack(0.002).decay((pk.decay ?? 0.12) * 2.4).sustain(0.1).release(0.5)
+          .room(pk.room ?? 0.05).roomsize(rs(orbit)).roomlp(rs.lp(orbit)).roomdim(rs.dim(orbit)).roomfade(rs.fade(orbit))
+          .gain(gain * 0.9).pan(0.42)
+          .slow(2).orbit(orbit);
+        if (pk.lpf) pat = pat.lpf(pk.lpf);
+        return pat;
+      },
+      // zenith: the glass bowl doubles the sine lead for the one thin phrase
+      // that is its drop. D34 gave the bowl a ceiling and an octave down for
+      // good reason, and both are honoured here — this is the bowl, not a
+      // brighter thing wearing its ratio.
+      bowl: () => {
+        const bw = pal.bowl;
+        if (!bw) return null;
+        return note(octave(bw.oct ?? 0)).s('sine').fmh(bw.fmh ?? 2.76).fmi(bw.fmi ?? 0.7)
+          .attack(0.4).decay(1.4).sustain(0.2).release(2.2)
+          .lpf(bw.lpf ?? 2200)
+          .room(0.7).roomsize(rs(4)).roomlp(rs.lp(4)).roomdim(rs.dim(4)).roomfade(rs.fade(4))
+          .gain((bw.gain ?? 0.17) * 0.9).pan(0.45)
+          .slow(2).orbit(4);
+      },
+    };
+    // the default cast is exactly what shipped before this: the lead, doubled by
+    // the bells wherever a track owns them.
+    const cast = lp.sections?.[sec] ?? ['lead', ...(pal.bells ? ['bells'] : [])];
+    for (const name of cast) {
+      const pat = carriers[name]?.();
+      if (pat) layers.push(pat);
     }
   }
 
@@ -1987,6 +2285,20 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
     // comes up and slows down — the timestretch artifact §3.4 asks for
     layers.push(gate(inBreakdown ? g.gain((pal.ghost.gain ?? 0.15) * 1.9).slow(2) : g));
   }
+  // AD13 — the echoes. Rationed by construction: each one names a single
+  // section and a single phrase within it, so it fires exactly once per track
+  // and therefore exactly once per pass of the set. It is gated by `castIn` and
+  // by `silent` like every other voice, which is why the zenith's breath memory
+  // is authored into the SECOND phrase of the release — the first one is D22's
+  // spent silence, and a memory arriving in it would be the one thing in the
+  // set that does not respect emptiness.
+  for (const spec of pal.echoes ?? []) {
+    if (!castIn || silent) break;
+    if (sec !== spec.section || (section?.phraseInSection ?? 0) !== (spec.phrase ?? 0)) continue;
+    for (const l of echoLayer(ctx, spec, mode, tuning, rs, w, diet, voice.baseSeed ?? p.seed)) {
+      layers.push(l);
+    }
+  }
   // spent once: the hoover, on the canopy's drop bar. 1992, once, never again.
   if (pal.hoover && sec === 'peak' && firstPhraseOf && !silent) {
     layers.push(hooverLayer(ctx, pal.hoover, mode, tuning, rs));
@@ -1995,7 +2307,26 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // opposite sign at the opposite end of the set: a pitch envelope diving two
   // octaves instead of screaming up one, on the only track that had no gesture
   // of its own at its own peak. `penv` is negative, so `pattack` is the fall.
-  if (pal.trapdoor && sec === 'peak' && firstPhraseOf && !silent) {
+  // AD12 — the undergrowth's b-side. The trapdoor opens BENEATH the drop (a
+  // pitch dive of two octaves); the thud arrives ON it — the landing impact
+  // that only ever marks a boundary, dragged down and put in the litter's own
+  // small room. Same slot, same bar, opposite direction, and the sample is one
+  // this set already owns, so a second face costs nothing but the choosing.
+  //
+  // (The proposal's first choice here was P6's croak, which needs a
+  // field-recording ingest this pass could not do — see the ADR.)
+  if (pal.thud && dealt('thud') && sec === 'peak' && firstPhraseOf && !silent) {
+    const td = pal.thud;
+    layers.push(
+      s('ambimpact').speed(td.speed ?? 0.62)
+        .lpf(td.lpf ?? 900)
+        .room(td.room ?? 0.5).roomsize(rs(3)).roomlp(rs.lp(3)).roomdim(rs.dim(3)).roomfade(rs.fade(3))
+        .gain(td.gain ?? 0.5).pan(0.5)
+        .mask('[1 0 0 0]/4')       // the drop bar, and nowhere else in the set
+        .orbit(3),
+    );
+  }
+  if (pal.trapdoor && dealt('trapdoor') && sec === 'peak' && firstPhraseOf && !silent) {
     const td = pal.trapdoor;
     layers.push(
       note(fmt(tune(degreeToMidi(1, mode, td.oct ?? 0), tuning)))
@@ -2014,7 +2345,7 @@ export function buildArrangement(ctx, p, tension, brightness, seam, section, amb
   // promotes it to a gesture. It lands reversed across the build2 dropout bar —
   // the one bar the form deliberately empties, so it crowds nothing — and
   // forward on the drop. A roll into a hole, then the hole fills.
-  if (pal.thunder && !silent) {
+  if (pal.thunder && dealt('thunder') && !silent) {
     const th = pal.thunder;
     if (dropout) {
       layers.push(

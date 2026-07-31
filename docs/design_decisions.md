@@ -2779,6 +2779,231 @@ against the ether's 4200, it is what the aperture is *about* under the crowns,
 and it does not exist above them — so it cannot be the thing the brief asks to
 keep for the last two sections.
 
+## D50 — The fourth telling: the set stops being one machine told four times (2026-07-31)
+
+**The brief.** *Each track stands alone well, but by the fourth hearing the
+bassline, the song structure and the instrumentation are recognizably the same
+machine.* `set_variation_proposal.md` diagnosed exactly what repeats four times
+per pass — one clock, one bass grammar, one melody policy, one cast schedule —
+and proposed sixteen items against it. This entry is all sixteen.
+
+**Assigned at merge**, per the note at the top of this file. It covers work that
+landed in two sittings and is one decision because it is one argument: the eight
+S-items shipped in `a2d832d` (AD2, AD5, AD7, AD8, AD9, AD10, AD15, AD16) and
+never got a `D` number, and the eight M-items below finish the ladder. The
+commit that merged the first half is titled "AD1-AD16" and was wrong — half the
+proposal was still on paper, including both of its named headlines.
+
+### The clock
+
+**Per-track forms (AD1) — the structure headline.** `SECTION_LAYOUT` was a
+single table and all four tracks were 68 bars, so section timing was identical
+*in bars*: the breakdown opened at bar 24 of every track and the drop landed at
+bar 40 of every track, on a fixed 97-second period. D43 varied what those events
+contained (four drop variants, seven turnarounds, four fill materials) and never
+varied *when* any of them happened. A track now authors `layout`, the canopy
+deliberately does not (the climax track keeps the promise, and every other form
+is legible against it), and the four forms are:
+
+| track | form | the argument |
+|---|---|---|
+| undergrowth | intro 3 · build 2 · groove 3 · breakdown 2 · **peak 2** · release 2 | **no build2**: a single slow arch, and the trapdoor arrives unannounced |
+| forest floor | intro 1 · build 2 · **groove 5** · breakdown 1 · build2 3 · **peak 4** · release 1 | the strut — the most club-shaped form for the most aggressive track |
+| canopy | *unchanged* | the reference |
+| zenith | intro 2 · groove 2 · **breakdown 4** · peak 1 · **release 5** | the afterward: no build at all, a drop of one thinned phrase |
+
+The weights are authored to sum to each track's own non-seam phrase count, so
+the proportional round is exact and the numbers in the table are the phrases
+that play. Drops land at bars **40 / 48 / 40 / 32**. Two structural consequences
+came free: sections finally have *middles* (pizzazz §1.5 observed that at two
+phrases each, `firstPhraseOf` and `lastPhraseOf` are the same two phrases, so no
+device could live in a section's interior), and the build2-only devices — the
+dropout bar, the thunderclap's reversed entry — now simply never fire in two of
+the four tracks, which is the point rather than a gap.
+
+`sectionSpans` takes the **track** now instead of its bar count: a form is two
+fields and a caller that passed one without the other would have silently
+allocated the wrong shape.
+
+**Unequal lengths (AD3).** 64 · 76 · 68 · 64. The walking track gets the extra
+room and the bookends tighten. Phrase counts become 14 / 17 / 15 / 14, so N2's
+8-phrase root cycles and N3's 5-phrase plane cycles land differently against
+every track — the Eno principle applied to the largest period in the piece.
+
+**The interlude (AD4).** A fifth `TRACKS` entry between the canopy and the
+zenith: 16 bars, brightness flat at 0.80, layout `[intro 1, release 1]`, and a
+palette that is deliberately **not a cast** — `palette.core` turns off the
+break, the skeleton and the floor in every section it has, leaving the pad, the
+migrating pluck, and both neighbours' beds. The thesis line is that **the
+interlude is the control group**: variety is only legible against invariance,
+and the set had never once shown a listener what its six continuity invariants
+sound like by themselves. It also breaks the deepest regularity in the piece —
+A·B·C·D becomes A·B·C·x·D.
+
+Everything about it is chosen to cost nothing elsewhere. Its brightness is flat
+at exactly where the canopy ends and the zenith begins, so the altitude walk
+needed no re-authoring — and the *visuals were told nothing*: reading the same
+`brightnessAt` they always did, the camera simply holds at the crowns' last leaf
+for twenty-three seconds while the arrangement strips to its core. That is the
+M(S)/V(S) thesis paying out on the one item that was supposed to be expensive
+for the eye.
+
+What it did cost is an index. `TRACKS` now has five entries and four **casts**,
+so `CAST_INDEX` exists and everything asking "which of the four?" — the tests,
+the weather rows — reads it. `TRACK_WEATHER` gained a fifth row (the wind
+dropping, the storm already gone) so that the zenith's distant lightning arrives
+as a new fact rather than as more of the canopy's.
+
+### The floor
+
+**Bass archetypes (AD6) — the bassline headline.** The complaint was never about
+notes; N2 had already moved the harmony and P1 the filter. It is about
+**syntax**: every track's floor was the same *kind of line*, a walk, wearing four
+patches. `palette.bass.style` gives one engine three grammars —
+
+- **drone** (undergrowth): the root held in long overlapping notes, the talea
+  demoted from melody to *articulation*, and the walk permitted only above this
+  track's own `tNorm` 0.7. The Reese finally is the "stasis outside, seething
+  inside" patch `track_identities.md` §4.1 always described. The floor learning
+  to walk at the undergrowth's peak is the forest floor's whole identity
+  arriving one track early.
+- **walk** (forest floor, zenith): unchanged, and the repetition is an argument
+  — the zenith's floor is the same grammar with 45% of its phrases missing.
+  *Gone* is not a fourth syntax; it is a walk you keep losing.
+- **riff** (canopy): an authored two-bar hook on uneven slots, offsets taken
+  **from the phrase's centre** so N2's moving harmony carries it, with one
+  seeded substitution per phrase. The only bass in the set you can hum, and
+  memorability is a warmth device, so it belongs to the glad track alone.
+
+**Measured, because the drone is a level change disguised as a syntax change.**
+Its articulations overlap about threefold and every one is the same pitch, so
+they sum *coherently* rather than averaging. At the first compensation (×0.45)
+`tools/spectrum_probe.mjs --track=0 --section=groove` put the 120–250 Hz band at
+**46.5% of the mix at −24.1 dB**, against a pre-change baseline of 27.9% at
+−27.7 dB: the darkest track in the set would have had its loudest floor. At
+×0.30 it measures **24.6% at −28.1 dB** — within 0.4 dB of what T2 tuned. The
+syntax changed and the mix did not.
+
+### The cast
+
+**Section-scale Klangfarbenmelodie (AD11).** D22's operator is "hold the
+pattern, swap the player", applied only ever at track scale. `palette.lead.
+sections` applies it one level down: the contour is computed once and rendered
+through a cast the *form* chooses. The canopy's breakdown gives the melody to
+the bells alone and its release restores both — and because the ear has now
+heard them apart, the doubling is finally audible as a reunion rather than as a
+timbre. The undergrowth's release hands its last tune to the pluck, played by
+wood, near and dry. The zenith's one thin phrase of a drop has the glass bowl
+doubling the sine. No new sounds; new assignments.
+
+**B-side casts (AD12).** Pizzazz §1.7 measured the old answer and it was
+humiliating for a generative piece: re-seeding changed which 16th a fill landed
+on and nothing a listener would name, because **no palette decision read the
+seed at all**. `bSideFor(trackIndex, seed)` now deals one of two authored
+options for one slot per track: the undergrowth's drop bar is the **trapdoor**
+(a pitch dive) or the **thud** (`ambimpact` dragged below pitch — the floor
+opening versus something landing on it), and the forest floor either **storms**
+or **throws** (a phrase-final snare into the 3/16 rail with the feedback spiked
+short of unity — the ordinary version of its once-per-set self-oscillation,
+which is what makes the spent one legible). Deliberately *not* keyed to the AD5
+pass: a set whose instruments change halfway through has no identity to differ
+from.
+
+**Echoes (AD13) — the amendment.** "Exactly once" becomes "once as a member,
+once as a memory": a characteristic instrument may reappear in one later track,
+exactly once, transformed toward the host's stream position, at memory volume.
+The zenith hosts both — the forest floor's breath in its release (register and
+formant up, vibrato gone, mostly air: the first thing in the set with a body,
+returning without one) and the canopy's bells in its breakdown (half-speed,
+drowned, the FM ratio walked off 3.0 toward the zenith's own 2.76). The
+undergrowth can host none, because nothing can be a memory in the first track.
+The echoes name their source track and slot, so they are the earlier casts' own
+data rather than lookalikes authored twice.
+
+**The crack layer (AD14) — S1/R9.** The break is the most-heard voice in the
+piece and there was exactly one of it wearing four costumes. Slices 4 and 12 are
+the sample's own backbeats, so a hard dry snare on 2 and 4 costs no new
+material: the forest floor **leads** with it (0.32 mean gain), the canopy has a
+softer one further back (0.22), and the undergrowth and the zenith earn none —
+the one has not, and the other's drums have no bodies left to crack. The body
+steps back 18% where a crack exists, which is the half of the split people
+forget: stacking a hard snare on an unchanged break gives you two drummers
+playing over each other. Spent by section like every other form device (build
+0.15 < groove 0.34 < peak 0.41), and absent from the build on purpose — the
+break is still fading in there.
+
+### What the tests now say, and what changed on purpose
+
+742 checks pass. Three contracts were amended deliberately rather than worked
+around, which is the honest half of this entry:
+
+- `test/seams.mjs`'s in-track form block hardcoded a 68-bar layout down to
+  "dropout bar 39, drop on bar 40". It reads each track's own spans now and
+  asserts the D11 claim against all four; the build2 assertions moved to the two
+  tracks that still have one.
+- `test/palette.mjs`'s "characteristic instruments are where they belong, and
+  nowhere else" is now a claim about instruments **as members of a cast**, with
+  AD13's own contract in its own block. Each echo's transform is what keeps the
+  old wording literally true: the breath's memory has no vibrato and the bells'
+  is not at 3.0 any more.
+- The trapdoor and the thunderclap are asserted under a seed that *deals* them.
+  The claim is no longer "this gesture is in the set" but "this gesture, when
+  the set has it, is spent in exactly one bar of exactly one track" — plus a new
+  one, that exactly one of each pair exists on any seed.
+
+Two test bugs surfaced that were latent rather than caused. `fillIn` identified
+seam-fill hits by sample name alone, so when AD4's interlude — whose pad is a
+sawtooth and whose bass does not exist — became an exiting track, pad events
+were counted as fill hits and a falling figure looked like it rose in its third
+bar. It is scoped to the near orbit now. And `test/palette.mjs` asserted the
+toucan calls in the *first phrase* of an ether-only section, which was the seed
+speaking rather than the design; AD3 moved the canopy's start bar and the claim
+now scans the whole section.
+
+**What is NOT done, and why.** AD12's first choice for the undergrowth was P6's
+**croak** — "zero new generator code, one `ingest` run". The ingest is a field
+recording that has to be found, licensed and downloaded, which this pass could
+not do; `ambfrogs` is a 32-bar bed rather than isolated one-shots, so chopping
+it would have produced a slice of atmosphere and called it a croak. The thud is
+a real b-side built from a sample the set already owns, and the croak stays on
+the list. **And none of this has been heard.** Every claim above is a pattern
+measurement or a spectrum measurement. The ladder in the proposal asks for one
+variable at a time with a listen between each; this landed eight at once,
+because they interlock (AD1 has to exist before AD4, AD6 before AD7 means
+anything, AD13 amends the contract AD12 relies on). The acceptance criteria —
+the hum test, two seeds A/B'd, minute 3 against minute 12 blind — are all ears,
+and all still open.
+
+## D51 — `isolate()` gets a latch, because it never actually isolated anything (2026-07-31)
+
+`world.isolate(name)` set `group.visible` once and returned. But the fireflies,
+the pool, the near field, the creatures and — since D49 — the ether all write
+their own `group.visible` from a band test on **every frame**, so they came
+straight back the tick after being hidden and an "isolated" shot quietly
+contained them.
+
+This was not theoretical. It cost real time twice: during D47 an
+isolated-forest comparison was actually a forest-plus-sloths comparison, and the
+sloths were the thing that had gone wrong; during D49 two more confident
+conclusions were drawn from contaminated frames before anyone noticed. It has
+been in `TODO.md` §10 since.
+
+**Enforced in the update loop, after every biome has run**, rather than by
+giving each writer a latch to respect. There are fourteen writers and the next
+one to be written would not know the rule; a hidden group hides its children
+whatever their own flags say, so one line covers every present and future biome.
+
+Measured both ways in a real browser at the undergrowth's altitude, where all
+the offenders overlap. Before: `isolate('forest')` left **mycelium, pool,
+fireflies, poolfrog, sloth and treefrog** visible. After: `forest`, and nothing
+else. Releasing restores everything and each biome's next update takes its own
+decision again.
+
+`world.debugVisible()` ships with it — what the **scene graph** says is visible
+per biome, as opposed to what `isolate` asked for. That readout is the whole
+difference between finding this in seconds and finding it twice, a day at a
+time.
+
 ---
 
 *Add new entries above this line, newest last. If a decision is reversed,
